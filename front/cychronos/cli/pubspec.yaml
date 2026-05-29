@@ -1,4 +1,5 @@
 name: cli
+publish_to: none
 description: A sample command-line application.
 version: 1.0.0
 # repository: https://github.com/my_org/my_repo
@@ -9,6 +10,9 @@ environment:
 # Add regular dependencies here.
 dependencies:
   # path: ^1.8.0
+  http: ^1.3.0
+  command_runner:
+     path: ../command_runner
 
 dev_dependencies:
   lints: ^5.0.0
