@@ -14,3 +14,11 @@ API check:
 ```text
 GET http://localhost:3000
 ```
+
+
+
+## Front setup
+```front
+cd front/cy
+flutter run
+```
