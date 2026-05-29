@@ -2,3 +2,9 @@ back/node_modules/
 back/.env
 back/firebase-service-account.json
 .claude
+back/.env
+front/cy/.env
+
+.env
+node_modules/
+**/.env
