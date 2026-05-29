@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 import 'widgets/social_login_button.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -18,10 +19,6 @@ class _LoginScreenState extends State<LoginScreen>
   late final Animation<Offset> _headerSlideAnim;
   late final Animation<double> _cardFadeAnim;
   late final Animation<Offset> _cardSlideAnim;
-
-  // Mouse Parallax coordinates
-  double _mouseX = 0.0;
-  double _mouseY = 0.0;
 
   @override
   void initState() {
@@ -78,133 +75,70 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final bool isLargeScreen = size.width > 390 || size.height > 884;
+    final bool isLargeScreen = size.width > 390 || size.height > 926;
 
     Widget content = Scaffold(
-      body: MouseRegion(
-        onHover: (event) {
-          setState(() {
-            final size = MediaQuery.of(context).size;
-            _mouseX = (event.position.dx / size.width) - 0.5;
-            _mouseY = (event.position.dy / size.height) - 0.5;
-          });
-        },
-        child: Container(
-          color: const Color(0xFFF8F9FE),
-          child: Stack(
-            children: [
-              // 4 Corner Radial Gradients matching CSS
-              Positioned.fill(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: RadialGradient(
-                      center: Alignment.topLeft,
-                      radius: 1.414,
-                      colors: [Color(0xFFE6DEFF), Color(0x00E6DEFF)],
-                      stops: [0.0, 0.5],
-                    ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFFFFFFF), Color(0xFFA3E4D7)],
+            stops: [0.0, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(), // overflow-y: scroll
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight,
                   ),
-                ),
-              ),
-              Positioned.fill(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: RadialGradient(
-                      center: Alignment.topRight,
-                      radius: 1.414,
-                      colors: [Color(0xFFFCF6FF), Color(0x00FCF6FF)],
-                      stops: [0.0, 0.5],
-                    ),
-                  ),
-                ),
-              ),
-              Positioned.fill(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: RadialGradient(
-                      center: Alignment.bottomRight,
-                      radius: 1.414,
-                      colors: [Color(0xFFE8DEFF), Color(0x00E8DEFF)],
-                      stops: [0.0, 0.5],
-                    ),
-                  ),
-                ),
-              ),
-              Positioned.fill(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: RadialGradient(
-                      center: Alignment.bottomLeft,
-                      radius: 1.414,
-                      colors: [Color(0xFFF8F9FE), Color(0x00F8F9FE)],
-                      stops: [0.0, 0.5],
-                    ),
-                  ),
-                ),
-              ),
-              _GlowBlob(
-                top: -96,
-                left: -96,
-                color: const Color(0xFFE6DEFF).withValues(alpha: 0.18),
-                width: 384,
-                height: 384,
-                blur: 100,
-                offsetX: _mouseX * 30,
-                offsetY: _mouseY * 30,
-              ),
-              _GlowBlob(
-                bottom: -96,
-                right: -96,
-                color: const Color(0xFFE8DEFF).withValues(alpha: 0.18),
-                width: 384,
-                height: 384,
-                blur: 100,
-                offsetX: _mouseX * 60,
-                offsetY: _mouseY * 60,
-              ),
-              SafeArea(
-                child: Center(
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(), // overflow-y: scroll
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 48,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        FadeTransition(
-                          opacity: _headerFadeAnim,
-                          child: SlideTransition(
-                            position: _headerSlideAnim,
-                            child: _buildHeader(),
+                  child: IntrinsicHeight(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 48,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween, // justify-content: space-between
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          FadeTransition(
+                            opacity: _headerFadeAnim,
+                            child: SlideTransition(
+                              position: _headerSlideAnim,
+                              child: _buildHeader(),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 48),
-                        FadeTransition(
-                          opacity: _cardFadeAnim,
-                          child: SlideTransition(
-                            position: _cardSlideAnim,
-                            child: _buildLoginCard(),
+                          const SizedBox(height: 24),
+                          FadeTransition(
+                            opacity: _cardFadeAnim,
+                            child: SlideTransition(
+                              position: _cardSlideAnim,
+                              child: _buildLoginCard(),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 32),
-                        Text(
-                          '© 2026 CyChronos',
-                          style: const TextStyle(
-                            fontFamily: 'JetBrainsMono',
-                            fontFamilyFallback: ['NotoSansJP'],
-                            fontSize: 12,
-                            color: Color(0x99484553),
-                            fontWeight: FontWeight.w500,
+                          const SizedBox(height: 24),
+                          Text(
+                            '© 2026 CyChronos',
+                            style: const TextStyle(
+                              fontFamily: 'JetBrainsMono',
+                              fontFamilyFallback: ['NotoSansJP'],
+                              fontSize: 12,
+                              color: Color(0x99484553),
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              );
+            }
           ),
         ),
       ),
@@ -216,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen>
         body: Center(
           child: Container(
             width: 390,
-            height: 884,
+            height: 926,
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(40),
@@ -305,69 +239,21 @@ class _LoginScreenState extends State<LoginScreen>
               SocialLoginButton(
                 icon: SvgPicture.string(_kGoogleSvg),
                 label: 'Googleでログイン',
+                onPressed: () => GoRouter.of(context).go('/home'),
               ),
               const SizedBox(height: 16),
               SocialLoginButton(
                 icon: SvgPicture.string(_kLineSvg),
                 label: 'LINEでログイン',
+                onPressed: () => GoRouter.of(context).go('/home'),
               ),
               const SizedBox(height: 16),
               SocialLoginButton(
                 icon: SvgPicture.string(_kFacebookSvg),
                 label: 'Facebookでログイン',
+                onPressed: () => GoRouter.of(context).go('/home'),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GlowBlob extends StatelessWidget {
-  final double? top, left, bottom, right;
-  final Color color;
-  final double width;
-  final double height;
-  final double blur;
-  final double offsetX;
-  final double offsetY;
-
-  const _GlowBlob({
-    this.top,
-    this.left,
-    this.bottom,
-    this.right,
-    required this.color,
-    this.width = 384,
-    this.height = 384,
-    this.blur = 100,
-    this.offsetX = 0,
-    this.offsetY = 0,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final double? finalTop = top != null ? top! + offsetY : null;
-    final double? finalLeft = left != null ? left! + offsetX : null;
-    final double? finalBottom = bottom != null ? bottom! - offsetY : null;
-    final double? finalRight = right != null ? right! - offsetX : null;
-
-    return Positioned(
-      top: finalTop,
-      left: finalLeft,
-      bottom: finalBottom,
-      right: finalRight,
-      child: IgnorePointer(
-        child: ImageFiltered(
-          imageFilter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-          child: Container(
-            width: width,
-            height: height,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color,
-            ),
           ),
         ),
       ),
