@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class SocialLoginButton extends StatefulWidget {
   final Widget icon;
@@ -66,10 +65,12 @@ class _SocialLoginButtonState extends State<SocialLoginButton> {
                   const SizedBox(width: 16),
                   Text(
                     widget.label,
-                    style: GoogleFonts.hankenGrotesk(
+                    style: const TextStyle(
+                      fontFamily: 'HankenGrotesk',
+                      fontFamilyFallback: ['NotoSansJP'],
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF191C1F),
+                      color: Color(0xFF191C1F),
                     ),
                   ),
                 ],

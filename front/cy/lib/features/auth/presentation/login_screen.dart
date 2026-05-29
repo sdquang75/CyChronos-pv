@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'widgets/social_login_button.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -91,21 +90,58 @@ class _LoginScreenState extends State<LoginScreen>
           });
         },
         child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: const Alignment(0.4, 0.9), // Approximates 336.19deg
-              end: const Alignment(-0.4, -0.9),
-              colors: const [
-                Color(0xFFF8F9FE),
-                Color(0xFFE6DEFF),
-                Color(0xFFF2F3F8),
-                Color(0xFFE8DEFF),
-              ],
-              stops: const [0.0, 0.3333, 0.6667, 1.0],
-            ),
-          ),
+          color: const Color(0xFFF8F9FE),
           child: Stack(
             children: [
+              // 4 Corner Radial Gradients matching CSS
+              Positioned.fill(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment.topLeft,
+                      radius: 1.414,
+                      colors: [Color(0xFFE6DEFF), Color(0x00E6DEFF)],
+                      stops: [0.0, 0.5],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment.topRight,
+                      radius: 1.414,
+                      colors: [Color(0xFFFCF6FF), Color(0x00FCF6FF)],
+                      stops: [0.0, 0.5],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment.bottomRight,
+                      radius: 1.414,
+                      colors: [Color(0xFFE8DEFF), Color(0x00E8DEFF)],
+                      stops: [0.0, 0.5],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment.bottomLeft,
+                      radius: 1.414,
+                      colors: [Color(0xFFF8F9FE), Color(0x00F8F9FE)],
+                      stops: [0.0, 0.5],
+                    ),
+                  ),
+                ),
+              ),
               _GlowBlob(
                 top: -96,
                 left: -96,
@@ -155,9 +191,11 @@ class _LoginScreenState extends State<LoginScreen>
                         const SizedBox(height: 32),
                         Text(
                           '© 2026 CyChronos',
-                          style: GoogleFonts.jetBrainsMono(
+                          style: const TextStyle(
+                            fontFamily: 'JetBrainsMono',
+                            fontFamilyFallback: ['NotoSansJP'],
                             fontSize: 12,
-                            color: const Color(0xFF484553).withValues(alpha: 0.6),
+                            color: Color(0x99484553),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -202,44 +240,20 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildHeader() {
     return Column(
       children: [
-        Image.network(
-          'https://lh3.googleusercontent.com/aida/ADBb0ugkCGAEQGrQK9dvgy_AazuSyaj_O05MMUjmRcRTKvvkKq-mEIvXm0w6g4hNCoRbrAkinkjcsrNefjrA-cXdPYHwlCVUj-gEI9hTkmMYPic-2nXDEjxRRpBr1H61fJtWiGWSwa8tGFlWIKsn2FQaxwWaSXmrnYZXhPRYTutS7EFdTtOv6dyiHBJZn0eM_z-UOm8k8n11jTUsRs-X-rTDL5IG8dcHAEAmNtCCYVf-a3Nbg0b6mWLnJnrz_uY',
+        Image.asset(
+          'assets/logo.png',
           width: 96,
           fit: BoxFit.contain,
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return const SizedBox(
-              width: 96,
-              height: 96,
-              child: Center(
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6049C5)),
-                ),
-              ),
-            );
-          },
-          errorBuilder: (context, error, stackTrace) => Container(
-            width: 96,
-            height: 96,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF6049C5), Color(0xFF2E0094)],
-              ),
-            ),
-            child: const Icon(Icons.timer_rounded, color: Colors.white, size: 48),
-          ),
         ),
         const SizedBox(height: 16),
         Text(
           'CyChronos',
-          style: GoogleFonts.hankenGrotesk(
+          style: const TextStyle(
+            fontFamily: 'HankenGrotesk',
+            fontFamilyFallback: ['NotoSansJP'],
             fontSize: 48,
             fontWeight: FontWeight.w800,
-            color: const Color(0xFF19005C),
+            color: Color(0xFF19005C),
             letterSpacing: -0.96,
             height: 56 / 48,
           ),
@@ -250,10 +264,12 @@ class _LoginScreenState extends State<LoginScreen>
           child: Text(
             '走行パフォーマンスを追跡し、あらゆる道を征服しましょう。',
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontFamilyFallback: ['NotoSansJP'],
               fontSize: 18,
               fontWeight: FontWeight.w400,
-              color: const Color(0xFF484553),
+              color: Color(0xFF484553),
               height: 28 / 18,
             ),
           ),
