@@ -17,21 +17,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> checkAuth() async {
     state = const AuthLoading();
-    try {
-      final session = await _repo.getSavedSession();
-      state = session != null
-          ? AuthAuthenticated(jwt: session.jwt, user: session.user)
-          : const AuthUnauthenticated();
-    } catch (_) {
-      state = const AuthUnauthenticated();
-    }
+    // Firebase restores session from cache synchronously
+    final user = _repo.getCurrentUser();
+    state = user != null
+        ? AuthAuthenticated(user: user)
+        : const AuthUnauthenticated();
   }
 
   Future<void> signInWithGoogle() async {
     state = const AuthLoading();
     try {
-      final result = await _repo.signInWithGoogle();
-      state = AuthAuthenticated(jwt: result.jwt, user: result.user);
+      final user = await _repo.signInWithGoogle();
+      state = AuthAuthenticated(user: user);
     } on Exception catch (e) {
       final msg = e.toString();
       if (msg.contains('sign_in_cancelled')) {
@@ -43,7 +40,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> signOut() async {
-    await _repo.clearSession();
+    await _repo.signOut();
     state = const AuthUnauthenticated();
   }
 }

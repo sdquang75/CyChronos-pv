@@ -13,10 +13,9 @@ class AuthLoading extends AuthState {
 }
 
 class AuthAuthenticated extends AuthState {
-  final String jwt;
   final AuthUser user;
 
-  const AuthAuthenticated({required this.jwt, required this.user});
+  const AuthAuthenticated({required this.user});
 }
 
 class AuthUnauthenticated extends AuthState {

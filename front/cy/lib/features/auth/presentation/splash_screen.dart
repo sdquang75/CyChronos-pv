@@ -35,7 +35,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     );
 
     _animCtrl.forward();
-    _initAuth();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initAuth());
   }
 
   Future<void> _initAuth() async {
