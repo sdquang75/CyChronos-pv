@@ -20,5 +20,6 @@ GET http://localhost:3000
 ## Front setup
 ```front
 cd front/cy
+flutter pub get
 flutter run
 ```
