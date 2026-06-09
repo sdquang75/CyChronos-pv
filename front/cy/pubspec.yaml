@@ -43,6 +43,11 @@ dependencies:
   # HTTP & networking
   dio: ^5.8.0+1
 
+  # Auth
+  google_sign_in: ^6.2.0
+  firebase_core: ^3.13.0
+  firebase_auth: ^5.5.2
+
   # Local storage
   shared_preferences: ^2.5.3
 
@@ -51,8 +56,6 @@ dependencies:
   flutter_svg: ^2.0.10+1
 
   # Firebase (uncomment when ready to integrate)
-  # firebase_core: ^3.13.0
-  # firebase_auth: ^5.5.2
   # cloud_firestore: ^5.6.5
   # firebase_storage: ^12.4.4
 

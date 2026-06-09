@@ -8,3 +8,6 @@ front/cy/.env
 .env
 node_modules/
 **/.env
+
+**/google-services.json
+**/GoogleService-Info.plist

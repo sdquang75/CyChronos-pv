@@ -1,27 +1,30 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
+import 'providers/auth_provider.dart';
+import '../domain/auth_state.dart';
 import 'widgets/social_login_button.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
+class _LoginScreenState extends ConsumerState<LoginScreen>
     with TickerProviderStateMixin {
-  // Entry transitions
   late final AnimationController _entryCtrl;
   late final Animation<double> _headerFadeAnim;
   late final Animation<Offset> _headerSlideAnim;
   late final Animation<double> _cardFadeAnim;
   late final Animation<Offset> _cardSlideAnim;
 
-  // Mouse Parallax coordinates
   double _mouseX = 0.0;
   double _mouseY = 0.0;
+
 
   @override
   void initState() {
@@ -32,7 +35,6 @@ class _LoginScreenState extends State<LoginScreen>
       duration: const Duration(milliseconds: 1300),
     );
 
-    // Header fades and slides (0 to 1000ms)
     _headerFadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _entryCtrl,
@@ -49,7 +51,6 @@ class _LoginScreenState extends State<LoginScreen>
       ),
     );
 
-    // Card fades and slides (300ms delay, ends at 1300ms)
     _cardFadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _entryCtrl,
@@ -77,23 +78,40 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AuthState>(authProvider, (_, next) {
+      if (next is AuthAuthenticated) {
+        context.go('/home');
+      } else if (next is AuthError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'ログインに失敗しました。もう一度お試しください。',
+              style: TextStyle(fontFamily: 'Inter'),
+            ),
+            backgroundColor: const Color(0xFF19005C),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    });
+
+    final isLoading = ref.watch(authProvider) is AuthLoading;
     final size = MediaQuery.of(context).size;
-    final bool isLargeScreen = size.width > 390 || size.height > 884;
+    final bool isLargeScreen = size.width > 390 || size.height > 926;
 
     Widget content = Scaffold(
       body: MouseRegion(
         onHover: (event) {
           setState(() {
-            final size = MediaQuery.of(context).size;
-            _mouseX = (event.position.dx / size.width) - 0.5;
-            _mouseY = (event.position.dy / size.height) - 0.5;
+            final s = MediaQuery.of(context).size;
+            _mouseX = (event.position.dx / s.width) - 0.5;
+            _mouseY = (event.position.dy / s.height) - 0.5;
           });
         },
         child: Container(
           color: const Color(0xFFF8F9FE),
           child: Stack(
             children: [
-              // 4 Corner Radial Gradients matching CSS
               Positioned.fill(
                 child: Container(
                   decoration: const BoxDecoration(
@@ -165,7 +183,7 @@ class _LoginScreenState extends State<LoginScreen>
               SafeArea(
                 child: Center(
                   child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(), // overflow-y: scroll
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 24,
                       vertical: 48,
@@ -185,13 +203,13 @@ class _LoginScreenState extends State<LoginScreen>
                           opacity: _cardFadeAnim,
                           child: SlideTransition(
                             position: _cardSlideAnim,
-                            child: _buildLoginCard(),
+                            child: _buildLoginCard(isLoading),
                           ),
                         ),
                         const SizedBox(height: 32),
-                        Text(
+                        const Text(
                           '© 2026 CyChronos',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'JetBrainsMono',
                             fontFamilyFallback: ['NotoSansJP'],
                             fontSize: 12,
@@ -216,7 +234,7 @@ class _LoginScreenState extends State<LoginScreen>
         body: Center(
           child: Container(
             width: 390,
-            height: 884,
+            height: 926,
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(40),
@@ -240,15 +258,11 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildHeader() {
     return Column(
       children: [
-        Image.asset(
-          'assets/logo.png',
-          width: 96,
-          fit: BoxFit.contain,
-        ),
+        Image.asset('assets/logo.png', width: 96, fit: BoxFit.contain),
         const SizedBox(height: 16),
-        Text(
+        const Text(
           'CyChronos',
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'HankenGrotesk',
             fontFamilyFallback: ['NotoSansJP'],
             fontSize: 48,
@@ -259,12 +273,12 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ),
         const SizedBox(height: 12),
-        SizedBox(
+        const SizedBox(
           width: 320,
           child: Text(
             '走行パフォーマンスを追跡し、あらゆる道を征服しましょう。',
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Inter',
               fontFamilyFallback: ['NotoSansJP'],
               fontSize: 18,
@@ -278,7 +292,7 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildLoginCard() {
+  Widget _buildLoginCard(bool isLoading) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(40),
       child: BackdropFilter(
@@ -305,16 +319,22 @@ class _LoginScreenState extends State<LoginScreen>
               SocialLoginButton(
                 icon: SvgPicture.string(_kGoogleSvg),
                 label: 'Googleでログイン',
+                isLoading: isLoading,
+                onPressed: isLoading
+                    ? null
+                    : () => ref.read(authProvider.notifier).signInWithGoogle(),
               ),
               const SizedBox(height: 16),
               SocialLoginButton(
                 icon: SvgPicture.string(_kLineSvg),
                 label: 'LINEでログイン',
+                onPressed: () => GoRouter.of(context).go('/home'),
               ),
               const SizedBox(height: 16),
               SocialLoginButton(
                 icon: SvgPicture.string(_kFacebookSvg),
                 label: 'Facebookでログイン',
+                onPressed: () => GoRouter.of(context).go('/home'),
               ),
             ],
           ),
@@ -348,26 +368,18 @@ class _GlowBlob extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double? finalTop = top != null ? top! + offsetY : null;
-    final double? finalLeft = left != null ? left! + offsetX : null;
-    final double? finalBottom = bottom != null ? bottom! - offsetY : null;
-    final double? finalRight = right != null ? right! - offsetX : null;
-
     return Positioned(
-      top: finalTop,
-      left: finalLeft,
-      bottom: finalBottom,
-      right: finalRight,
+      top: top != null ? top! + offsetY : null,
+      left: left != null ? left! + offsetX : null,
+      bottom: bottom != null ? bottom! - offsetY : null,
+      right: right != null ? right! - offsetX : null,
       child: IgnorePointer(
         child: ImageFiltered(
           imageFilter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
           child: Container(
             width: width,
             height: height,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color,
-            ),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: color),
           ),
         ),
       ),

@@ -4,12 +4,14 @@ class SocialLoginButton extends StatefulWidget {
   final Widget icon;
   final String label;
   final VoidCallback? onPressed;
+  final bool isLoading;
 
   const SocialLoginButton({
     super.key,
     required this.icon,
     required this.label,
     this.onPressed,
+    this.isLoading = false,
   });
 
   @override
@@ -28,12 +30,18 @@ class _SocialLoginButtonState extends State<SocialLoginButton> {
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
         child: GestureDetector(
-          onTapDown: (_) => setState(() => _pressed = true),
-          onTapUp: (_) {
-            setState(() => _pressed = false);
-            widget.onPressed?.call();
-          },
-          onTapCancel: () => setState(() => _pressed = false),
+          onTapDown: widget.isLoading
+              ? null
+              : (_) => setState(() => _pressed = true),
+          onTapUp: widget.isLoading
+              ? null
+              : (_) {
+                  setState(() => _pressed = false);
+                  widget.onPressed?.call();
+                },
+          onTapCancel: widget.isLoading
+              ? null
+              : () => setState(() => _pressed = false),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
@@ -61,7 +69,18 @@ class _SocialLoginButtonState extends State<SocialLoginButton> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(width: 24, height: 24, child: widget.icon),
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: widget.isLoading
+                        ? const CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFF6049C5),
+                            ),
+                          )
+                        : widget.icon,
+                  ),
                   const SizedBox(width: 16),
                   Text(
                     widget.label,
