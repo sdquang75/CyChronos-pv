@@ -25,6 +25,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   double _mouseX = 0.0;
   double _mouseY = 0.0;
 
+
   @override
   void initState() {
     super.initState();
@@ -96,7 +97,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
     final isLoading = ref.watch(authProvider) is AuthLoading;
     final size = MediaQuery.of(context).size;
-    final bool isLargeScreen = size.width > 390 || size.height > 884;
+    final bool isLargeScreen = size.width > 390 || size.height > 926;
 
     Widget content = Scaffold(
       body: MouseRegion(
@@ -233,7 +234,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         body: Center(
           child: Container(
             width: 390,
-            height: 884,
+            height: 926,
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(40),
@@ -327,11 +328,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               SocialLoginButton(
                 icon: SvgPicture.string(_kLineSvg),
                 label: 'LINEでログイン',
+                onPressed: () => GoRouter.of(context).go('/home'),
               ),
               const SizedBox(height: 16),
               SocialLoginButton(
                 icon: SvgPicture.string(_kFacebookSvg),
                 label: 'Facebookでログイン',
+                onPressed: () => GoRouter.of(context).go('/home'),
               ),
             ],
           ),
