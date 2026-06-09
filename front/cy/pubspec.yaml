@@ -43,6 +43,10 @@ dependencies:
   # HTTP & networking
   dio: ^5.8.0+1
 
+  # Auth
+  google_sign_in: ^6.2.0
+  flutter_secure_storage: ^9.2.0
+
   # Local storage
   shared_preferences: ^2.5.3
 

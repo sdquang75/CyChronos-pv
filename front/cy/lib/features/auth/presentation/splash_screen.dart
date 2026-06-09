@@ -1,15 +1,17 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'providers/auth_provider.dart';
+import '../domain/auth_state.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
+class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _animCtrl;
   late final Animation<double> _fadeAnim;
@@ -33,13 +35,24 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _animCtrl.forward();
+    _initAuth();
+  }
 
-    // Navigate to Login after 3.5 seconds
-    Timer(const Duration(milliseconds: 3500), () {
-      if (mounted) {
-        context.go('/login');
-      }
-    });
+  Future<void> _initAuth() async {
+    // Chạy song song: đảm bảo splash hiện tối thiểu 3.5s + check session
+    await Future.wait([
+      Future.delayed(const Duration(milliseconds: 3500)),
+      ref.read(authProvider.notifier).checkAuth(),
+    ]);
+
+    if (!mounted) return;
+
+    final authState = ref.read(authProvider);
+    if (authState is AuthAuthenticated) {
+      context.go('/home');
+    } else {
+      context.go('/login');
+    }
   }
 
   @override
@@ -58,7 +71,6 @@ class _SplashScreenState extends State<SplashScreen>
         color: const Color(0xFFF8F9FE),
         child: Stack(
           children: [
-            // 4 Corner Radial Gradients matching CSS
             Positioned.fill(
               child: Container(
                 decoration: const BoxDecoration(
@@ -107,8 +119,6 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               ),
             ),
-
-            // Animated Logo & Title
             Center(
               child: FadeTransition(
                 opacity: _fadeAnim,
@@ -136,7 +146,6 @@ class _SplashScreenState extends State<SplashScreen>
                         ),
                       ),
                       const SizedBox(height: 48),
-                      // Premium subtle loading progress indicator
                       const SizedBox(
                         width: 40,
                         height: 40,
@@ -152,8 +161,6 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               ),
             ),
-
-            // Footer copyright
             Positioned(
               bottom: 48,
               left: 0,
