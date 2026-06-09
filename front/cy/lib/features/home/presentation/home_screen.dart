@@ -1,16 +1,18 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:go_router/go_router.dart';
+import '../../auth/domain/auth_state.dart';
+import '../../auth/presentation/providers/auth_provider.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   // Scroll Controller for Auto-Scrolling in Home Tab
   final ScrollController _scrollController = ScrollController();
 
@@ -223,6 +225,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // TAB 3: USER PROFILE SCREEN WITH LOGOUT BUTTON
   Widget _buildProfileTab() {
+    final authState = ref.watch(authProvider);
+    final user = authState is AuthAuthenticated ? authState.user : null;
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 120),
@@ -250,24 +255,29 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Column(
               children: [
-                // Avatar
+                // Avatar: Google photo or fallback SVG
                 CircleAvatar(
                   radius: 48,
                   backgroundColor: const Color(0xFFF1EBFF),
-                  child: SvgPicture.string(
-                    _kProfileTabSvg,
-                    width: 44,
-                    height: 44,
-                    colorFilter: const ColorFilter.mode(
-                      Color(0xFF19005C),
-                      BlendMode.srcIn,
-                    ),
-                  ),
+                  backgroundImage: (user?.photoUrl != null)
+                      ? NetworkImage(user!.photoUrl!)
+                      : null,
+                  child: (user?.photoUrl == null)
+                      ? SvgPicture.string(
+                          _kProfileTabSvg,
+                          width: 44,
+                          height: 44,
+                          colorFilter: const ColorFilter.mode(
+                            Color(0xFF19005C),
+                            BlendMode.srcIn,
+                          ),
+                        )
+                      : null,
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'CyChronos ライダー',
-                  style: TextStyle(
+                Text(
+                  user?.name.isNotEmpty == true ? user!.name : 'CyChronos ライダー',
+                  style: const TextStyle(
                     fontFamily: 'HankenGrotesk',
                     fontFamilyFallback: ['NotoSansJP'],
                     fontWeight: FontWeight.w700,
@@ -277,7 +287,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'rider@cychronos.app',
+                  user?.email ?? '',
                   style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 14,
@@ -322,11 +332,11 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 40),
 
-          // Temporary Logout Button placed inside Profile Screen
+          // Logout Button
           Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: () => GoRouter.of(context).go('/login'),
+              onTap: () => ref.read(authProvider.notifier).signOut(),
               borderRadius: BorderRadius.circular(16),
               child: Container(
                 width: double.infinity,
@@ -339,16 +349,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: 1.5,
                   ),
                 ),
-                child: Row(
+                child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.logout_rounded,
                       color: Color(0xFFEA4335),
                       size: 20,
                     ),
-                    const SizedBox(width: 10),
-                    const Text(
+                    SizedBox(width: 10),
+                    Text(
                       'ログアウト',
                       style: TextStyle(
                         fontFamily: 'HankenGrotesk',

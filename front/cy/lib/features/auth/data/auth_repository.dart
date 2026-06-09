@@ -32,8 +32,9 @@ class AuthRepository {
       late final UserCredential credential;
 
       if (kIsWeb) {
-        // Web: popup flow
-        final provider = GoogleAuthProvider();
+        // Web: popup flow — prompt forces account picker every time
+        final provider = GoogleAuthProvider()
+          ..setCustomParameters({'prompt': 'select_account'});
         credential = await _auth.signInWithPopup(provider);
       } else {
         // Android/iOS: native Google Sign-In → Firebase credential
