@@ -9,10 +9,25 @@ const BASE_URL = "https://api.mapbox.com";
  * @param {number} lat 緯度
  * @param {number} minutes 移動可能時間(分)
  */
+
+//　mapboxで取得するやつ
 async function getIsochrone(lng, lat, minutes) {
   // TODO: Isochrone API を fetch して結果の JSON を return する
   // エンドポイント: /isochrone/v1/mapbox/cycling/{lng},{lat}
   // クエリ: contours_minutes, polygons=true, access_token
+  const token = process.env.MAPBOX_ACCESS_TOKEN;
+
+  const url = new URL(`${BASE_URL}/isochrone/v1/mapbox/cycling/${lng},${lat}`);
+  url.searchParams.set("contours_minutes", minutes);
+  url.searchParams.set("polygons", true);
+  url.searchParams.set("access_token", token);
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Mapbox API error: ${response.status} ${response.statusText}`);
+  }
+  const data = await response.json();
+  return data;
 }
 
 /**
@@ -24,6 +39,18 @@ async function getCyclingRoute(from, to) {
   // TODO: Directions API を fetch して結果の JSON を return する
   // エンドポイント: /directions/v5/mapbox/cycling/{lng},{lat};{lng},{lat}
   // クエリ: geometries=geojson, access_token
+  const token = process.env.MAPBOX_ACCESS_TOKEN;
+
+  const url = new URL(`${BASE_URL}/directions/v5/mapbox/cycling/${from.lng},${from.lat};${to.lng},${to.lat}`);
+  url.searchParams.set("geometries", "geojson");
+  url.searchParams.set("access_token", token);
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Mapbox API error: ${response.status} ${response.statusText}`);
+  }
+  const data = await response.json();
+  return data;
 }
 
 module.exports = { getIsochrone, getCyclingRoute };
