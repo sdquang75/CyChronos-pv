@@ -40,32 +40,43 @@ class DetilScreen extends StatelessWidget {
               ),
               child: Text('Hello'),
             ),
-            Text(
-              'Detil Screen',
-              style: TextStyle(fontSize: 24),
-            ),
-            Text(
-              'Detil Screen',
-              style: TextStyle(fontSize: 24),
-            ),
             Container(
-              width: MediaQuery.of(context).size.width / 1.5, // 横幅を画面の半分に設定
-              height: 500,
-              padding: EdgeInsets.all(16),
-              margin: EdgeInsets.all(8),
+              width: double.infinity, // 横幅を画面の半分に設定
+              height: 50,
+              margin: EdgeInsets.all(5),
               decoration: BoxDecoration(
                 color: Colors.blue,          // 背景色
-                borderRadius: BorderRadius.circular(12), // 圓角
-                border: Border.all(color: Colors.black), // 邊框
-                boxShadow: [                 // 陰影
-                  BoxShadow(
-                    color: Colors.grey,
-                    blurRadius: 4,
-                    offset: Offset(2, 2),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center, // 水平方向の中央揃え
+                children: [
+                   Text(
+                    '詳細画面',
+                    style: TextStyle(fontSize: 25, color: Colors.white), // 文字サイズと色
+                  ),
+                  Container(
+                    width: double.infinity, // 横幅を画面の半分に設定
+                    height: 20,
+                    margin: EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: Colors.blue,          // 背景色
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center, // 水平方向の中央揃え
+                      children: [
+                        Text(
+                          '詳細画面',
+                          style: TextStyle(fontSize: 5, color: Colors.white), // 文字サイズと色
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
-              child: Text('Hello'),
+            ),
+            Text(
+              '詳細画面',
+              style: TextStyle(fontSize: 50),
             ),
             Text(
               'Detil Screen',
