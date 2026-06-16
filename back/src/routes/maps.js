@@ -6,33 +6,47 @@ const mapbox = require("../services/mapbox");
 
 const router = express.Router();
 
-// GET /api/maps/isochrone?lng=139.76&lat=35.68&minutes=45
 router.get("/isochrone", async (req, res) => {
-  // TODO:
-  // 1. req.query から lng, lat, minutes を取り出す
-  // 2. 値が無い/数値でない場合は 400 を返す
-  // 3. mapbox.getIsochrone(...) を呼んで結果を res.json で返す
+  // クエリは文字列で来るので parseFloat / parseInt で数値に変換
   const lng = parseFloat(req.query.lng);
   const lat = parseFloat(req.query.lat);
   const minutes = parseInt(req.query.minutes);
 
+  // 数値でないものが混ざっていたら 400 で返す
   if (!Number.isFinite(lng) || !Number.isFinite(lat) || !Number.isFinite(minutes)) {
-    return res.status(400).json({ error: "すげえエラー" });
+    return res.status(400).json({ error: "lng, lat, minutes は数値で指定してください" });
   }
 
+  // Mapbox に問い合わせて結果をそのまま返す
   try {
     const data = await mapbox.getIsochrone(lng, lat, minutes);
     res.json(data);
   } catch (error) {
-    res.status(502).json({ error: "すごくすごいエラー" });
+    res.status(502).json({ error: "Mapbox APIの呼び出しに失敗しました" });
   }
 });
 
 
-// GET /api/maps/route?fromLng=..&fromLat=..&toLng=..&toLat=..
+
 router.get("/route", async (req, res) => {
-  // TODO: isochrone と同じ流れで mapbox.getCyclingRoute(...) を使う
-  res.status(501).json({ error: "すごくすごいエラー" });
+  // 出発地と目的地、合わせて4つの座標をクエリから取得
+  const fromLng = parseFloat(req.query.fromLng);
+  const fromLat = parseFloat(req.query.fromLat);
+  const toLng = parseFloat(req.query.toLng);
+  const toLat = parseFloat(req.query.toLat);
+
+  // どれか数値でなければ 400 で返す
+  if (!Number.isFinite(fromLng) || !Number.isFinite(fromLat) || !Number.isFinite(toLng) || !Number.isFinite(toLat)) {
+    return res.status(400).json({ error: "数値で指定してください" });
+  }
+
+  // from/to を { lng, lat } の形に包んで Mapbox に渡す
+  try {
+    const cyRoute = await mapbox.getCyclingRoute({ lng: fromLng, lat: fromLat }, { lng: toLng, lat: toLat });
+    res.json(cyRoute);
+  } catch (error) {
+    res.status(502).json({ error: "Mapbox APIの呼び出しに失敗しました" });
+  }
 });
 
 module.exports = router;
