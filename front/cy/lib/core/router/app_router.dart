@@ -7,6 +7,7 @@ import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/domain/auth_state.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/detil/detil.dart';
+import '../../features/destination/presentation/destination_list_screen.dart';
 
 // Bridges Riverpod state changes → GoRouter refresh
 class _AuthListenable extends ChangeNotifier {
@@ -68,6 +69,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const DetilScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 600),
+        ),
+      ),
+      GoRoute(
+        path: '/destination',
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const DestinationListScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
           },
