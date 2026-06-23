@@ -12,9 +12,10 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/maps", require("./routes/maps"));
-
+app.use("/api/suggest", require("./routes/suggest"));
 const port = process.env.PORT || 3000;
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+

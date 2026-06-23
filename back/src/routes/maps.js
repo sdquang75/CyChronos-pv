@@ -1,8 +1,9 @@
 // 地図系APIのルーター。リクエストの受け取り・バリデーション・レスポンス整形だけを担当し、
-// 外部APIの呼び出しは services/mapbox.js に任せる。
+// 外部APIの呼び出しは services/ 配下（mapbox.js / place.js）に任せる。
 
 const express = require("express");
 const mapbox = require("../services/mapbox");
+const places = require("../services/place");
 
 const router = express.Router();
 
@@ -49,4 +50,25 @@ router.get("/route", async (req, res) => {
   }
 });
 
+
+router.get("/places", async (req, res) => {
+  // 中心座標と検索条件をクエリから取得（
+  const lng = parseFloat(req.query.lng);
+  const lat = parseFloat(req.query.lat);
+  const radius = parseInt(req.query.radius);
+  const type = req.query.type;
+
+  // 座標・半径が数値でなければ 400 で返す
+  if (!Number.isFinite(lng) || !Number.isFinite(lat) || !Number.isFinite(radius)) {
+    return res.status(400).json({ error: "lng, lat, radius は数値で指定してください" });
+  }
+
+  // Google Places に問い合わせて結果をそのまま返す
+  try {
+    const data = await places.getNearbyPlaces(lng, lat, radius, type);
+    res.json(data);
+  } catch (error) {
+    res.status(502).json({ error: "Google Maps APIの呼び出しに失敗しました" });
+  }
+});
 module.exports = router;
