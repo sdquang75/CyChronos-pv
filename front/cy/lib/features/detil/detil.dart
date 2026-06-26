@@ -314,7 +314,7 @@ class DetilScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Container(
+                  /*Container(
                     width: double.infinity, // 横幅を画面の半分に設定
                     height: 35,
                     padding: EdgeInsets.only(left: 20, right: 20), // 上部の余白を追加
@@ -388,7 +388,7 @@ class DetilScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                  ),
+                  ),*/
                   Container(
                     width: double.infinity, // 横幅を画面の半分に設定
                     height: 160,
