@@ -7,7 +7,11 @@ class RouteConfirmScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Route Confirm'),
+        title: const Image(
+          image: AssetImage('assets/logo_long.png'),
+          height: 40, // 高度制限
+          fit: BoxFit.contain,
+        ),
       ),
       body: Center(
         child: ElevatedButton(

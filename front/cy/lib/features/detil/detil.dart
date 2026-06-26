@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class DetilScreen extends StatelessWidget {
   const DetilScreen({super.key});
@@ -314,81 +315,6 @@ class DetilScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  /*Container(
-                    width: double.infinity, // 横幅を画面の半分に設定
-                    height: 35,
-                    padding: EdgeInsets.only(left: 20, right: 20), // 上部の余白を追加
-                    margin: EdgeInsets.all(1),
-                    decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 255, 255, 255),          // 背景色
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        Container(
-                          width: 120,
-                          height: 35,
-                          padding: EdgeInsets.symmetric(horizontal: 8 ), // 左右の余白を追加vertical: 1.5
-                          margin: EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12), // 圓角]
-                            border: Border.all(
-                              color: const Color.fromARGB(255, 255, 255, 255), // 枠線の色
-                              width: 1.0, // 枠線の太さ
-                            ),
-                          ),
-                          child: 
-                            Text(
-                              '合計所要時間',
-                              style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
-                          ),
-                        ),
-                        Container(
-                          width: 140,
-                          height: 35,
-                          padding: EdgeInsets.symmetric(horizontal: 8), // 左右の余白を追加
-                          margin: EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12), // 圓角
-                            border: Border.all(
-                              color: const Color.fromARGB(255, 255, 255, 255), // 枠線の色
-                              width: 1.0, // 枠線の太さ
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.access_time,
-                                size: 15,
-                                color: Colors.black,
-                              ),
-                              SizedBox(width: 4), // アイコンとテキストの間にスペースを追加
-                              Text(
-                                '03',
-                                style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
-                              ),
-                              SizedBox(width: 5),
-                              Text(
-                                '時間',
-                                style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
-                              ),
-                              SizedBox(width: 5),
-                              Text(
-                                '00',
-                                style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
-                              ),
-                              SizedBox(width: 5),
-                              Text(
-                                '分',
-                                style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),*/
                   Container(
                     width: double.infinity, // 横幅を画面の半分に設定
                     height: 160,
@@ -425,6 +351,7 @@ class DetilScreen extends StatelessWidget {
                   ElevatedButton(
                     onPressed: () {
                       // ボタンが押されたときの処理
+                      GoRouter.of(context).go('/route_confirm');
                     },
                     style: ElevatedButton.styleFrom(
                       minimumSize: Size( 250, 55), // 幅を50に設定
@@ -445,6 +372,10 @@ class DetilScreen extends StatelessWidget {
                   ElevatedButton(
                     onPressed: () {
                       // ボタンが押されたときの処理
+                      /*Navigator.of(context).push(MaterialPageRoute(builder: (context) { 
+                      return const RouteConfirmScreen(); 
+                      }));*/
+                      
                     },
                     style: ElevatedButton.styleFrom(
                       minimumSize: Size( 250, 50), // 幅を50に設定
