@@ -6,20 +6,238 @@ class RouteConfirmScreen extends StatelessWidget {
    @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      /*appBar: AppBar(
         title: const Image(
           image: AssetImage('assets/logo_long.png'),
           height: 40, // 高度制限
           fit: BoxFit.contain,
         ),
-      ),
+      ),*/
       body: Center(
-        child: ElevatedButton(
-          onPressed: () {
-            // Navigate to the home screen when the button is pressed
-            Navigator.pushNamed(context, '/home');
-          },
-          child: const Text('Go to Home Screen'),
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity, // 横幅を画面の半分に設定
+              height: 600,
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/testimage.png'),
+                  fit: BoxFit.cover,
+                ),
+                borderRadius: BorderRadius.circular(12), // 圓角
+              ),
+            ),
+            Container(
+              width: double.infinity, // 横幅を画面の半分に設定
+              height: 330,
+              margin: EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: const Color.fromARGB(255, 255, 255, 255),          // 背景色
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                    width: double.infinity, // 横幅を画面の半分に設定
+                    height: 35,
+                    padding: EdgeInsets.only(left: 20, right: 20), // 上部の余白を追加
+                    margin: EdgeInsets.all(1),
+                    decoration: BoxDecoration(
+                      color: const Color.fromARGB(255, 255, 255, 255),          // 背景色
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Container(
+                          width: 120,
+                          height: 35,
+                          padding: EdgeInsets.symmetric(horizontal: 8 ), // 左右の余白を追加vertical: 1.5
+                          margin: EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12), // 圓角]
+                            border: Border.all(
+                              color: const Color.fromARGB(255, 255, 255, 255), // 枠線の色
+                              width: 1.0, // 枠線の太さ
+                            ),
+                          ),
+                          child: 
+                            Text(
+                              '距離',
+                              style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                          ),
+                        ),
+                        Container(
+                          width: 140,
+                          height: 35,
+                          padding: EdgeInsets.symmetric(horizontal: 8), // 左右の余白を追加
+                          margin: EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12), // 圓角
+                            border: Border.all(
+                              color: const Color.fromARGB(255, 255, 255, 255), // 枠線の色
+                              width: 1.0, // 枠線の太さ
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                size: 15,
+                                color: Colors.black,
+                              ),
+                              SizedBox(width: 4), // アイコンとテキストの間にスペースを追加
+                              Text(
+                                '1.5',
+                                style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                              ),
+                              SizedBox(width: 5), // アイコンとテキストの間にスペースを追加
+                              Text(
+                                'km',
+                                style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: double.infinity, // 横幅を画面の半分に設定
+                    height: 35,
+                    padding: EdgeInsets.only(left: 20, right: 20), // 上部の余白を追加
+                    margin: EdgeInsets.all(1),
+                    decoration: BoxDecoration(
+                      color: const Color.fromARGB(255, 255, 255, 255),          // 背景色
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Container(
+                          width: 120,
+                          height: 35,
+                          padding: EdgeInsets.symmetric(horizontal: 8 ), // 左右の余白を追加vertical: 1.5
+                          margin: EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12), // 圓角]
+                            border: Border.all(
+                              color: const Color.fromARGB(255, 255, 255, 255), // 枠線の色
+                              width: 1.0, // 枠線の太さ
+                            ),
+                          ),
+                          child: 
+                            Text(
+                              '所要時間',
+                              style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                          ),
+                        ),
+                        Container(
+                          width: 140,
+                          height: 35,
+                          padding: EdgeInsets.symmetric(horizontal: 8), // 左右の余白を追加
+                          margin: EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12), // 圓角
+                            border: Border.all(
+                              color: const Color.fromARGB(255, 255, 255, 255), // 枠線の色
+                              width: 1.0, // 枠線の太さ
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.access_time,
+                                size: 15,
+                                color: Colors.black,
+                              ),
+                              SizedBox(width: 4), // アイコンとテキストの間にスペースを追加
+                              Text(
+                                '01',
+                                style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                              ),
+                              SizedBox(width: 5),
+                              Text(
+                                '時間',
+                                style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                              ),
+                              SizedBox(width: 5),
+                              Text(
+                                '30',
+                                style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                              ),
+                              SizedBox(width: 5),
+                              Text(
+                                '分',
+                                style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                      width: double.infinity, // 横幅を画面の半分に設定
+                      height: 100,
+                      margin: EdgeInsets.all(5),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          ElevatedButton(
+                            onPressed: () {
+                              // ボタンが押されたときの処理
+                            },
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: Size( 250, 55), // 幅を50に設定
+                              backgroundColor: const Color.fromARGB(255, 9, 31, 156), // 背景色
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12), // 圓角
+                                side: BorderSide(
+                                  color: const Color.fromARGB(255, 218, 218, 218), // 影の色
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            child: const Text(
+                              'ナビ開始',
+                              style: TextStyle(fontSize: 25, color: Colors.white), // 文字サイズと色
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              // ボタンが押されたときの処理
+                              /*Navigator.of(context).push(MaterialPageRoute(builder: (context) { 
+                              return const RouteConfirmScreen(); 
+                              }));*/
+                              
+                            },
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: Size( 250, 50), // 幅を50に設定
+                              backgroundColor: const Color.fromARGB(255, 255, 255, 255), // 背景色
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12), // 圓角
+                                side: BorderSide(
+                                  color: const Color.fromARGB(255, 3, 11, 59), // 影の色
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            child: const Text(
+                              'ルートを変更する',
+                              style: TextStyle(fontSize: 25, color: Colors.black), // 文字サイズと色
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ]
         ),
       ),
     );
