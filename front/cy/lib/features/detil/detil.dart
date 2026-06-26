@@ -44,7 +44,7 @@ class DetilScreen extends StatelessWidget {
               height: 70,
               margin: EdgeInsets.all(5),
               decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 0, 43, 78),          // 背景色
+                color: const Color.fromARGB(255, 255, 255, 255),          // 背景色
               ),
               child: Column(
                 children: [
@@ -54,12 +54,12 @@ class DetilScreen extends StatelessWidget {
                     padding: EdgeInsets.only(left: 16), // 上部の余白を追加
                     margin: EdgeInsets.all(1),
                     decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 100, 43, 78),          // 背景色
+                      color: const Color.fromARGB(255, 255, 255, 255),          // 背景色
                     ),
                     child: 
                       Text(
-                        '詳細画面1',
-                        style: TextStyle(fontSize: 25, color: Colors.white), // 文字サイズと色
+                        '場所名',
+                        style: TextStyle(fontSize: 25, color: Colors.black), // 文字サイズと色
                       ),
                   ),
                   Container(
@@ -68,7 +68,7 @@ class DetilScreen extends StatelessWidget {
                     padding: EdgeInsets.only(left: 20), // 上部の余白を追加
                     margin: EdgeInsets.all(1),
                     decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 100, 43, 78),          // 背景色
+                      color: const Color.fromARGB(255, 255, 255, 255),          // 背景色
                     ),
                     child: Row(
                       children: [
@@ -80,14 +80,15 @@ class DetilScreen extends StatelessWidget {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12), // 圓角]
                             border: Border.all(
-                              color: const Color.fromARGB(255, 255, 130, 207), // 枠線の色
+                              color: const Color.fromARGB(255, 185, 185, 185), // 枠線の色
                               width: 1.0, // 枠線の太さ
                             ),
                           ),
-                          child: 
-                            Text(
-                              '詳細画面2',
-                              style: TextStyle(fontSize: 15, color: Colors.white), // 文字サイズと色
+                          child: Center(
+                            child: Text(
+                              'tag1',
+                              style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                            ),
                           ),
                         ),
                         Container(
@@ -98,14 +99,15 @@ class DetilScreen extends StatelessWidget {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12), // 圓角
                             border: Border.all(
-                              color: const Color.fromARGB(255, 255, 130, 207), // 枠線の色
+                              color: const Color.fromARGB(255, 185, 185, 185), // 枠線の色
                               width: 1.0, // 枠線の太さ
                             ),
                           ),
-                          child: 
-                            Text(
-                              '詳細画面3',
-                              style: TextStyle(fontSize: 15, color: Colors.white), // 文字サイズと色
+                          child: Center(
+                            child: Text(
+                              'tag2',
+                              style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                            ),
                           ),
                         ),
                       ],
@@ -119,7 +121,7 @@ class DetilScreen extends StatelessWidget {
               height: 400,
               margin: EdgeInsets.all(5),
               decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 0, 43, 78),          // 背景色
+                color: const Color.fromARGB(255, 255, 255, 255),          // 背景色
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -129,7 +131,7 @@ class DetilScreen extends StatelessWidget {
                     height: 80,
                     margin: EdgeInsets.all(1),
                     decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 100, 43, 78),          // 背景色
+                      color: const Color.fromARGB(255, 255, 255, 255),          // 背景色
                     ),
                     child: Column(
                       children: [
@@ -141,14 +143,14 @@ class DetilScreen extends StatelessWidget {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12), // 圓角]
                             border: Border.all(
-                              color: const Color.fromARGB(255, 255, 130, 207), // 枠線の色
+                              color: const Color.fromARGB(255, 255, 255, 255), // 枠線の色
                               width: 1.0, // 枠線の太さ
                             ),
                           ),
                           child: 
                             Text(
                               '住所',
-                              style: TextStyle(fontSize: 15, color: Colors.white), // 文字サイズと色
+                              style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
                           ),
                         ),
                         Container(
@@ -159,14 +161,14 @@ class DetilScreen extends StatelessWidget {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12), // 圓角
                             border: Border.all(
-                              color: const Color.fromARGB(255, 255, 130, 207), // 枠線の色
+                              color: const Color.fromARGB(255, 255, 255, 255), // 枠線の色
                               width: 1.0, // 枠線の太さ
                             ),
                           ),
                           child: 
                             Text(
-                              '詳細画面4',
-                              style: TextStyle(fontSize: 15, color: Colors.white), // 文字サイズと色
+                              'oo県oo市oo町oo番地',
+                              style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
                           ),
                         ),
                       ],
@@ -178,45 +180,60 @@ class DetilScreen extends StatelessWidget {
                     padding: EdgeInsets.only(left: 20, right: 20), // 上部の余白を追加
                     margin: EdgeInsets.all(1),
                     decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 100, 43, 78),          // 背景色
+                      color: const Color.fromARGB(255, 255, 255, 255),          // 背景色
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         Container(
-                          width: 80,
+                          width: 120,
                           height: 35,
                           padding: EdgeInsets.symmetric(horizontal: 8 ), // 左右の余白を追加vertical: 1.5
                           margin: EdgeInsets.all(5),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12), // 圓角]
                             border: Border.all(
-                              color: const Color.fromARGB(255, 255, 130, 207), // 枠線の色
+                              color: const Color.fromARGB(255, 255, 255, 255), // 枠線の色
                               width: 1.0, // 枠線の太さ
                             ),
                           ),
                           child: 
                             Text(
                               '距離',
-                              style: TextStyle(fontSize: 15, color: Colors.white), // 文字サイズと色
+                              style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
                           ),
                         ),
                         Container(
-                          width: 80,
+                          width: 140,
                           height: 35,
                           padding: EdgeInsets.symmetric(horizontal: 8), // 左右の余白を追加
                           margin: EdgeInsets.all(5),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12), // 圓角
                             border: Border.all(
-                              color: const Color.fromARGB(255, 255, 130, 207), // 枠線の色
+                              color: const Color.fromARGB(255, 255, 255, 255), // 枠線の色
                               width: 1.0, // 枠線の太さ
                             ),
                           ),
-                          child: 
-                            Text(
-                              '詳細画面5',
-                              style: TextStyle(fontSize: 15, color: Colors.white), // 文字サイズと色
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                size: 15,
+                                color: Colors.black,
+                              ),
+                              SizedBox(width: 4), // アイコンとテキストの間にスペースを追加
+                              Text(
+                                '1.5',
+                                style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                              ),
+                              SizedBox(width: 5), // アイコンとテキストの間にスペースを追加
+                              Text(
+                                'km',
+                                style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -228,45 +245,70 @@ class DetilScreen extends StatelessWidget {
                     padding: EdgeInsets.only(left: 20, right: 20), // 上部の余白を追加
                     margin: EdgeInsets.all(1),
                     decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 100, 43, 78),          // 背景色
+                      color: const Color.fromARGB(255, 255, 255, 255),          // 背景色
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         Container(
-                          width: 80,
+                          width: 120,
                           height: 35,
                           padding: EdgeInsets.symmetric(horizontal: 8 ), // 左右の余白を追加vertical: 1.5
                           margin: EdgeInsets.all(5),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12), // 圓角]
                             border: Border.all(
-                              color: const Color.fromARGB(255, 255, 130, 207), // 枠線の色
+                              color: const Color.fromARGB(255, 255, 255, 255), // 枠線の色
                               width: 1.0, // 枠線の太さ
                             ),
                           ),
                           child: 
                             Text(
                               '所要時間',
-                              style: TextStyle(fontSize: 15, color: Colors.white), // 文字サイズと色
+                              style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
                           ),
                         ),
                         Container(
-                          width: 80,
+                          width: 140,
                           height: 35,
                           padding: EdgeInsets.symmetric(horizontal: 8), // 左右の余白を追加
                           margin: EdgeInsets.all(5),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12), // 圓角
                             border: Border.all(
-                              color: const Color.fromARGB(255, 255, 130, 207), // 枠線の色
+                              color: const Color.fromARGB(255, 255, 255, 255), // 枠線の色
                               width: 1.0, // 枠線の太さ
                             ),
                           ),
-                          child: 
-                            Text(
-                              '詳細画面6',
-                              style: TextStyle(fontSize: 15, color: Colors.white), // 文字サイズと色
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.access_time,
+                                size: 15,
+                                color: Colors.black,
+                              ),
+                              SizedBox(width: 4), // アイコンとテキストの間にスペースを追加
+                              Text(
+                                '01',
+                                style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                              ),
+                              SizedBox(width: 5),
+                              Text(
+                                '時間',
+                                style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                              ),
+                              SizedBox(width: 5),
+                              Text(
+                                '30',
+                                style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                              ),
+                              SizedBox(width: 5),
+                              Text(
+                                '分',
+                                style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -278,45 +320,70 @@ class DetilScreen extends StatelessWidget {
                     padding: EdgeInsets.only(left: 20, right: 20), // 上部の余白を追加
                     margin: EdgeInsets.all(1),
                     decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 100, 43, 78),          // 背景色
+                      color: const Color.fromARGB(255, 255, 255, 255),          // 背景色
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         Container(
-                          width: 80,
+                          width: 120,
                           height: 35,
                           padding: EdgeInsets.symmetric(horizontal: 8 ), // 左右の余白を追加vertical: 1.5
                           margin: EdgeInsets.all(5),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12), // 圓角]
                             border: Border.all(
-                              color: const Color.fromARGB(255, 255, 130, 207), // 枠線の色
+                              color: const Color.fromARGB(255, 255, 255, 255), // 枠線の色
                               width: 1.0, // 枠線の太さ
                             ),
                           ),
                           child: 
                             Text(
                               '合計所要時間',
-                              style: TextStyle(fontSize: 15, color: Colors.white), // 文字サイズと色
+                              style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
                           ),
                         ),
                         Container(
-                          width: 80,
+                          width: 140,
                           height: 35,
                           padding: EdgeInsets.symmetric(horizontal: 8), // 左右の余白を追加
                           margin: EdgeInsets.all(5),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12), // 圓角
                             border: Border.all(
-                              color: const Color.fromARGB(255, 255, 130, 207), // 枠線の色
+                              color: const Color.fromARGB(255, 255, 255, 255), // 枠線の色
                               width: 1.0, // 枠線の太さ
                             ),
                           ),
-                          child: 
-                            Text(
-                              '詳細画面8',
-                              style: TextStyle(fontSize: 15, color: Colors.white), // 文字サイズと色
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.access_time,
+                                size: 15,
+                                color: Colors.black,
+                              ),
+                              SizedBox(width: 4), // アイコンとテキストの間にスペースを追加
+                              Text(
+                                '03',
+                                style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                              ),
+                              SizedBox(width: 5),
+                              Text(
+                                '時間',
+                                style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                              ),
+                              SizedBox(width: 5),
+                              Text(
+                                '00',
+                                style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                              ),
+                              SizedBox(width: 5),
+                              Text(
+                                '分',
+                                style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -328,13 +395,22 @@ class DetilScreen extends StatelessWidget {
                     padding: EdgeInsets.only(left: 16), // 上部の余白を追加
                     margin: EdgeInsets.all(1),
                     decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 100, 43, 78),          // 背景色
+                      color: const Color.fromARGB(255, 255, 255, 255),          // 背景色
                     ),
-                    child: 
-                      Text(
-                        '詳細画面10',
-                        style: TextStyle(fontSize: 25, color: Colors.white), // 文字サイズと色
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '場所紹介',
+                          style: TextStyle(fontSize: 25, color: Colors.black), // 文字サイズと色
+                        ),
+                        SizedBox(height: 8), // 上下の余白を追加
+                        Text(
+                          '00県00市00町00番地にある観光スポットです。美しい景色や歴史的な建造物が楽しめます。',
+                          style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
+                        ),  
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -343,9 +419,6 @@ class DetilScreen extends StatelessWidget {
               width: double.infinity, // 横幅を画面の半分に設定
               height: 100,
               margin: EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 0, 43, 78),          // 背景色
-              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
@@ -354,13 +427,18 @@ class DetilScreen extends StatelessWidget {
                       // ボタンが押されたときの処理
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(255, 100, 43, 78), // 背景色
+                      minimumSize: Size( 250, 55), // 幅を50に設定
+                      backgroundColor: const Color.fromARGB(255, 9, 31, 156), // 背景色
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12), // 圓角
+                        side: BorderSide(
+                          color: const Color.fromARGB(255, 218, 218, 218), // 影の色
+                          width: 2,
+                        ),
                       ),
                     ),
                     child: const Text(
-                      '詳細画面1',
+                      'ルートを見る',
                       style: TextStyle(fontSize: 25, color: Colors.white), // 文字サイズと色
                     ),
                   ),
@@ -369,14 +447,19 @@ class DetilScreen extends StatelessWidget {
                       // ボタンが押されたときの処理
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(255, 100, 43, 78), // 背景色
+                      minimumSize: Size( 250, 50), // 幅を50に設定
+                      backgroundColor: const Color.fromARGB(255, 255, 255, 255), // 背景色
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12), // 圓角
+                        side: BorderSide(
+                          color: const Color.fromARGB(255, 3, 11, 59), // 影の色
+                          width: 2,
+                        ),
                       ),
                     ),
                     child: const Text(
-                      '詳細画面2',
-                      style: TextStyle(fontSize: 25, color: Colors.white), // 文字サイズと色
+                      'お気に入り登録',
+                      style: TextStyle(fontSize: 25, color: Colors.black), // 文字サイズと色
                     ),
                   ),
                 ],
