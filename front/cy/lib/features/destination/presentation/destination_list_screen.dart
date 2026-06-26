@@ -91,95 +91,95 @@ class _DestinationListScreenState extends State<DestinationListScreen> {
               color: Colors.white,
               child: Column(
                 children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 34, 18, 0),
+                    child: Image.asset(
+                      'assets/logo_long.png',
+                      width: 200,
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
                   Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(18, 34, 18, 16),
-                      child: Column(
-                        children: [
-                          Image.asset(
-                            'assets/logo_long.png',
-                            width: 200,
-                          ),
-
-                          const SizedBox(height: 14),
-
-                          Container(
-                            padding: const EdgeInsets.all(18),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.black54),
-                              borderRadius: BorderRadius.circular(10),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      child: Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.black54),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'おすすめスポット',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+
+                            const SizedBox(height: 6),
+
+                            const Row(
                               children: [
-                                const Text(
-                                  'おすすめスポット',
+                                Text(
+                                  '空き時間：',
                                   style: TextStyle(
-                                    fontSize: 20,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-
-                                const SizedBox(height: 6),
-
-                                const Row(
-                                  children: [
-                                    Text(
-                                      '空き時間：',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      '1',
-                                      style: TextStyle(fontSize: 11),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      '時間',
-                                      style: TextStyle(fontSize: 11),
-                                    ),
-                                    SizedBox(width: 12),
-                                    Text(
-                                      '00',
-                                      style: TextStyle(fontSize: 11),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      '分',
-                                      style: TextStyle(fontSize: 11),
-                                    ),
-                                  ],
+                                SizedBox(width: 8),
+                                Text(
+                                  '1',
+                                  style: TextStyle(fontSize: 11),
                                 ),
-
-                                const SizedBox(height: 8),
-
-                                Wrap(
-                                  alignment: WrapAlignment.end,
-                                  spacing: 5,
-                                  runSpacing: 5,
-                                  children: ['すべて', '自然', 'カフェ', '観光', '公園']
-                                      .map((genre) {
-                                    return _SmallChip(
-                                      text: genre,
-                                      selected: selectedGenre == genre,
-                                      onTap: () {
-                                        setState(() {
-                                          selectedGenre = genre;
-                                        });
-                                      },
-                                    );
-                                  }).toList(),
+                                SizedBox(width: 8),
+                                Text(
+                                  '時間',
+                                  style: TextStyle(fontSize: 11),
                                 ),
+                                SizedBox(width: 12),
+                                Text(
+                                  '00',
+                                  style: TextStyle(fontSize: 11),
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  '分',
+                                  style: TextStyle(fontSize: 11),
+                                ),
+                              ],
+                            ),
 
-                                const SizedBox(height: 14),
+                            const SizedBox(height: 8),
 
-                                if (filteredDestinations.isEmpty)
-                                  const Center(
-                                    child: Padding(
-                                      padding: EdgeInsets.all(20),
+                            Wrap(
+                              alignment: WrapAlignment.end,
+                              spacing: 5,
+                              runSpacing: 5,
+                              children: ['すべて', '自然', 'カフェ', '観光', '公園']
+                                  .map((genre) {
+                                return _SmallChip(
+                                  text: genre,
+                                  selected: selectedGenre == genre,
+                                  onTap: () {
+                                    setState(() {
+                                      selectedGenre = genre;
+                                    });
+                                  },
+                                );
+                              }).toList(),
+                            ),
+
+                            const SizedBox(height: 14),
+
+                            Expanded(
+                              child: filteredDestinations.isEmpty
+                                  ? const Center(
                                       child: Text(
                                         '該当する目的地がありません',
                                         style: TextStyle(
@@ -187,49 +187,53 @@ class _DestinationListScreenState extends State<DestinationListScreen> {
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
+                                    )
+                                  : ListView.builder(
+                                      padding: EdgeInsets.zero,
+                                      itemCount: filteredDestinations.length,
+                                      itemBuilder: (context, index) {
+                                        return _DestinationCard(
+                                          destination:
+                                              filteredDestinations[index],
+                                        );
+                                      },
                                     ),
-                                  )
-                                else
-                                  for (final destination
-                                      in filteredDestinations)
-                                    _DestinationCard(
-                                      destination: destination,
-                                    ),
-                              ],
                             ),
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              _ActionButton(
-                                text: '情報変更',
-                                onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('情報変更画面は後で'),
-                                    ),
-                                  );
-                                },
-                              ),
-                              _ActionButton(
-                                text: '再提案',
-                                onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('再提案機能は後で'),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
+
+                  const SizedBox(height: 16),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _ActionButton(
+                        text: '情報変更',
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('情報変更画面は後で'),
+                            ),
+                          );
+                        },
+                      ),
+                      _ActionButton(
+                        text: '再提案',
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('再提案機能は後で'),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 14),
 
                   Container(
                     height: 1,
