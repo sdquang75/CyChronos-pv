@@ -25,15 +25,16 @@ class RouteConfirmScreen extends StatelessWidget {
                   image: AssetImage('assets/testimage.png'),
                   fit: BoxFit.cover,
                 ),
-                borderRadius: BorderRadius.circular(12), // 圓角
               ),
             ),
             Container(
               width: double.infinity, // 横幅を画面の半分に設定
               height: 330,
               margin: EdgeInsets.all(5),
+              
               decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 255, 255, 255),          // 背景色
+                color: const Color.fromARGB(255, 255, 255, 255),
+                borderRadius: BorderRadius.circular(12), // 圓角          // 背景色
               ),
               child: Center(
                 child: Column(
@@ -45,7 +46,8 @@ class RouteConfirmScreen extends StatelessWidget {
                     padding: EdgeInsets.only(left: 20, right: 20), // 上部の余白を追加
                     margin: EdgeInsets.all(1),
                     decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 255, 255, 255),          // 背景色
+                      color: const Color.fromARGB(255, 255, 255, 255), 
+                      borderRadius: BorderRadius.circular(12), // 圓角           // 背景色
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -179,6 +181,7 @@ class RouteConfirmScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+                  SizedBox(height: 60),// ボタンの上にスペースを追加
                   Container(
                       width: double.infinity, // 横幅を画面の半分に設定
                       height: 100,
@@ -191,7 +194,7 @@ class RouteConfirmScreen extends StatelessWidget {
                               // ボタンが押されたときの処理
                             },
                             style: ElevatedButton.styleFrom(
-                              minimumSize: Size( 250, 55), // 幅を50に設定
+                              minimumSize: Size( 260, 55), // 幅を50に設定
                               backgroundColor: const Color.fromARGB(255, 9, 31, 156), // 背景色
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12), // 圓角
