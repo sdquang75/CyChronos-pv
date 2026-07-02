@@ -11,11 +11,15 @@ router.get("/isochrone", async (req, res) => {
   // parseFloat / parseInt で数値に変換
   const lng = parseFloat(req.query.lng);
   const lat = parseFloat(req.query.lat);
-  const minutes = parseInt(req.query.minutes);
+  const minutes = parseInt(req.query.minutes, 10);
 
   // 数値でないものが混ざっていたら 400 で返す
   if (!Number.isFinite(lng) || !Number.isFinite(lat) || !Number.isFinite(minutes)) {
     return res.status(400).json({ error: "lng, lat, minutes は数値で指定してください" });
+  }
+  // 0分やマイナスはMapboxに渡す前にここで弾く
+  if (minutes < 1) {
+    return res.status(400).json({ error: "minutes は1以上で指定してください" });
   }
 
   // Mapbox に問い合わせて結果をそのまま返す
@@ -26,8 +30,6 @@ router.get("/isochrone", async (req, res) => {
     res.status(502).json({ error: "Mapbox APIの呼び出しに失敗しました" });
   }
 });
-
-
 
 router.get("/route", async (req, res) => {
   // 出発地と目的地、合わせて4つの座標をクエリから取得
@@ -52,10 +54,10 @@ router.get("/route", async (req, res) => {
 
 
 router.get("/places", async (req, res) => {
-  // 中心座標と検索条件をクエリから取得（
+  // 中心座標と検索条件をクエリから取得
   const lng = parseFloat(req.query.lng);
   const lat = parseFloat(req.query.lat);
-  const radius = parseInt(req.query.radius);
+  const radius = parseInt(req.query.radius, 10);
   const type = req.query.type;
 
   // 座標・半径が数値でなければ 400 で返す

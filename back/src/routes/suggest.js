@@ -1,5 +1,3 @@
-
-
 const express = require("express");
 const mapbox = require("../services/mapbox");
 const places = require("../services/place");
@@ -10,11 +8,15 @@ router.get("/", async (req, res) => {
   // クエリは文字列で来るので parseFloat / parseInt で数値に変換
   const lng = parseFloat(req.query.lng);
   const lat = parseFloat(req.query.lat);
-  const minutes = parseInt(req.query.minutes);
+  const minutes = parseInt(req.query.minutes, 10);
   const type = req.query.type || "cafe";
   // 数値でないものが混ざっていたら 400 で返す
   if (!Number.isFinite(lng) || !Number.isFinite(lat) || !Number.isFinite(minutes)) {
     return res.status(400).json({ error: "lng, lat, minutes は数値で指定してください" });
+  }
+  // 0分やマイナスはMapboxに渡す前にここで弾く
+  if (minutes < 1) {
+    return res.status(400).json({ error: "minutes は1以上で指定してください" });
   }
 
   // ここから先でやりたいこと:
@@ -25,17 +27,39 @@ router.get("/", async (req, res) => {
     const isochroneData = await mapbox.getIsochrone(lng, lat, minutes);
     const searchArea = getSearchAreaFromIsochrone(isochroneData);
 
-    const placesData = await places.getNearbyPlaces(searchArea.centerLng, searchArea.centerLat, searchArea.radius, type);
+    const placesData = await places.getNearbyPlaces(
+      searchArea.centerLng,
+      searchArea.centerLat,
+      searchArea.radius,
+      type
+    );
     const normalizedPlaces = places.normalizePlacesResponse(placesData);
-    res.json({ searchArea, placesData: normalizedPlaces });
+
+    // フロントで使う名前をそろえる
+    res.json({
+      searchArea,
+      places: normalizedPlaces,
+    });
   } catch (error) {
-    res.status(502).json({ error: "Mapbox APIの呼び出しに失敗しました" });
+    // どのAPIで失敗したか確認しやすくする
+    console.error(error);
+
+    const message = error.message?.includes("Google Maps API error")
+      ? "Google Maps APIの呼び出しに失敗しました"
+      : "Mapbox APIの呼び出しに失敗しました";
+
+    res.status(502).json({ error: message });
   }
 
 });
 
 function getSearchAreaFromIsochrone(isochroneData) {
-  const coordinates = isochroneData.features[0].geometry.coordinates[0];
+  const coordinates = isochroneData.features?.[0]?.geometry?.coordinates?.[0];
+
+  // 範囲が取れないときはここで止める
+  if (!Array.isArray(coordinates) || coordinates.length === 0) {
+    throw new Error("Mapbox API error: isochrone の座標が取得できませんでした");
+  }
 
   // bbox用に、最初の座標を仮の最小・最大として置いておく
   let minLng = coordinates[0][0];

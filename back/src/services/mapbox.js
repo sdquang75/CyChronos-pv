@@ -15,7 +15,18 @@ async function getIsochrone(lng, lat, minutes) {
   const token = process.env.MAPBOX_ACCESS_TOKEN;
 
   const url = new URL(`${BASE_URL}/isochrone/v1/mapbox/cycling/${lng},${lat}`);
-  url.searchParams.set("contours_minutes", minutes);
+  // 1未満はルーター側で弾いている前提（contours_minutes の有効範囲は1〜60）
+  if (minutes <= 60) {
+    url.searchParams.set("contours_minutes", minutes);
+  } else {
+    // 60分を超えるときは距離で近似する
+    let metre = minutes * 250; // 1分250mで換算
+
+    if (metre > 100000) {
+      metre = 100000; // 最大10万mまで
+    }
+    url.searchParams.set("contours_meters", metre);
+  }
   url.searchParams.set("polygons", true);
   url.searchParams.set("access_token", token);
 
