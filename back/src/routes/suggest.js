@@ -7,35 +7,63 @@ const places = require("../services/place");
 const router = express.Router();
 
 router.get("/", async (req, res) => {
-   res.json([
-  {
-    "id": "ChIJ_____sample1",
-    "name": "サザコーヒー 本店",
-    "lat": 35.6815,
-    "lng": 139.7673,
-    "address": "東京都千代田区丸の内1-9-1",
-    "rating": 4.3,
-    "genre": "cafe"
-  },
-  {
-    "id": "ChIJ_____sample2",
-    "name": "猿田彦珈琲 恵比寿本店",
-    "lat": 35.6465,
-    "lng": 139.7100,
-    "address": "東京都渋谷区恵比寿1-6-6",
-    "rating": 4.1,
-    "genre": "cafe"
-  },
-  {
-    "id": "ChIJ_____sample3",
-    "name": "ブルーボトルコーヒー 清澄白河",
-    "lat": 35.6819,
-    "lng": 139.7995,
-    "address": "東京都江東区平野1-4-8",
-    "rating": 4.0,
-    "genre": "cafe"
+  // クエリは文字列で来るので parseFloat / parseInt で数値に変換
+  const lng = parseFloat(req.query.lng);
+  const lat = parseFloat(req.query.lat);
+  const minutes = parseInt(req.query.minutes);
+  const type = req.query.type || "cafe";
+  // 数値でないものが混ざっていたら 400 で返す
+  if (!Number.isFinite(lng) || !Number.isFinite(lat) || !Number.isFinite(minutes)) {
+    return res.status(400).json({ error: "lng, lat, minutes は数値で指定してください" });
   }
-    ]);
+
+  // ここから先でやりたいこと:
+  // 1. Mapboxで「この時間で行ける範囲」を取る
+  // 2. その範囲をざっくり四角形(bbox)で囲む
+  // 3. bboxを使って、あとでGoogle Placesの検索範囲を決める
+  try {
+    const isochroneData = await mapbox.getIsochrone(lng, lat, minutes);
+    const searchArea = getSearchAreaFromIsochrone(isochroneData);
+
+    const placesData = await places.getNearbyPlaces(searchArea.centerLng, searchArea.centerLat, searchArea.radius, type);
+    const normalizedPlaces = places.normalizePlacesResponse(placesData);
+    res.json({ searchArea, placesData: normalizedPlaces });
+  } catch (error) {
+    res.status(502).json({ error: "Mapbox APIの呼び出しに失敗しました" });
+  }
+
 });
+
+function getSearchAreaFromIsochrone(isochroneData) {
+  const coordinates = isochroneData.features[0].geometry.coordinates[0];
+
+  // bbox用に、最初の座標を仮の最小・最大として置いておく
+  let minLng = coordinates[0][0];
+  let maxLng = coordinates[0][0];
+  let minLat = coordinates[0][1];
+  let maxLat = coordinates[0][1];
+
+  // 全ての座標を見て、左端・右端・下端・上端を探す
+  for (const coordinate of coordinates) {
+    const pointLng = coordinate[0];
+    const pointLat = coordinate[1];
+
+    if (pointLng < minLng) minLng = pointLng;
+    if (pointLng > maxLng) maxLng = pointLng;
+    if (pointLat < minLat) minLat = pointLat;
+    if (pointLat > maxLat) maxLat = pointLat;
+  }
+
+  const bbox = { minLng, maxLng, minLat, maxLat };
+  const centerLng = (minLng + maxLng) / 2;
+  const centerLat = (minLat + maxLat) / 2;
+
+  // 緯度経度の差をざっくりメートルに直して、Places検索用の半径を作る
+  const latMeters = (maxLat - minLat) * 111000;
+  const lngMeters = (maxLng - minLng) * 111000 * Math.cos(centerLat * Math.PI / 180);
+  const radius = Math.min(Math.ceil(Math.max(latMeters, lngMeters) / 2 * 1.2), 50000);
+
+  return { bbox, centerLng, centerLat, radius };
+}
 
 module.exports = router;

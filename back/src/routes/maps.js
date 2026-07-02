@@ -8,7 +8,7 @@ const places = require("../services/place");
 const router = express.Router();
 
 router.get("/isochrone", async (req, res) => {
-  // クエリは文字列で来るので parseFloat / parseInt で数値に変換
+  // parseFloat / parseInt で数値に変換
   const lng = parseFloat(req.query.lng);
   const lat = parseFloat(req.query.lat);
   const minutes = parseInt(req.query.minutes);
@@ -63,10 +63,11 @@ router.get("/places", async (req, res) => {
     return res.status(400).json({ error: "lng, lat, radius は数値で指定してください" });
   }
 
-  // Google Places に問い合わせて結果をそのまま返す
+  // Google Places に問い合わせて、フロントで使いやすい形に整形して返す
   try {
     const data = await places.getNearbyPlaces(lng, lat, radius, type);
-    res.json(data);
+    const normalizedPlaces = places.normalizePlacesResponse(data);
+    res.json(normalizedPlaces);
   } catch (error) {
     res.status(502).json({ error: "Google Maps APIの呼び出しに失敗しました" });
   }

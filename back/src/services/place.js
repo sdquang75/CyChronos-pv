@@ -1,6 +1,8 @@
 //スポットだすやつにょー
 
 const BASE_URL = "https://maps.googleapis.com"; // Google Maps APIのベースURL   
+const hidecategory = ["lodging", "hotel", "parking", "gas_station", "atm", "bank","hospital","doctor","pharmacy","school","university","police","fire_station","post_office","local_government_office"]
+
 
 /**
  * 指定範囲からいけそうなスポットを取得する
@@ -18,7 +20,9 @@ async function getNearbyPlaces(lng, lat, radius, type) {
     const url = new URL(`${BASE_URL}/maps/api/place/nearbysearch/json`);
     url.searchParams.set("location", `${lat},${lng}`); // 検索の中心座標
     url.searchParams.set("radius", radius);            // 検索半径(m)
-    url.searchParams.set("type", type);                // 施設の種類(例: cafe)
+    if (type) {
+      url.searchParams.set("type", type);              // 施設の種類
+    }
     url.searchParams.set("key", token);                // APIキー
 
     // Google に問い合わせ。HTTP自体が失敗ならthrow
@@ -28,7 +32,44 @@ async function getNearbyPlaces(lng, lat, radius, type) {
     throw new Error(`Google Maps API error: ${response.status} ${response.statusText}`);
   }
   const data = await response.json();
-  return data;
+  if (data.status === "OK" || data.status === "ZERO_RESULTS") {
+    return data;
+  }
+
+  throw new Error(`Google Maps API error: ${data.status}`);
 }
 
-module.exports = { getNearbyPlaces };
+function normalizePlace(place) {
+  const location = place.geometry?.location ?? {};
+
+  return {
+    id: place.place_id,
+    name: place.name,
+    lat: location.lat,
+    lng: location.lng,
+    address: place.vicinity ?? place.formatted_address ?? "",
+    rating: typeof place.rating === "number" ? place.rating : null,
+    genre: Array.isArray(place.types) && place.types.length > 0 ? place.types[0] : null,
+  };
+}
+
+function normalizePlacesResponse(data) {
+  return (data.results ?? [])
+    // ホテルや駐車場など、サイクリングの目的地として弱いものを先に外す
+    .filter((place) => {
+      const hasHiddenCategory = place.types &&
+        place.types.some((type) => hidecategory.includes(type));
+
+      return !hasHiddenCategory;
+    })
+    .map(normalizePlace)
+    // 画面表示に最低限必要な値がないものはここで落とす
+    .filter((place) =>
+      place.id &&
+      place.name &&
+      Number.isFinite(place.lat) &&
+      Number.isFinite(place.lng)
+    );
+}
+
+module.exports = { getNearbyPlaces, normalizePlace, normalizePlacesResponse };
