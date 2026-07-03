@@ -139,7 +139,7 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
               width: 1,
             ),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 6),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final tabWidth = constraints.maxWidth / _tabCount;
@@ -160,10 +160,10 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
                       animation: _controller,
                       builder: (context, _) {
                         return Positioned(
-                          left: _indicatorPosition * tabWidth + 6,
+                          left: _indicatorPosition * tabWidth + 4,
                           top: 0,
                           bottom: 0,
-                          width: tabWidth - 12,
+                          width: tabWidth - 8,
                           child: Transform.scale(
                             scale: _bumpScale,
                             child: DecoratedBox(
@@ -171,7 +171,7 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
                                 color: const Color(
                                   0xFF19005C,
                                 ).withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(24),
+                                borderRadius: BorderRadius.circular(14),
                               ),
                             ),
                           ),
@@ -214,17 +214,17 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
           else
             SvgPicture.string(
               _iconTabs[index].svg,
-              width: 24,
-              height: 22,
+              width: 20,
+              height: 18,
               colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
             ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           Text(
             isAvatar ? 'Profile' : _iconTabs[index].label,
             style: TextStyle(
               fontFamily: 'JetBrainsMono',
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              fontSize: 12,
+              fontSize: 11,
               color: color,
             ),
           ),
@@ -238,8 +238,8 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
-          width: 54,
-          height: 54,
+          width: 46,
+          height: 46,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: const Color(0xFFF8F9FE).withValues(alpha: 0.8),
@@ -257,7 +257,7 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
                 child: Icon(
                   Icons.search_rounded,
                   color: Color(0xFF19005C),
-                  size: 26,
+                  size: 22,
                 ),
               ),
             ),
@@ -277,8 +277,8 @@ class _AvatarIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 24,
-      height: 24,
+      width: 20,
+      height: 20,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(color: color, width: 1.2),
@@ -291,9 +291,9 @@ class _AvatarIcon extends StatelessWidget {
                   fit: BoxFit.cover,
                   errorBuilder:
                       (_, _, _) =>
-                          Icon(Icons.person_rounded, size: 16, color: color),
+                          Icon(Icons.person_rounded, size: 13, color: color),
                 )
-                : Icon(Icons.person_rounded, size: 16, color: color),
+                : Icon(Icons.person_rounded, size: 13, color: color),
       ),
     );
   }
