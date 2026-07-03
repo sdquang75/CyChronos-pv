@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'app_icons.dart';
 
-// Primary CTA button ("ルートを検索") shown above the bottom nav on the Home tab.
+// Primary CTA button ("目的地を探す") shown above the bottom nav on the Home tab.
 class FloatingCtaButton extends StatelessWidget {
   const FloatingCtaButton({super.key, required this.onTap});
 
@@ -35,7 +35,7 @@ class FloatingCtaButton extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text(
-                  'ルートを検索',
+                  '目的地を探す',
                   style: TextStyle(
                     fontFamily: 'HankenGrotesk',
                     fontFamilyFallback: ['NotoSansJP'],
@@ -47,8 +47,8 @@ class FloatingCtaButton extends StatelessWidget {
                 const SizedBox(width: 8),
                 SvgPicture.string(
                   AppIcons.arrowRight,
-                  width: 20,
-                  height: 20,
+                  width: 16,
+                  height: 16,
                   colorFilter: const ColorFilter.mode(
                     Colors.white,
                     BlendMode.srcIn,

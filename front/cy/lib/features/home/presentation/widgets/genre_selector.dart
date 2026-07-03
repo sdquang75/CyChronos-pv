@@ -57,8 +57,8 @@ class GenreSelector extends StatelessWidget {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 10,
+                      horizontal: 16,
+                      vertical: 9,
                     ),
                     decoration: BoxDecoration(
                       color:
@@ -66,13 +66,13 @@ class GenreSelector extends StatelessWidget {
                               ? const Color(0xFFF1EBFF)
                               : const Color(0xFFF2F3F8),
                       borderRadius: BorderRadius.circular(9999),
-                      border: Border.all(
-                        color:
-                            isSelected
-                                ? const Color(0xFF19005C).withValues(alpha: 0.3)
-                                : const Color(0xFFC9C4D5),
-                        width: 1,
-                      ),
+                      border:
+                          isSelected
+                              ? null
+                              : Border.all(
+                                color: const Color(0xFFC9C4D5),
+                                width: 1,
+                              ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,

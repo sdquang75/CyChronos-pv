@@ -40,41 +40,45 @@ class HomeTabView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      controller: scrollController,
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 24,
-        bottom: 180, // Space for floating CTA & Bottom Bar
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const HomeHeroHeader(),
-          const SizedBox(height: 36),
-          DurationSelector(
-            selectedDuration: selectedDuration,
-            onSelected: onDurationSelected,
-          ),
-          const SizedBox(height: 36),
-          GenreSelector(
-            selectedGenres: selectedGenres,
-            onToggle: onGenreToggled,
-          ),
-          const SizedBox(height: 32),
-          AdvancedConfigCard(
-            expanded: advancedExpanded,
-            onToggleExpanded: onToggleAdvanced,
-            speedKmh: speedKmh,
-            onSpeedChanged: onSpeedChanged,
-            restMinutes: restMinutes,
-            onRestMinutesChanged: onRestMinutesChanged,
-            restFreqMin: restFreqMin,
-            onRestFreqChanged: onRestFreqChanged,
-          ),
-        ],
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFF9BA8EB),
+      child: SingleChildScrollView(
+        controller: scrollController,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 48,
+          bottom: 180, // Space for floating CTA & Bottom Bar
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const HomeHeroHeader(),
+            const SizedBox(height: 48),
+            DurationSelector(
+              selectedDuration: selectedDuration,
+              onSelected: onDurationSelected,
+            ),
+            const SizedBox(height: 48),
+            GenreSelector(
+              selectedGenres: selectedGenres,
+              onToggle: onGenreToggled,
+            ),
+            const SizedBox(height: 48),
+            AdvancedConfigCard(
+              expanded: advancedExpanded,
+              onToggleExpanded: onToggleAdvanced,
+              speedKmh: speedKmh,
+              onSpeedChanged: onSpeedChanged,
+              restMinutes: restMinutes,
+              onRestMinutesChanged: onRestMinutesChanged,
+              restFreqMin: restFreqMin,
+              onRestFreqChanged: onRestFreqChanged,
+            ),
+          ],
+        ),
       ),
     );
   }

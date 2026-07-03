@@ -21,7 +21,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
 
   // Interactive States
-  int _selectedDuration = 45; // default 45 mins
+  int _selectedDuration = 90; // default 1.5 hours
   final Set<String> _selectedGenres = {'Cafe'}; // default Cafe selected
   int _currentTab = 0; // 0: HOME, 1: ROUTE, 2: HISTORY, 3: PROFILE
   bool _advancedExpanded = false;

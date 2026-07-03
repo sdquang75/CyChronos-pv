@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-// Horizontal scrollable list of ride-duration chips (15-180 min).
+// Horizontal scrollable list of ride-duration chips.
 class DurationSelector extends StatelessWidget {
   const DurationSelector({
     super.key,
@@ -11,7 +11,13 @@ class DurationSelector extends StatelessWidget {
   final int selectedDuration;
   final ValueChanged<int> onSelected;
 
-  static const _durations = [15, 30, 45, 60, 90, 120, 150, 180];
+  static const _durations = [
+    (minutes: 30, label: '30分'),
+    (minutes: 60, label: '1時間'),
+    (minutes: 90, label: '1.5時間'),
+    (minutes: 120, label: '2時間'),
+    (minutes: 180, label: '3時間+'),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -30,69 +36,68 @@ class DurationSelector extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         SizedBox(
-          height: 74,
+          height: 66,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             itemCount: _durations.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 12),
+            separatorBuilder: (context, index) => const SizedBox(width: 8),
             itemBuilder: (context, index) {
-              final dur = _durations[index];
-              final isSelected = selectedDuration == dur;
+              final entry = _durations[index];
+              final isSelected = selectedDuration == entry.minutes;
 
-              return Center(
-                child: TweenAnimationBuilder<double>(
-                  duration: const Duration(milliseconds: 200),
-                  tween: Tween(begin: 0.0, end: isSelected ? 1.0 : 0.0),
-                  builder: (context, value, child) {
-                    final color =
-                        Color.lerp(
-                          const Color(0xFFFFFFFF).withValues(alpha: 0.8),
-                          const Color(0xFF19005C).withValues(alpha: 0.85),
-                          value,
-                        )!;
-                    final textColor =
-                        Color.lerp(
-                          const Color(0xFF191C1F),
-                          const Color(0xFFFFFFFF),
-                          value,
-                        )!;
-                    final borderColor =
-                        Color.lerp(
-                          const Color(0xFFC9C4D5).withValues(alpha: 0.5),
-                          const Color(0xFF19005C).withValues(alpha: 0.8),
-                          value,
-                        )!;
+              return TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 200),
+                tween: Tween(begin: 0.0, end: isSelected ? 1.0 : 0.0),
+                builder: (context, value, child) {
+                  final backgroundColor =
+                      Color.lerp(Colors.white, const Color(0xFF2A0088), value)!;
+                  final textColor =
+                      Color.lerp(const Color(0xFF191C1F), Colors.white, value)!;
+                  final borderColor =
+                      Color.lerp(
+                        const Color(0xFFC9C4D5),
+                        const Color(0xFF2A0088),
+                        value,
+                      )!;
 
-                    return GestureDetector(
-                      onTap: () => onSelected(dur),
-                      child: Container(
-                        height: 66,
-                        constraints: BoxConstraints(
-                          minWidth: dur >= 100 ? 120 : 100,
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 18),
-                        decoration: BoxDecoration(
-                          color: color,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: borderColor, width: 1.5),
-                        ),
-                        child: Center(
-                          child: Text(
-                            dur >= 60 ? '${dur ~/ 60}時間' : '$dur分',
-                            style: TextStyle(
-                              fontFamily: 'HankenGrotesk',
-                              fontFamilyFallback: ['NotoSansJP'],
-                              fontWeight: FontWeight.w600,
-                              fontSize: 22,
-                              color: textColor,
-                            ),
+                  return GestureDetector(
+                    onTap: () => onSelected(entry.minutes),
+                    child: Container(
+                      height: 66,
+                      padding: const EdgeInsets.symmetric(horizontal: 25),
+                      decoration: BoxDecoration(
+                        color: backgroundColor,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: borderColor, width: 1),
+                        boxShadow:
+                            isSelected
+                                ? const []
+                                : [
+                                  BoxShadow(
+                                    color: const Color(
+                                      0xFF2E0094,
+                                    ).withValues(alpha: 0.02),
+                                    blurRadius: 5,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          entry.label,
+                          style: TextStyle(
+                            fontFamily: 'HankenGrotesk',
+                            fontFamilyFallback: ['NotoSansJP'],
+                            fontWeight: FontWeight.w600,
+                            fontSize: 24,
+                            color: textColor,
                           ),
                         ),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
               );
             },
           ),
