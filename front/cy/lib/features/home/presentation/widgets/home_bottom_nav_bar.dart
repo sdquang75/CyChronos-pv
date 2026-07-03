@@ -40,7 +40,6 @@ class HomeBottomNavBar extends StatelessWidget {
             ),
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: List.generate(_tabs.length, (index) {
                 final tab = _tabs[index];
                 final isSelected = currentIndex == index;
@@ -49,11 +48,12 @@ class HomeBottomNavBar extends StatelessWidget {
                         ? const Color(0xFF19005C)
                         : const Color(0xFF484553);
 
-                return GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => onTap(index),
-                  child: SizedBox(
-                    width: 70,
+                // Flexible width per tab (Figma: flex-[1_0_0]) so the pill
+                // fits on narrow phones instead of overflowing a fixed width.
+                return Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => onTap(index),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [

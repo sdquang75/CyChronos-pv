@@ -153,30 +153,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          // Floating CTA (Only visible on Home Tab)
-          if (_currentTab == 0)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 100,
-              child: FloatingCtaButton(
-                onTap:
-                    () =>
-                        ref
-                            .read(recommendationProvider.notifier)
-                            .fetchForCurrentLocation(),
-              ),
-            ),
-
-          // Custom Bottom Navigation Bar
+          // Floating CTA (Only visible on Home Tab) + Bottom Navigation Bar.
+          // Sized to their own content (not a fixed height) so custom-font
+          // metrics on different platforms can never overflow this area.
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
-            height: 100,
-            child: HomeBottomNavBar(
-              currentIndex: _currentTab,
-              onTap: (index) => setState(() => _currentTab = index),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_currentTab == 0) ...[
+                  FloatingCtaButton(
+                    onTap:
+                        () =>
+                            ref
+                                .read(recommendationProvider.notifier)
+                                .fetchForCurrentLocation(),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+                HomeBottomNavBar(
+                  currentIndex: _currentTab,
+                  onTap: (index) => setState(() => _currentTab = index),
+                ),
+              ],
             ),
           ),
         ],
