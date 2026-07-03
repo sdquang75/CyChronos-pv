@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
+import '../domain/recommendation_state.dart';
+import 'providers/recommendation_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -33,6 +35,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.dispose();
   }
 
+  void _showRecommendationFeedback(RecommendationState state) {
+    if (!mounted) return;
+
+    String? message;
+    switch (state) {
+      case RecommendationLocating():
+        message = '現在地を取得しています...';
+      case RecommendationLoading():
+        message = 'おすすめスポットを検索しています...';
+      case RecommendationLoaded():
+        message = 'おすすめスポットを取得しました。';
+      case RecommendationLocationServiceDisabled():
+        message = '位置情報サービスが無効です。端末の設定をご確認ください。';
+      case RecommendationPermissionDenied():
+        message = '位置情報の利用を許可してください。';
+      case RecommendationPermissionDeniedForever():
+        message = '位置情報の利用が拒否されています。設定アプリから許可してください。';
+      case RecommendationError(message: final msg):
+        message = 'エラーが発生しました: $msg';
+      case RecommendationInitial():
+        message = null;
+    }
+
+    if (message == null) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(
+            fontFamily: 'HankenGrotesk',
+            fontFamilyFallback: ['NotoSansJP'],
+          ),
+        ),
+        backgroundColor: const Color(0xFF2A0088),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
   void _toggleAdvanced() {
     setState(() {
       _advancedExpanded = !_advancedExpanded;
@@ -54,6 +97,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<RecommendationState>(recommendationProvider, (previous, next) {
+      _showRecommendationFeedback(next);
+    });
+
     final size = MediaQuery.of(context).size;
     final bool isLargeScreen = size.width > 390 || size.height > 1115;
 
@@ -868,24 +915,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            ScaffoldMessenger.of(context).clearSnackBars();
-            final genreText = _selectedGenres.isEmpty ? 'おまかせ' : _selectedGenres.join(", ");
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  _selectedDuration >= 60 
-                      ? '${_selectedDuration ~/ 60}時間、$genreTextの最適ルートを検索しています...'
-                      : '$_selectedDuration分、$genreTextの最適ルートを検索しています...',
-                  style: const TextStyle(
-                    fontFamily: 'HankenGrotesk',
-                    fontFamilyFallback: ['NotoSansJP'],
-                  ),
-                ),
-                backgroundColor: const Color(0xFF2A0088),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            );
+            ref.read(recommendationProvider.notifier).fetchForCurrentLocation();
           },
           borderRadius: BorderRadius.circular(9999),
           child: Container(

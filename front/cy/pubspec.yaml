@@ -43,6 +43,9 @@ dependencies:
   # HTTP & networking
   dio: ^5.8.0+1
 
+  # Location
+  geolocator: ^13.0.2
+
   # Auth
   google_sign_in: ^6.2.0
   firebase_core: ^3.13.0

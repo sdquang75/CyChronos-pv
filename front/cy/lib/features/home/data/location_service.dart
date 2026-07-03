@@ -1,0 +1,31 @@
+import 'package:geolocator/geolocator.dart';
+
+class LocationServiceDisabledException implements Exception {}
+
+class LocationPermissionDeniedException implements Exception {}
+
+class LocationPermissionDeniedForeverException implements Exception {}
+
+class LocationService {
+  Future<Position> getCurrentPosition() async {
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      throw LocationServiceDisabledException();
+    }
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      throw LocationPermissionDeniedForeverException();
+    }
+    if (permission == LocationPermission.denied) {
+      throw LocationPermissionDeniedException();
+    }
+
+    return Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+    );
+  }
+}
