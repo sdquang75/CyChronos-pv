@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../auth/domain/auth_state.dart';
+import '../../auth/presentation/providers/auth_provider.dart';
 import '../domain/recommendation_state.dart';
 import 'providers/recommendation_provider.dart';
 import 'widgets/floating_cta_button.dart';
@@ -107,11 +109,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
+  void _showSearchComingSoon() {
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          '検索機能は準備中です。',
+          style: TextStyle(
+            fontFamily: 'HankenGrotesk',
+            fontFamilyFallback: ['NotoSansJP'],
+          ),
+        ),
+        backgroundColor: Color(0xFF2A0088),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen<RecommendationState>(recommendationProvider, (previous, next) {
       _showRecommendationFeedback(next);
     });
+
+    final authState = ref.watch(authProvider);
+    final avatarUrl =
+        authState is AuthAuthenticated ? authState.user.photoUrl : null;
 
     final size = MediaQuery.of(context).size;
     final bool isLargeScreen = size.width > 390 || size.height > 1115;
@@ -176,6 +199,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 HomeBottomNavBar(
                   currentIndex: _currentTab,
                   onTap: (index) => setState(() => _currentTab = index),
+                  onSearchTap: _showSearchComingSoon,
+                  avatarUrl: avatarUrl,
                 ),
               ],
             ),
