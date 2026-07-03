@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 
 class DestinationListScreen extends StatefulWidget {
   const DestinationListScreen({super.key});
@@ -428,16 +430,16 @@ class _BottomNavigation extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _BottomNavItem(
-            icon: Icons.home_outlined,
-            label: 'ホーム',
+            svgPath: 'assets/home_nav.svg',
+            routePath: '/home',
           ),
           _BottomNavItem(
-            icon: Icons.calendar_month_outlined,
-            label: '履歴',
+            svgPath: 'assets/history_nav.svg',
+            routePath: '/history',
           ),
           _BottomNavItem(
-            icon: Icons.settings_outlined,
-            label: '設定',
+            svgPath: 'assets/settings_nav.svg',
+            routePath: '/settings',
           ),
         ],
       ),
@@ -446,31 +448,28 @@ class _BottomNavigation extends StatelessWidget {
 }
 
 class _BottomNavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
+  final String svgPath;
+  final String routePath;
 
   const _BottomNavItem({
-    required this.icon,
-    required this.label,
+    required this.svgPath,
+    required this.routePath,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(
-          icon,
-          color: Color(0xFF1F004D),
-          size: 25,
+    return GestureDetector(
+      onTap: () {
+        context.go(routePath);
+      },
+      child: SizedBox(
+        width: 70,
+        height: 50,
+        child: SvgPicture.asset(
+          svgPath,
+          fit: BoxFit.contain,
         ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            color: Color(0xFF1F004D),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
