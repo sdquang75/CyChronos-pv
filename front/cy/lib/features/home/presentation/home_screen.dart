@@ -158,7 +158,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Positioned(
               left: 0,
               right: 0,
-              bottom: 88.92 + 16,
+              bottom: 100,
               child: FloatingCtaButton(
                 onTap:
                     () =>
@@ -173,7 +173,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             left: 0,
             right: 0,
             bottom: 0,
-            height: 88.92,
+            height: 100,
             child: HomeBottomNavBar(
               currentIndex: _currentTab,
               onTap: (index) => setState(() => _currentTab = index),

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import '../../../auth/domain/auth_state.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import 'app_icons.dart';
 import 'home_tab_header.dart';
 
 // TAB: USER PROFILE SCREEN WITH LOGOUT BUTTON
@@ -54,14 +52,10 @@ class ProfileTabView extends ConsumerWidget {
                           : null,
                   child:
                       (user?.photoUrl == null)
-                          ? SvgPicture.string(
-                            AppIcons.profileTab,
-                            width: 44,
-                            height: 44,
-                            colorFilter: const ColorFilter.mode(
-                              Color(0xFF19005C),
-                              BlendMode.srcIn,
-                            ),
+                          ? const Icon(
+                            Icons.person_rounded,
+                            size: 44,
+                            color: Color(0xFF19005C),
                           )
                           : null,
                 ),
