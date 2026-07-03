@@ -183,14 +183,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Drag from inside the first tab to inside the last tab, using the
-    // widget's actual on-screen geometry rather than assumed coordinates.
-    final navBar = find.byType(HomeBottomNavBar);
-    final topLeft = tester.getTopLeft(navBar);
-    final size = tester.getSize(navBar);
-    final y = topLeft.dy + size.height / 2;
-    final start = Offset(topLeft.dx + 45, y);
-    final end = Offset(topLeft.dx + size.width - 90, y);
+    // Drag from the first tab's label to the last tab's label, using their
+    // actual rendered centers rather than assumed pixel offsets (which
+    // shift whenever internal padding changes).
+    final start = tester.getCenter(find.text('Ride'));
+    final end = tester.getCenter(find.text('Profile'));
 
     await tester.dragFrom(start, end - start);
     await tester.pumpAndSettle();

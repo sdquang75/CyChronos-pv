@@ -126,20 +126,39 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
   }
 
   Widget _buildPill() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(56),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8F9FE).withValues(alpha: 0.8),
+    // The frosted glass background (Positioned.fill) and the interactive
+    // content (indicator + tab Row) are painted as SIBLINGS, not
+    // parent/child. If the indicator lived inside the background's
+    // ClipRRect(56), the pill's big capsule curve would slice into the
+    // indicator's own smaller rounded corners at the first/last tab,
+    // leaving one edge looking squared off. Keeping the indicator outside
+    // that clip lets it render its own rounding cleanly, and Clip.none
+    // lets it overshoot the tab's tight bounds for visible "bo dư" margin.
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: ClipRRect(
             borderRadius: BorderRadius.circular(56),
-            border: Border.all(
-              color: const Color(0xFFC9C4D5).withValues(alpha: 0.3),
-              width: 1,
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F9FE).withValues(alpha: 0.8),
+                  borderRadius: BorderRadius.circular(56),
+                  border: Border.all(
+                    color: const Color(0xFFC9C4D5).withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+              ),
             ),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 6),
+        ),
+        Padding(
+          // Generous padding: the outer margin between the tab content and
+          // the pill's true edge, giving the indicator room to overshoot
+          // without ever nearing the capsule's curved ends.
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final tabWidth = constraints.maxWidth / _tabCount;
@@ -151,19 +170,18 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
                 onHorizontalDragCancel: _handleDragEnd,
                 // No fixed height here: the Stack sizes itself to the tab
                 // Row's natural (intrinsic) height, so larger system font
-                // scales grow the pill instead of overflowing it. The
-                // indicator uses top+bottom (not a hardcoded height) to
-                // always match that same height exactly.
+                // scales grow the pill instead of overflowing it.
                 child: Stack(
+                  clipBehavior: Clip.none,
                   children: [
                     AnimatedBuilder(
                       animation: _controller,
                       builder: (context, _) {
                         return Positioned(
-                          left: _indicatorPosition * tabWidth + 4,
-                          top: 0,
-                          bottom: 0,
-                          width: tabWidth - 8,
+                          left: _indicatorPosition * tabWidth + 2,
+                          top: -6,
+                          bottom: -6,
+                          width: tabWidth - 4,
                           child: Transform.scale(
                             scale: _bumpScale,
                             child: DecoratedBox(
@@ -171,7 +189,7 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
                                 color: const Color(
                                   0xFF19005C,
                                 ).withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(16),
                               ),
                             ),
                           ),
@@ -193,7 +211,7 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
             },
           ),
         ),
-      ),
+      ],
     );
   }
 
