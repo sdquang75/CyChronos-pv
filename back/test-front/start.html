@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>トリップ開始 | CyChronos APIテスト</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>トリップ開始</h1>
+  <p class="note">POST /api/trips/start — 新しいトリップを作成し trip_id を返します</p>
+
+  <form id="form">
+    <label>user_id(固定)</label>
+    <input type="text" value="1" class="fixed" disabled />
+
+    <label>destination_name(任意)</label>
+    <input type="text" id="destination_name" placeholder="例: 大阪城公園" />
+
+    <label>destination_url(任意)</label>
+    <input type="text" id="destination_url" placeholder="例: https://www.osakacastle.net/" />
+
+    <div class="buttons">
+      <a href="index.html" class="back">戻る</a>
+      <button type="submit">送信</button>
+    </div>
+  </form>
+
+  <div id="result" class="result">ここに結果が表示されます</div>
+
+  <script src="common.js"></script>
+  <script>
+    document.getElementById("form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const body = { user_id: USER_ID };
+      const name = document.getElementById("destination_name").value.trim();
+      const url = document.getElementById("destination_url").value.trim();
+      if (name) body.destination_name = name;
+      if (url) body.destination_url = url;
+      sendRequest("POST", "/api/trips/start", body);
+    });
+  </script>
+</body>
+</html>
