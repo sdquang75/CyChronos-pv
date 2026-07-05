@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CyChronos APIテスト</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>CyChronos APIテスト</h1>
+  <p class="note">テストするAPIを選択してください(user_id は 1 固定)</p>
+  <ul class="menu">
+    <li><a href="start.html"><span class="method">POST</span>トリップ開始 — /api/trips/start</a></li>
+    <li><a href="location.html"><span class="method">POST</span>座標保存 — /api/locations</a></li>
+    <li><a href="end.html"><span class="method">POST</span>トリップ終了 — /api/trips/{trip_id}/end</a></li>
+    <li><a href="list.html"><span class="method">GET</span>ログ全件取得 — /api/trips</a></li>
+    <li><a href="detail.html"><span class="method">GET</span>ログ単体取得 — /api/trips/{trip_id}</a></li>
+    <li><a href="delete.html"><span class="method del">DELETE</span>ログ削除(論理削除) — /api/trips/{trip_id}</a></li>
+  </ul>
+</body>
+</html>
