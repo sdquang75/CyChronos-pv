@@ -1,5 +1,5 @@
 // Mapbox API を呼ぶ処理をここに集める。
-// ルーター(routes/)からは「関数を呼ぶだけ」にして、URL組み立てやfetchはこの層に閉じ込める。
+// ルーター(routes/)からは「関数を呼ぶだけ」にする
 
 const BASE_URL = "https://api.mapbox.com";
 
@@ -17,13 +17,13 @@ async function getIsochrone(lng, lat, minutes) {
   const url = new URL(`${BASE_URL}/isochrone/v1/mapbox/cycling/${lng},${lat}`);
   // 1未満はルーター側で弾いている前提（contours_minutes の有効範囲は1〜60）
   if (minutes <= 60) {
-    url.searchParams.set("contours_minutes", minutes);
+    url.searchParams.set("contours_minutes", minutes);      
   } else {
     // 60分を超えるときは距離で近似する
     let metre = minutes * 250; // 1分250mで換算
 
     if (metre > 100000) {
-      metre = 100000; // 最大10万mまで
+      metre = 100000; // 最大100kmまで
     }
     url.searchParams.set("contours_meters", metre);
   }
