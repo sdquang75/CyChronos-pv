@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>トリップ終了 | CyChronos APIテスト</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>トリップ終了</h1>
+  <p class="note">POST /api/trips/{trip_id}/end — status を completed にし end_time を登録します</p>
+
+  <form id="form">
+    <label>user_id(固定)</label>
+    <input type="text" value="1" class="fixed" disabled />
+
+    <label>trip_id</label>
+    <input type="number" id="trip_id" placeholder="例: 5" required />
+
+    <div class="buttons">
+      <a href="index.html" class="back">戻る</a>
+      <button type="submit">送信</button>
+    </div>
+  </form>
+
+  <div id="result" class="result">ここに結果が表示されます</div>
+
+  <script src="common.js"></script>
+  <script>
+    document.getElementById("form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const tripId = Number(document.getElementById("trip_id").value);
+      sendRequest("POST", `/api/trips/${tripId}/end`, { user_id: USER_ID });
+    });
+  </script>
+</body>
+</html>

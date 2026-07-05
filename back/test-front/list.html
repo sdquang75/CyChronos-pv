@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ログ全件取得 | CyChronos APIテスト</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>ログ全件取得</h1>
+  <p class="note">GET /api/trips?user_id=1 — ユーザーのトリップ一覧を取得します(削除済みは除外)</p>
+
+  <form id="form">
+    <label>user_id(固定)</label>
+    <input type="text" value="1" class="fixed" disabled />
+
+    <div class="buttons">
+      <a href="index.html" class="back">戻る</a>
+      <button type="submit">送信</button>
+    </div>
+  </form>
+
+  <div id="result" class="result">ここに結果が表示されます</div>
+
+  <script src="common.js"></script>
+  <script>
+    document.getElementById("form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      sendRequest("GET", `/api/trips?user_id=${USER_ID}`);
+    });
+  </script>
+</body>
+</html>

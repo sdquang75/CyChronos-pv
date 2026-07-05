@@ -47,5 +47,7 @@
 		<true/>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>現在地周辺のおすすめスポットを表示するために位置情報を使用します。</string>
 	</dict>
 </plist>
