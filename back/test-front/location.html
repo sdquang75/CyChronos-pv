@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>座標保存 | CyChronos APIテスト</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>座標保存</h1>
+  <p class="note">POST /api/locations — 走行中の座標を保存します(成功時は204・戻り値なし)</p>
+
+  <form id="form">
+    <label>user_id(固定)</label>
+    <input type="text" value="1" class="fixed" disabled />
+
+    <label>trip_id</label>
+    <input type="number" id="trip_id" placeholder="例: 1" required />
+
+    <label>lat(緯度: -90〜90)</label>
+    <input type="number" id="lat" step="any" placeholder="例: 34.6941" required />
+
+    <label>lng(経度: -180〜180)</label>
+    <input type="number" id="lng" step="any" placeholder="例: 135.5030" required />
+
+    <div class="buttons">
+      <a href="index.html" class="back">戻る</a>
+      <button type="submit">送信</button>
+    </div>
+  </form>
+
+  <div id="result" class="result">ここに結果が表示されます</div>
+
+  <script src="common.js"></script>
+  <script>
+    document.getElementById("form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      sendRequest("POST", "/api/locations", {
+        user_id: USER_ID,
+        trip_id: Number(document.getElementById("trip_id").value),
+        lat: Number(document.getElementById("lat").value),
+        lng: Number(document.getElementById("lng").value),
+      });
+    });
+  </script>
+</body>
+</html>
