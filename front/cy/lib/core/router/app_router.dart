@@ -1,25 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../features/auth/domain/auth_state.dart';
 import '../../features/auth/presentation/login_screen.dart';
-import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/splash_screen.dart';
-import '../../features/destination/presentation/destination_list_screen.dart';
-import '../../features/detil/detil.dart';
+import '../../features/auth/presentation/providers/auth_provider.dart';
+import '../../features/auth/domain/auth_state.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/detil/detil.dart';
+import '../../features/destination/presentation/destination_list_screen.dart';
 import '../../features/route_confirm/route_confirm.dart';
 
 // Bridges Riverpod state changes → GoRouter refresh
 class _AuthListenable extends ChangeNotifier {
   _AuthListenable(Ref ref) {
-    ref.listen<AuthState>(
-      authProvider,
-      (_, __) => notifyListeners(),
-    );
+    ref.listen<AuthState>(authProvider, (_, __) => notifyListeners());
   }
 }
+
+
+
 
 final routerProvider = Provider<GoRouter>((ref) {
   final listenable = _AuthListenable(ref);
@@ -31,14 +30,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authProvider);
       final location = state.matchedLocation;
 
-      if (authState is AuthAuthenticated && location == '/login') {
-        return '/home';
-      }
-
-      if (authState is AuthUnauthenticated && location == '/home') {
-        return '/login';
-      }
-
+      if (authState is AuthAuthenticated && location == '/login') return '/home';
+      if (authState is AuthUnauthenticated && location == '/home') return '/login';
       return null;
     },
     routes: [
@@ -47,12 +40,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const SplashScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
+          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+              FadeTransition(opacity: animation, child: child),
           transitionDuration: const Duration(milliseconds: 600),
         ),
       ),
@@ -61,12 +50,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const LoginScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
+          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+              FadeTransition(opacity: animation, child: child),
           transitionDuration: const Duration(milliseconds: 800),
         ),
       ),
@@ -75,12 +60,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const HomeScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
+          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+              FadeTransition(opacity: animation, child: child),
           transitionDuration: const Duration(milliseconds: 600),
         ),
       ),
@@ -90,10 +71,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
           child: const DetilScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
+            return FadeTransition(opacity: animation, child: child);
           },
           transitionDuration: const Duration(milliseconds: 600),
         ),
@@ -103,25 +81,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const DestinationListScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 600),
-        ),
-      ),
-      GoRoute(
         path: '/route_confirm',
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const RouteConfirmScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
+            return FadeTransition(opacity: animation, child: child);
           },
           transitionDuration: const Duration(milliseconds: 600),
         ),
