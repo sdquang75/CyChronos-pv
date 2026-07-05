@@ -15,6 +15,8 @@ app.get("/", (req, res) => {
   res.json({ message: "CyChronos API is running" });
 });
 
+app.use("/api/maps", require("./routes/maps"));
+app.use("/api/suggest", require("./routes/suggest"));
 app.use("/api/trips", tripsRouter);
 app.use("/api/locations", locationsRouter);
 
@@ -35,3 +37,4 @@ const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+
