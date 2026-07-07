@@ -32,18 +32,13 @@ void main() {
           home: Scaffold(
             body: HomeTabView(
               scrollController: ScrollController(),
-              selectedDuration: 90,
-              onDurationSelected: (_) {},
-              selectedGenres: const {'Cafe'},
-              onGenreToggled: (_) {},
-              advancedExpanded: false,
-              onToggleAdvanced: () {},
-              speedKmh: 18,
-              onSpeedChanged: (_) {},
-              restMinutes: 15,
-              onRestMinutesChanged: (_) {},
-              restFreqMin: 30,
-              onRestFreqChanged: (_) {},
+              stayDurationMinutes: '30',
+              onStayDurationChanged: (_) {},
+              spareTimeMinutes: '30',
+              onSpareTimeChanged: (_) {},
+              selectedGenreId: null,
+              onGenreChanged: (_) {},
+              onFindDestination: () {},
             ),
           ),
         ),
@@ -52,38 +47,6 @@ void main() {
 
       expect(tester.takeException(), isNull);
     });
-
-    testWidgets(
-      'HomeTabView (advanced config expanded) has no overflow on ${entry.key}',
-      (tester) async {
-        await setViewport(tester, entry.value);
-
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: HomeTabView(
-                scrollController: ScrollController(),
-                selectedDuration: 90,
-                onDurationSelected: (_) {},
-                selectedGenres: const {'Cafe'},
-                onGenreToggled: (_) {},
-                advancedExpanded: true,
-                onToggleAdvanced: () {},
-                speedKmh: 18,
-                onSpeedChanged: (_) {},
-                restMinutes: 15,
-                onRestMinutesChanged: (_) {},
-                restFreqMin: 30,
-                onRestFreqChanged: (_) {},
-              ),
-            ),
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        expect(tester.takeException(), isNull);
-      },
-    );
 
     testWidgets('HomeBottomNavBar has no overflow on ${entry.key}', (
       tester,
@@ -97,11 +60,7 @@ void main() {
               alignment: Alignment.bottomCenter,
               child: SizedBox(
                 width: entry.value.width,
-                child: HomeBottomNavBar(
-                  currentIndex: 0,
-                  onTap: (_) {},
-                  onSearchTap: () {},
-                ),
+                child: HomeBottomNavBar(currentIndex: 0, onTap: (_) {}),
               ),
             ),
           ),
@@ -140,7 +99,6 @@ void main() {
               child: HomeBottomNavBar(
                 currentIndex: 0,
                 onTap: (index) => tapped = index,
-                onSearchTap: () {},
               ),
             ),
           ),
@@ -172,7 +130,6 @@ void main() {
                   child: HomeBottomNavBar(
                     currentIndex: currentIndex,
                     onTap: (index) => setState(() => currentIndex = index),
-                    onSearchTap: () {},
                   ),
                 ),
               ),
@@ -186,43 +143,13 @@ void main() {
     // Drag from the first tab's label to the last tab's label, using their
     // actual rendered centers rather than assumed pixel offsets (which
     // shift whenever internal padding changes).
-    final start = tester.getCenter(find.text('Ride'));
-    final end = tester.getCenter(find.text('Profile'));
+    final start = tester.getCenter(find.text('Explore'));
+    final end = tester.getCenter(find.text('Settings'));
 
     await tester.dragFrom(start, end - start);
     await tester.pumpAndSettle();
 
     expect(currentIndex, greaterThan(0));
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('HomeBottomNavBar search bubble calls onSearchTap', (
-    tester,
-  ) async {
-    var searchTapped = false;
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Align(
-            alignment: Alignment.bottomCenter,
-            child: SizedBox(
-              width: 390,
-              child: HomeBottomNavBar(
-                currentIndex: 0,
-                onTap: (_) {},
-                onSearchTap: () => searchTapped = true,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byIcon(Icons.search_rounded));
-    await tester.pumpAndSettle();
-
-    expect(searchTapped, isTrue);
     expect(tester.takeException(), isNull);
   });
 }

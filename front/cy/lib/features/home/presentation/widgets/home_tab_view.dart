@@ -1,82 +1,71 @@
 import 'package:flutter/material.dart';
 import 'advanced_config_card.dart';
-import 'duration_selector.dart';
-import 'genre_selector.dart';
-import 'home_hero_header.dart';
+import 'floating_cta_button.dart';
+import 'home_app_title.dart';
+import 'weather_header_card.dart';
 
-// TAB: HOME PLANNER SCREEN — composes the hero header, duration/genre
-// selectors and the advanced config card.
+// TAB: HOME PLANNER SCREEN — top title, weather summary and the customize
+// (stay duration / spare time / genre) card.
 class HomeTabView extends StatelessWidget {
   const HomeTabView({
     super.key,
     required this.scrollController,
-    required this.selectedDuration,
-    required this.onDurationSelected,
-    required this.selectedGenres,
-    required this.onGenreToggled,
-    required this.advancedExpanded,
-    required this.onToggleAdvanced,
-    required this.speedKmh,
-    required this.onSpeedChanged,
-    required this.restMinutes,
-    required this.onRestMinutesChanged,
-    required this.restFreqMin,
-    required this.onRestFreqChanged,
+    required this.stayDurationMinutes,
+    required this.onStayDurationChanged,
+    required this.spareTimeMinutes,
+    required this.onSpareTimeChanged,
+    required this.selectedGenreId,
+    required this.onGenreChanged,
+    required this.onFindDestination,
   });
 
   final ScrollController scrollController;
-  final int selectedDuration;
-  final ValueChanged<int> onDurationSelected;
-  final Set<String> selectedGenres;
-  final ValueChanged<String> onGenreToggled;
-  final bool advancedExpanded;
-  final VoidCallback onToggleAdvanced;
-  final double speedKmh;
-  final ValueChanged<double> onSpeedChanged;
-  final double restMinutes;
-  final ValueChanged<double> onRestMinutesChanged;
-  final double restFreqMin;
-  final ValueChanged<double> onRestFreqChanged;
+  final String stayDurationMinutes;
+  final ValueChanged<String?> onStayDurationChanged;
+  final String spareTimeMinutes;
+  final ValueChanged<String?> onSpareTimeChanged;
+  final String? selectedGenreId;
+  final ValueChanged<String?> onGenreChanged;
+  final VoidCallback onFindDestination;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      color: const Color(0xFF9BA8EB),
+      decoration: const BoxDecoration(
+        color: Color(0xFFFDFCF8),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0x33D5E8D1), Color(0x00D5E8D1)],
+        ),
+      ),
       child: SingleChildScrollView(
         controller: scrollController,
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.only(
           left: 20,
           right: 20,
-          top: 48,
-          bottom: 180, // Space for floating CTA & Bottom Bar
+          top: 20,
+          bottom: 100, // Space for the fixed Bottom Bar
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const HomeHeroHeader(),
-            const SizedBox(height: 48),
-            DurationSelector(
-              selectedDuration: selectedDuration,
-              onSelected: onDurationSelected,
-            ),
-            const SizedBox(height: 48),
-            GenreSelector(
-              selectedGenres: selectedGenres,
-              onToggle: onGenreToggled,
-            ),
-            const SizedBox(height: 48),
+            const HomeAppTitle(),
+            const SizedBox(height: 20),
+            const WeatherHeaderCard(),
+            const SizedBox(height: 12),
             AdvancedConfigCard(
-              expanded: advancedExpanded,
-              onToggleExpanded: onToggleAdvanced,
-              speedKmh: speedKmh,
-              onSpeedChanged: onSpeedChanged,
-              restMinutes: restMinutes,
-              onRestMinutesChanged: onRestMinutesChanged,
-              restFreqMin: restFreqMin,
-              onRestFreqChanged: onRestFreqChanged,
+              stayDurationMinutes: stayDurationMinutes,
+              onStayDurationChanged: onStayDurationChanged,
+              spareTimeMinutes: spareTimeMinutes,
+              onSpareTimeChanged: onSpareTimeChanged,
+              selectedGenreId: selectedGenreId,
+              onGenreChanged: onGenreChanged,
             ),
+            const SizedBox(height: 20),
+            FloatingCtaButton(onTap: onFindDestination),
           ],
         ),
       ),

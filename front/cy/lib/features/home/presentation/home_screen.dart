@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../auth/domain/auth_state.dart';
-import '../../auth/presentation/providers/auth_provider.dart';
 import '../domain/recommendation_state.dart';
 import 'providers/recommendation_provider.dart';
-import 'widgets/floating_cta_button.dart';
 import 'widgets/history_tab_view.dart';
 import 'widgets/home_bottom_nav_bar.dart';
 import 'widgets/home_tab_view.dart';
@@ -19,19 +16,26 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  // Scroll Controller for Auto-Scrolling in Home Tab
   final ScrollController _scrollController = ScrollController();
 
   // Interactive States
-  int _selectedDuration = 90; // default 1.5 hours
-  final Set<String> _selectedGenres = {'Cafe'}; // default Cafe selected
   int _currentTab = 0; // 0: HOME, 1: ROUTE, 2: HISTORY, 3: PROFILE
-  bool _advancedExpanded = false;
 
-  // Advanced Config state variables (3 sliders)
-  double _speedKmh = 18.0; // Cruising Speed
-  double _restMinutes = 15.0; // Rest Duration
-  double _restFreqMin = 30.0; // Rest Frequency (every X minutes)
+  // Customize card state (stay duration / spare time / genre dropdowns)
+  String _stayDurationMinutes = '30';
+  String _spareTimeMinutes = '30';
+  String? _selectedGenreId;
+
+  @override
+  void initState() {
+    super.initState();
+    // Prime the location permission popup as soon as the Home screen opens
+    // (foundation for the upcoming live weather card — the result isn't
+    // used yet, this just gets the OS prompt out of the way early).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(locationServiceProvider).ensurePermissionRequested();
+    });
+  }
 
   @override
   void dispose() {
@@ -80,64 +84,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  void _toggleAdvanced() {
-    setState(() {
-      _advancedExpanded = !_advancedExpanded;
-    });
-
-    if (_advancedExpanded) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
-          final double targetOffset = _scrollController.offset + 230.0;
-          _scrollController.animateTo(
-            targetOffset,
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeInOutCubic,
-          );
-        }
-      });
-    }
-  }
-
-  void _onGenreToggled(String id) {
-    setState(() {
-      if (_selectedGenres.contains(id)) {
-        _selectedGenres.remove(id);
-      } else {
-        _selectedGenres.add(id);
-      }
-    });
-  }
-
-  void _showSearchComingSoon() {
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          '検索機能は準備中です。',
-          style: TextStyle(
-            fontFamily: 'HankenGrotesk',
-            fontFamilyFallback: ['NotoSansJP'],
-          ),
-        ),
-        backgroundColor: Color(0xFF2A0088),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     ref.listen<RecommendationState>(recommendationProvider, (previous, next) {
       _showRecommendationFeedback(next);
     });
 
-    final authState = ref.watch(authProvider);
-    final avatarUrl =
-        authState is AuthAuthenticated ? authState.user.photoUrl : null;
-
     final size = MediaQuery.of(context).size;
-    final bool isLargeScreen = size.width > 390 || size.height > 1115;
+    final bool isLargeScreen = size.width > 390 || size.height > 844;
 
     Widget content = Scaffold(
       backgroundColor: const Color(0xFFF8F9FE),
@@ -152,21 +106,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 children: [
                   HomeTabView(
                     scrollController: _scrollController,
-                    selectedDuration: _selectedDuration,
-                    onDurationSelected:
-                        (dur) => setState(() => _selectedDuration = dur),
-                    selectedGenres: _selectedGenres,
-                    onGenreToggled: _onGenreToggled,
-                    advancedExpanded: _advancedExpanded,
-                    onToggleAdvanced: _toggleAdvanced,
-                    speedKmh: _speedKmh,
-                    onSpeedChanged: (val) => setState(() => _speedKmh = val),
-                    restMinutes: _restMinutes,
-                    onRestMinutesChanged:
-                        (val) => setState(() => _restMinutes = val),
-                    restFreqMin: _restFreqMin,
-                    onRestFreqChanged:
-                        (val) => setState(() => _restFreqMin = val),
+                    stayDurationMinutes: _stayDurationMinutes,
+                    onStayDurationChanged:
+                        (id) => setState(
+                          () => _stayDurationMinutes = id ?? _stayDurationMinutes,
+                        ),
+                    spareTimeMinutes: _spareTimeMinutes,
+                    onSpareTimeChanged:
+                        (id) => setState(
+                          () => _spareTimeMinutes = id ?? _spareTimeMinutes,
+                        ),
+                    selectedGenreId: _selectedGenreId,
+                    onGenreChanged:
+                        (id) => setState(() => _selectedGenreId = id),
+                    onFindDestination:
+                        () =>
+                            ref
+                                .read(recommendationProvider.notifier)
+                                .fetchForCurrentLocation(),
                   ),
                   const RouteTabView(),
                   const HistoryTabView(),
@@ -176,33 +133,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          // Floating CTA (Only visible on Home Tab) + Bottom Navigation Bar.
-          // Sized to their own content (not a fixed height) so custom-font
-          // metrics on different platforms can never overflow this area.
+          // Bottom Navigation Bar. Always pinned above the scrollable
+          // content (the CTA button now scrolls with the Home tab's list).
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_currentTab == 0) ...[
-                  FloatingCtaButton(
-                    onTap:
-                        () =>
-                            ref
-                                .read(recommendationProvider.notifier)
-                                .fetchForCurrentLocation(),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-                HomeBottomNavBar(
-                  currentIndex: _currentTab,
-                  onTap: (index) => setState(() => _currentTab = index),
-                  onSearchTap: _showSearchComingSoon,
-                  avatarUrl: avatarUrl,
-                ),
-              ],
+            child: HomeBottomNavBar(
+              currentIndex: _currentTab,
+              onTap: (index) => setState(() => _currentTab = index),
             ),
           ),
         ],
@@ -215,7 +154,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         body: Center(
           child: Container(
             width: 390,
-            height: 1115,
+            height: 844,
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(40),

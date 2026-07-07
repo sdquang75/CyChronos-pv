@@ -1,0 +1,187 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'app_icons.dart';
+
+// A single dropdown option shown in a DropdownField's picker sheet.
+class DropdownOption {
+  const DropdownOption({required this.id, required this.label});
+
+  final String? id;
+  final String label;
+}
+
+// Label + tappable "options" row that opens a single-select bottom sheet.
+// Used by AdvancedConfigCard for stay-duration / spare-time / genre fields.
+class DropdownField extends StatelessWidget {
+  const DropdownField({
+    super.key,
+    required this.label,
+    required this.options,
+    required this.selectedId,
+    required this.onChanged,
+  });
+
+  final String label;
+  final List<DropdownOption> options;
+  final String? selectedId;
+  final ValueChanged<String?> onChanged;
+
+  String get _selectedLabel => options
+      .firstWhere(
+        (o) => o.id == selectedId,
+        orElse: () => options.first,
+      )
+      .label;
+
+  Future<void> _openPicker(BuildContext context) async {
+    final picked = await showModalBottomSheet<String?>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD1D5D0),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontFamily: 'HankenGrotesk',
+                      fontFamilyFallback: ['NotoSansJP'],
+                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                      color: Color(0xFF19005C),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: options.length,
+                  itemBuilder: (context, index) {
+                    final option = options[index];
+                    final isSelected = option.id == selectedId;
+                    return ListTile(
+                      onTap: () => Navigator.of(context).pop(option.id),
+                      title: Text(
+                        option.label,
+                        style: TextStyle(
+                          fontFamily: 'HankenGrotesk',
+                          fontFamilyFallback: const ['NotoSansJP'],
+                          fontWeight:
+                              isSelected ? FontWeight.w700 : FontWeight.w400,
+                          fontSize: 16,
+                          color: const Color(0xFF1B1C1C),
+                        ),
+                      ),
+                      trailing:
+                          isSelected
+                              ? const Icon(
+                                Icons.check_rounded,
+                                color: Color(0xFF4A654E),
+                              )
+                              : null,
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (picked != selectedId) {
+      onChanged(picked);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'JetBrainsMono',
+            fontWeight: FontWeight.w500,
+            fontSize: 12,
+            letterSpacing: 0.6,
+            color: Color(0xFF1B1C1C),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => _openPicker(context),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF6F3F2),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF1B1C1C).withValues(alpha: 0.05),
+                    blurRadius: 6,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _selectedLabel,
+                      style: const TextStyle(
+                        fontFamily: 'HankenGrotesk',
+                        fontFamilyFallback: ['NotoSansJP'],
+                        fontWeight: FontWeight.w500,
+                        fontSize: 16,
+                        color: Color(0xFF1B1C1C),
+                      ),
+                    ),
+                  ),
+                  SvgPicture.string(
+                    AppIcons.chevronDown,
+                    width: 12,
+                    height: 8,
+                    colorFilter: const ColorFilter.mode(
+                      Color(0xFF484553),
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

@@ -21,11 +21,11 @@ class FloatingCtaButton extends StatelessWidget {
             height: 64,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: const Color(0xFF19005C),
+              color: const Color(0xFF4A654E),
               borderRadius: BorderRadius.circular(9999),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF19005C).withValues(alpha: 0.2),
+                  color: const Color(0xFF4A654E).withValues(alpha: 0.2),
                   blurRadius: 30,
                   offset: const Offset(0, 10),
                 ),

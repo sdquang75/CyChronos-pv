@@ -1,0 +1,172 @@
+import 'package:flutter/material.dart';
+
+// Static weather summary card (mock data — no live weather API yet).
+// Laid out as a single horizontal row (icon, temp/condition, stats) to keep
+// the card's vertical footprint small.
+class WeatherHeaderCard extends StatelessWidget {
+  const WeatherHeaderCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFD1D5D0)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE7F0E4),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(
+                Icons.wb_sunny_rounded,
+                color: Color(0xFF4F604E),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Text(
+                  '24°C',
+                  style: TextStyle(
+                    fontFamily: 'HankenGrotesk',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 22,
+                    letterSpacing: -0.44,
+                    color: Color(0xFF4F604E),
+                  ),
+                ),
+                Text(
+                  'Sunny',
+                  style: TextStyle(
+                    fontFamily: 'HankenGrotesk',
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
+                    color: Color(0xFF5F5E5A),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 12),
+            const VerticalDivider(
+              width: 1,
+              thickness: 1,
+              color: Color(0xFFC4C8C0),
+              indent: 4,
+              endIndent: 4,
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    Flexible(
+                      child: _WeatherStat(
+                        icon: Icons.air_rounded,
+                        label: 'WIND',
+                        value: '12',
+                        unit: 'km/h',
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Flexible(
+                      child: _WeatherStat(
+                        icon: Icons.water_drop_rounded,
+                        label: 'HUMIDITY',
+                        value: '45',
+                        unit: '%',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WeatherStat extends StatelessWidget {
+  const _WeatherStat({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.unit,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final String unit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'JetBrainsMono',
+            fontWeight: FontWeight.w500,
+            fontSize: 10,
+            letterSpacing: 1,
+            color: Color(0xFF5F5E5A),
+          ),
+        ),
+        const SizedBox(height: 4),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 13, color: const Color(0xFF5F5E5A)),
+              const SizedBox(width: 4),
+              Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: value,
+                      style: const TextStyle(
+                        fontFamily: 'HankenGrotesk',
+                        fontWeight: FontWeight.w500,
+                        fontSize: 18,
+                        color: Color(0xFF1A1C1C),
+                      ),
+                    ),
+                    TextSpan(
+                      text: ' $unit',
+                      style: const TextStyle(
+                        fontFamily: 'HankenGrotesk',
+                        fontWeight: FontWeight.w400,
+                        fontSize: 12,
+                        color: Color(0xFF1A1C1C),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}

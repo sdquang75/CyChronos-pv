@@ -30,38 +30,37 @@ class _SocialLoginButtonState extends State<SocialLoginButton> {
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
         child: GestureDetector(
-          onTapDown: widget.isLoading
-              ? null
-              : (_) => setState(() => _pressed = true),
-          onTapUp: widget.isLoading
-              ? null
-              : (_) {
-                  setState(() => _pressed = false);
-                  widget.onPressed?.call();
-                },
-          onTapCancel: widget.isLoading
-              ? null
-              : () => setState(() => _pressed = false),
+          onTapDown:
+              widget.isLoading ? null : (_) => setState(() => _pressed = true),
+          onTapUp:
+              widget.isLoading
+                  ? null
+                  : (_) {
+                    setState(() => _pressed = false);
+                    widget.onPressed?.call();
+                  },
+          onTapCancel:
+              widget.isLoading ? null : () => setState(() => _pressed = false),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
-            height: 64,
             width: double.infinity,
             clipBehavior: Clip.antiAlias,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: _hovered
-                    ? const Color(0xFF19005C)
-                    : const Color(0xFFC9C4D5).withValues(alpha: 0.3),
-                width: 2,
+                color:
+                    _hovered
+                        ? const Color(0xFF8BA88E)
+                        : const Color(0xFFC4C8C0).withValues(alpha: 0.75),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF2E0094).withValues(alpha: 0.05),
-                  blurRadius: 30,
-                  offset: const Offset(0, 10),
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 1,
+                  offset: const Offset(0, 1),
                 ),
               ],
             ),
@@ -72,14 +71,15 @@ class _SocialLoginButtonState extends State<SocialLoginButton> {
                   SizedBox(
                     width: 24,
                     height: 24,
-                    child: widget.isLoading
-                        ? const CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Color(0xFF6049C5),
-                            ),
-                          )
-                        : widget.icon,
+                    child:
+                        widget.isLoading
+                            ? const CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Color(0xFF8BA88E),
+                              ),
+                            )
+                            : widget.icon,
                   ),
                   const SizedBox(width: 16),
                   Text(
@@ -87,9 +87,9 @@ class _SocialLoginButtonState extends State<SocialLoginButton> {
                     style: const TextStyle(
                       fontFamily: 'HankenGrotesk',
                       fontFamilyFallback: ['NotoSansJP'],
-                      fontSize: 20,
+                      fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF191C1F),
+                      color: Color(0xFF334155),
                     ),
                   ),
                 ],
