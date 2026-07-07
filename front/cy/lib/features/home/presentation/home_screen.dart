@@ -775,8 +775,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
         child: InkWell(
           onTap: () {
+            final hours = int.tryParse(_hoursController.text) ?? 0;
+            final minutes = int.tryParse(_minutesController.text) ?? 0;
+            final totalMinutes = hours * 60 + minutes;
+            if (totalMinutes < 1) {
+              ScaffoldMessenger.of(context).clearSnackBars();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text(
+                    '時間を入力してください。',
+                    style: TextStyle(
+                      fontFamily: 'HankenGrotesk',
+                      fontFamilyFallback: ['NotoSansJP'],
+                    ),
+                  ),
+                  backgroundColor: const Color(0xFF2A0088),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              );
+              return;
+            }
             ref.read(recommendationProvider.notifier).fetchForCurrentLocation(
-              minutes: _selectedDuration,
+              minutes: totalMinutes,
               type: _selectedPlacesType(),
             );
           },
