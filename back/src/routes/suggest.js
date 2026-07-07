@@ -35,10 +35,10 @@ router.get("/", async (req, res) => {
     );
     const normalizedPlaces = places.normalizePlacesResponse(placesData);
 
-    // フロントで使う名前をそろえる
+    // フロントで使う名前をそろえる。順番は毎回シャッフルして提案に変化をつける
     res.json({
       searchArea,
-      places: normalizedPlaces,
+      places: places.shufflePlaces(normalizedPlaces),
     });
   } catch (error) {
     // どのAPIで失敗したか確認しやすくする

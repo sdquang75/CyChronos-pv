@@ -23,6 +23,7 @@ async function getNearbyPlaces(lng, lat, radius, type) {
     if (type) {
       url.searchParams.set("type", type);              // 施設の種類
     }
+    url.searchParams.set("language", "ja");            // 名前・住所を日本語で返させる(未指定だとローマ字になりがち)
     url.searchParams.set("key", token);                // APIキー
 
     // Google に問い合わせ。HTTP自体が失敗ならthrow
@@ -72,4 +73,15 @@ function normalizePlacesResponse(data) {
     );
 }
 
-module.exports = { getNearbyPlaces, normalizePlace, normalizePlacesResponse };
+// Fisher-Yatesシャッフル。Googleは毎回同じ順(有名さ順)で返すので、提案に変化をつける。
+// 元の配列は変更せずコピーを返す
+function shufflePlaces(places) {
+  const shuffled = [...places];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+module.exports = { getNearbyPlaces, normalizePlace, normalizePlacesResponse, shufflePlaces };
