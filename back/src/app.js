@@ -15,6 +15,7 @@ app.get("/", (req, res) => {
   res.json({ message: "CyChronos API is running" });
 });
 
+app.use("/api/auth", require("./routes/auth"));
 app.use("/api/maps", require("./routes/maps"));
 app.use("/api/suggest", require("./routes/suggest"));
 app.use("/api/trips", tripsRouter);
