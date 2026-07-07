@@ -3,7 +3,12 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 class DestinationListScreen extends StatefulWidget {
-  const DestinationListScreen({super.key});
+  final List<dynamic> places;
+
+  const DestinationListScreen({
+    super.key,
+    required this.places,
+  });
 
   @override
   State<DestinationListScreen> createState() => _DestinationListScreenState();
@@ -12,75 +17,22 @@ class DestinationListScreen extends StatefulWidget {
 class _DestinationListScreenState extends State<DestinationListScreen> {
   String selectedGenre = 'すべて';
 
-  final List<Map<String, String>> destinations = [
-    {
-      'title': '五月山公園',
-      'info': '自転車で約45分',
-      'genre': '自然 / 公園',
-      'image': 'assets/logo.jpg',
-    },
-    {
-      'title': '川沿いカフェ',
-      'info': '自転車で約25分',
-      'genre': 'カフェ',
-      'image': 'assets/logo.jpg',
-    },
-    {
-      'title': '大阪城公園',
-      'info': '自転車で約30分',
-      'genre': '観光 / 公園',
-      'image': 'assets/logo.jpg',
-    },
-    {
-      'title': '箕面の滝',
-      'info': '自転車で約60分',
-      'genre': '自然 / 観光',
-      'image': 'assets/logo.jpg',
-    },
-    {
-      'title': '中之島公園',
-      'info': '自転車で約20分',
-      'genre': '公園 / 観光',
-      'image': 'assets/logo.jpg',
-    },
-    {
-      'title': '靱公園',
-      'info': '自転車で約18分',
-      'genre': '自然 / 公園',
-      'image': 'assets/logo.jpg',
-    },
-    {
-      'title': '北浜カフェ',
-      'info': '自転車で約22分',
-      'genre': 'カフェ / 観光',
-      'image': 'assets/logo.jpg',
-    },
-    {
-      'title': '淀川河川公園',
-      'info': '自転車で約35分',
-      'genre': '自然 / 公園',
-      'image': 'assets/logo.jpg',
-    },
-    {
-      'title': '天王寺公園',
-      'info': '自転車で約40分',
-      'genre': '公園 / 観光',
-      'image': 'assets/logo.jpg',
-    },
-    {
-      'title': '街角ベーカリー',
-      'info': '自転車で約15分',
-      'genre': 'カフェ',
-      'image': 'assets/logo.jpg',
-    },
-  ];
+  // チップの日本語ラベル → Google Places の type(API の genre に入る値)
+  static const _genreTypes = {
+    '自然': ['park', 'natural_feature', 'campground'],
+    'カフェ': ['cafe', 'bakery'],
+    '観光': ['tourist_attraction', 'museum', 'art_gallery', 'place_of_worship'],
+    '公園': ['park'],
+  };
 
   @override
   Widget build(BuildContext context) {
     final filteredDestinations = selectedGenre == 'すべて'
-        ? destinations
-        : destinations.where((destination) {
-            return destination['genre']!.contains(selectedGenre);
+        ? widget.places
+        : widget.places.where((destination) {
+            final genre = destination['genre'];
+            return genre is String &&
+                (_genreTypes[selectedGenre] ?? const []).contains(genre);
           }).toList();
 
     return Scaffold(
@@ -291,7 +243,8 @@ class _SmallChip extends StatelessWidget {
 }
 
 class _DestinationCard extends StatelessWidget {
-  final Map<String, String> destination;
+  // /api/suggest の places 1件分: { id, name, lat, lng, address, rating, genre }
+  final Map<String, dynamic> destination;
 
   const _DestinationCard({
     required this.destination,
@@ -299,6 +252,11 @@ class _DestinationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final name = destination['name']?.toString() ?? '名称不明';
+    final address = destination['address']?.toString() ?? '';
+    final rating = destination['rating'];
+    final genre = destination['genre']?.toString() ?? '-';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(10),
@@ -317,7 +275,7 @@ class _DestinationCard extends StatelessWidget {
             ),
             child: ClipRRect(
               child: Image.asset(
-                destination['image'] ?? 'assets/logo.jpg',
+                'assets/logo.jpg',
                 fit: BoxFit.cover,
               ),
             ),
@@ -330,7 +288,9 @@ class _DestinationCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  destination['title']!,
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -346,8 +306,10 @@ class _DestinationCard extends StatelessWidget {
                     border: Border.all(color: Colors.black45),
                   ),
                   child: Text(
-                    destination['info']!,
+                    address.isNotEmpty ? address : '住所情報なし',
                     textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
@@ -364,7 +326,7 @@ class _DestinationCard extends StatelessWidget {
                     border: Border.all(color: Colors.black45),
                   ),
                   child: Text(
-                    destination['genre']!,
+                    rating != null ? '$genre ★$rating' : genre,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 10,
