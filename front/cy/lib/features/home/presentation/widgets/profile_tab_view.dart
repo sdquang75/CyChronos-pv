@@ -46,18 +46,16 @@ class ProfileTabView extends ConsumerWidget {
                 CircleAvatar(
                   radius: 48,
                   backgroundColor: const Color(0xFFF1EBFF),
-                  backgroundImage:
-                      (user?.photoUrl != null)
-                          ? NetworkImage(user!.photoUrl!)
-                          : null,
-                  child:
-                      (user?.photoUrl == null)
-                          ? const Icon(
-                            Icons.person_rounded,
-                            size: 44,
-                            color: Color(0xFF19005C),
-                          )
-                          : null,
+                  backgroundImage: (user?.photoUrl != null)
+                      ? NetworkImage(user!.photoUrl!)
+                      : null,
+                  child: (user?.photoUrl == null)
+                      ? const Icon(
+                          Icons.person_rounded,
+                          size: 44,
+                          color: Color(0xFF19005C),
+                        )
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 Text(

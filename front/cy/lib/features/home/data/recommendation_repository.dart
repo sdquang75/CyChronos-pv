@@ -13,10 +13,7 @@ class RecommendationRepository {
   }) async {
     final response = await _dio.post(
       '/api/recommendations',
-      data: {
-        'latitude': latitude,
-        'longitude': longitude,
-      },
+      data: {'latitude': latitude, 'longitude': longitude},
     );
     return response.data;
   }

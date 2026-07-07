@@ -1,13 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../domain/weather_condition.dart';
+import '../../domain/weather_state.dart';
+import '../providers/weather_provider.dart';
 
-// Static weather summary card (mock data — no live weather API yet).
+// Current weather summary card, backed by Open-Meteo (no API key required).
 // Laid out as a single horizontal row (icon, temp/condition, stats) to keep
 // the card's vertical footprint small.
-class WeatherHeaderCard extends StatelessWidget {
+class WeatherHeaderCard extends ConsumerWidget {
   const WeatherHeaderCard({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(weatherProvider);
+
+    final condition = switch (state) {
+      WeatherLoaded(:final data) => WeatherCondition.fromCode(data.weatherCode),
+      _ => const WeatherCondition('晴れ', Icons.wb_sunny_rounded),
+    };
+    final temperatureText = switch (state) {
+      WeatherLoaded(:final data) => '${data.temperatureC.round()}°C',
+      _ => '--°C',
+    };
+    final windText = switch (state) {
+      WeatherLoaded(:final data) => data.windSpeedKmh.round().toString(),
+      _ => '--',
+    };
+    final humidityText = switch (state) {
+      WeatherLoaded(:final data) => data.humidityPercent.toString(),
+      _ => '--',
+    };
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -26,20 +49,31 @@ class WeatherHeaderCard extends StatelessWidget {
                 color: const Color(0xFFE7F0E4),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Icon(
-                Icons.wb_sunny_rounded,
-                color: Color(0xFF4F604E),
-                size: 24,
-              ),
+              child: state is WeatherLoading
+                  ? const Center(
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF4F604E),
+                        ),
+                      ),
+                    )
+                  : Icon(
+                      condition.icon,
+                      color: const Color(0xFF4F604E),
+                      size: 24,
+                    ),
             ),
             const SizedBox(width: 10),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
-              children: const [
+              children: [
                 Text(
-                  '24°C',
-                  style: TextStyle(
+                  temperatureText,
+                  style: const TextStyle(
                     fontFamily: 'HankenGrotesk',
                     fontWeight: FontWeight.w600,
                     fontSize: 22,
@@ -48,9 +82,10 @@ class WeatherHeaderCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Sunny',
-                  style: TextStyle(
+                  condition.label,
+                  style: const TextStyle(
                     fontFamily: 'HankenGrotesk',
+                    fontFamilyFallback: ['NotoSansJP'],
                     fontWeight: FontWeight.w500,
                     fontSize: 12,
                     color: Color(0xFF5F5E5A),
@@ -71,21 +106,21 @@ class WeatherHeaderCard extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 12),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
+                  children: [
                     Flexible(
                       child: _WeatherStat(
                         icon: Icons.air_rounded,
-                        label: 'WIND',
-                        value: '12',
+                        label: '風速',
+                        value: windText,
                         unit: 'km/h',
                       ),
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Flexible(
                       child: _WeatherStat(
                         icon: Icons.water_drop_rounded,
-                        label: 'HUMIDITY',
-                        value: '45',
+                        label: '湿度',
+                        value: humidityText,
                         unit: '%',
                       ),
                     ),
@@ -123,6 +158,7 @@ class _WeatherStat extends StatelessWidget {
           label,
           style: const TextStyle(
             fontFamily: 'JetBrainsMono',
+            fontFamilyFallback: ['NotoSansJP'],
             fontWeight: FontWeight.w500,
             fontSize: 10,
             letterSpacing: 1,

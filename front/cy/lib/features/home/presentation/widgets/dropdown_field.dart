@@ -27,10 +27,7 @@ class DropdownField extends StatelessWidget {
   final ValueChanged<String?> onChanged;
 
   String get _selectedLabel => options
-      .firstWhere(
-        (o) => o.id == selectedId,
-        orElse: () => options.first,
-      )
+      .firstWhere((o) => o.id == selectedId, orElse: () => options.first)
       .label;
 
   Future<void> _openPicker(BuildContext context) async {
@@ -86,19 +83,19 @@ class DropdownField extends StatelessWidget {
                         style: TextStyle(
                           fontFamily: 'HankenGrotesk',
                           fontFamilyFallback: const ['NotoSansJP'],
-                          fontWeight:
-                              isSelected ? FontWeight.w700 : FontWeight.w400,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w400,
                           fontSize: 16,
                           color: const Color(0xFF1B1C1C),
                         ),
                       ),
-                      trailing:
-                          isSelected
-                              ? const Icon(
-                                Icons.check_rounded,
-                                color: Color(0xFF4A654E),
-                              )
-                              : null,
+                      trailing: isSelected
+                          ? const Icon(
+                              Icons.check_rounded,
+                              color: Color(0xFF4A654E),
+                            )
+                          : null,
                     );
                   },
                 ),
@@ -138,10 +135,7 @@ class DropdownField extends StatelessWidget {
             onTap: () => _openPicker(context),
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 16,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               decoration: BoxDecoration(
                 color: const Color(0xFFF6F3F2),
                 borderRadius: BorderRadius.circular(8),

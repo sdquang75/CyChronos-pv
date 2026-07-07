@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/recommendation_state.dart';
 import 'providers/recommendation_provider.dart';
+import 'providers/weather_provider.dart';
 import 'widgets/history_tab_view.dart';
 import 'widgets/home_bottom_nav_bar.dart';
 import 'widgets/home_tab_view.dart';
@@ -29,11 +30,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Prime the location permission popup as soon as the Home screen opens
-    // (foundation for the upcoming live weather card — the result isn't
-    // used yet, this just gets the OS prompt out of the way early).
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(locationServiceProvider).ensurePermissionRequested();
+    // Prime the location permission popup as soon as the Home screen opens,
+    // then fetch the current weather for the Home tab's weather card.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await ref.read(locationServiceProvider).ensurePermissionRequested();
+      ref.read(weatherProvider.notifier).fetchForCurrentLocation();
     });
   }
 
@@ -107,23 +108,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   HomeTabView(
                     scrollController: _scrollController,
                     stayDurationMinutes: _stayDurationMinutes,
-                    onStayDurationChanged:
-                        (id) => setState(
-                          () => _stayDurationMinutes = id ?? _stayDurationMinutes,
-                        ),
+                    onStayDurationChanged: (id) => setState(
+                      () => _stayDurationMinutes = id ?? _stayDurationMinutes,
+                    ),
                     spareTimeMinutes: _spareTimeMinutes,
-                    onSpareTimeChanged:
-                        (id) => setState(
-                          () => _spareTimeMinutes = id ?? _spareTimeMinutes,
-                        ),
+                    onSpareTimeChanged: (id) => setState(
+                      () => _spareTimeMinutes = id ?? _spareTimeMinutes,
+                    ),
                     selectedGenreId: _selectedGenreId,
-                    onGenreChanged:
-                        (id) => setState(() => _selectedGenreId = id),
-                    onFindDestination:
-                        () =>
-                            ref
-                                .read(recommendationProvider.notifier)
-                                .fetchForCurrentLocation(),
+                    onGenreChanged: (id) =>
+                        setState(() => _selectedGenreId = id),
+                    onFindDestination: () => ref
+                        .read(recommendationProvider.notifier)
+                        .fetchForCurrentLocation(),
                   ),
                   const RouteTabView(),
                   const HistoryTabView(),

@@ -89,29 +89,28 @@ class _RouteCard extends StatelessWidget {
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
-            children:
-                tags.map((t) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1EBFF),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      t,
-                      style: const TextStyle(
-                        fontFamily: 'HankenGrotesk',
-                        fontFamilyFallback: ['NotoSansJP'],
-                        fontSize: 12,
-                        color: Color(0xFF19005C),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  );
-                }).toList(),
+            children: tags.map((t) {
+              return Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1EBFF),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  t,
+                  style: const TextStyle(
+                    fontFamily: 'HankenGrotesk',
+                    fontFamilyFallback: ['NotoSansJP'],
+                    fontSize: 12,
+                    color: Color(0xFF19005C),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              );
+            }).toList(),
           ),
         ],
       ),

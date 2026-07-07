@@ -101,8 +101,9 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
   }
 
   void _handleDragEnd() {
-    final settled =
-        (_dragPosition ?? widget.currentIndex.toDouble()).round().toDouble();
+    final settled = (_dragPosition ?? widget.currentIndex.toDouble())
+        .round()
+        .toDouble();
     setState(() => _dragPosition = null);
     _animateTo(settled);
   }
@@ -150,8 +151,8 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
               final tabWidth = constraints.maxWidth / _tabCount;
               return GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onHorizontalDragUpdate:
-                    (details) => _handleDragUpdate(details, tabWidth),
+                onHorizontalDragUpdate: (details) =>
+                    _handleDragUpdate(details, tabWidth),
                 onHorizontalDragEnd: (_) => _handleDragEnd(),
                 onHorizontalDragCancel: _handleDragEnd,
                 // No fixed height here: the Stack sizes itself to the tab
@@ -203,8 +204,9 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
 
   Widget _buildTabItem(int index) {
     final isSelected = widget.currentIndex == index;
-    final color =
-        isSelected ? const Color(0xFF4F604E) : const Color(0xFF5F5E5A);
+    final color = isSelected
+        ? const Color(0xFF4F604E)
+        : const Color(0xFF5F5E5A);
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

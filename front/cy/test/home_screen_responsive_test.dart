@@ -5,6 +5,7 @@ import 'package:cy/features/home/presentation/widgets/floating_cta_button.dart';
 import 'package:cy/features/home/presentation/widgets/home_bottom_nav_bar.dart';
 import 'package:cy/features/home/presentation/widgets/home_tab_view.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -28,17 +29,19 @@ void main() {
       await setViewport(tester, entry.value);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: HomeTabView(
-              scrollController: ScrollController(),
-              stayDurationMinutes: '30',
-              onStayDurationChanged: (_) {},
-              spareTimeMinutes: '30',
-              onSpareTimeChanged: (_) {},
-              selectedGenreId: null,
-              onGenreChanged: (_) {},
-              onFindDestination: () {},
+        ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: HomeTabView(
+                scrollController: ScrollController(),
+                stayDurationMinutes: '30',
+                onStayDurationChanged: (_) {},
+                spareTimeMinutes: '30',
+                onSpareTimeChanged: (_) {},
+                selectedGenreId: null,
+                onGenreChanged: (_) {},
+                onFindDestination: () {},
+              ),
             ),
           ),
         ),
@@ -77,7 +80,9 @@ void main() {
       await setViewport(tester, entry.value);
 
       await tester.pumpWidget(
-        MaterialApp(home: Scaffold(body: FloatingCtaButton(onTap: () {}))),
+        MaterialApp(
+          home: Scaffold(body: FloatingCtaButton(onTap: () {})),
+        ),
       );
       await tester.pumpAndSettle();
 
