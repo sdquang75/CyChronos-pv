@@ -6,11 +6,14 @@
 - データ形式: リクエスト・レスポンスともに JSON(`Content-Type: application/json`)
 - DB: MySQL 8.4 / データベース `cychronos`
 - 外部API: Mapbox(`.env` の `MAPBOX_ACCESS_TOKEN`)、Google Places(`.env` の `GOOGLE_PLACES_API_KEY`)
+- 認証: Googleアカウント(Firebase Authentication)。フロントでGoogleサインインして取得した **IDトークン** を `Authorization: Bearer <IDトークン>` ヘッダーで送信し、バックエンドが `firebase-admin` で検証する(`.env` の `FIREBASE_PROJECT_ID`)
 
 ## エンドポイント一覧
 
 | 機能 | メソッド | パス | 引数 |
 |---|---|---|---|
+| アカウント作成 | POST | `/api/auth/register` | IDトークン(Authorizationヘッダー) |
+| ログイン | POST | `/api/auth/login` | IDトークン(Authorizationヘッダー) |
 | トリップ開始 | POST | `/api/trips/start` | user_id(ボディ) |
 | トリップ終了 | POST | `/api/trips/{trip_id}/end` | user_id(ボディ), trip_id(パス) |
 | 座標保存 | POST | `/api/locations` | user_id, trip_id, lat, lng(ボディ) |
@@ -21,6 +24,8 @@
 | 自転車ルート取得 | GET | `/api/maps/route` | fromLng, fromLat, toLng, toLat(クエリ) |
 | 周辺スポット検索 | GET | `/api/maps/places` | lng, lat, radius, type(クエリ) |
 | スポット提案 | GET | `/api/suggest` | lng, lat, minutes, type(クエリ) |
+
+認証系の想定フロー: フロントでGoogleサインイン(Firebase Auth)→ 初回のみ**アカウント作成**で `users` に登録 → 2回目以降はアプリ起動時に**ログイン**で `user_id` とプロフィールを取得 → 以降のAPIはその `user_id` を使って呼び出す。
 
 想定フロー: **トリップ開始**で `trip_id` を取得 → ナビ画面が一定間隔で**座標保存**を呼ぶ → 走行終了時に**トリップ終了** → 履歴画面で**取得**、不要になったら**削除**。
 
@@ -481,6 +486,85 @@ GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}
 
 ---
 
+## 9. アカウント作成(Googleアカウント)
+
+Googleサインイン(Firebase Authentication)で取得したIDトークンを検証し、ユーザーを `users` テーブルに登録する。email・表示名・プロフィール画像はIDトークンのクレームから取得するため、リクエストボディは不要。
+
+論理削除済み(`deleted_at` あり)の同一アカウントが存在する場合は再有効化して返す。
+
+```
+POST /api/auth/register
+```
+
+### リクエストヘッダー
+
+| 項目 | 必須 | 説明 |
+|---|---|---|
+| Authorization | ○ | `Bearer <Firebase IDトークン>` |
+
+リクエストボディ: なし
+
+### レスポンス(201 Created)
+
+```json
+{
+  "user_id": 1,
+  "firebase_uid": "AbCdEfGh1234567890",
+  "email": "taro@gmail.com",
+  "display_name": "山田 太郎",
+  "photo_url": "https://lh3.googleusercontent.com/a/xxxx",
+  "created_at": "2026-07-07T02:00:00.000Z",
+  "updated_at": "2026-07-07T02:00:00.000Z"
+}
+```
+
+| ステータス | 内容 |
+|---|---|
+| 201 Created | 登録成功。作成されたユーザー情報を返す |
+| 200 OK | 論理削除済みアカウントを再有効化した場合。ユーザー情報を返す |
+| 401 Unauthorized | Authorizationヘッダー未指定、またはIDトークンの検証失敗 |
+| 409 Conflict | 同じGoogleアカウントで登録済み `{"error": "このアカウントは登録済みです"}` |
+
+---
+
+## 10. ログイン(Googleアカウント)
+
+IDトークンを検証し、登録済みユーザーの情報を返す。あわせてGoogle側の最新プロフィール(email・表示名・画像)を `users` に反映する。未登録の場合は404を返すので、フロントは**アカウント作成**(9)を呼ぶこと。
+
+```
+POST /api/auth/login
+```
+
+### リクエストヘッダー
+
+| 項目 | 必須 | 説明 |
+|---|---|---|
+| Authorization | ○ | `Bearer <Firebase IDトークン>` |
+
+リクエストボディ: なし
+
+### レスポンス(200 OK)
+
+```json
+{
+  "user_id": 1,
+  "firebase_uid": "AbCdEfGh1234567890",
+  "email": "taro@gmail.com",
+  "display_name": "山田 太郎",
+  "photo_url": "https://lh3.googleusercontent.com/a/xxxx",
+  "created_at": "2026-07-07T02:00:00.000Z",
+  "updated_at": "2026-07-07T03:10:00.000Z"
+}
+```
+
+| ステータス | 内容 |
+|---|---|
+| 200 OK | 認証成功。ユーザー情報を返す |
+| 401 Unauthorized | Authorizationヘッダー未指定、またはIDトークンの検証失敗 |
+| 404 Not Found | ユーザー未登録 `{"error": "アカウントが未登録です。先にアカウント作成を行ってください"}` |
+
+---
+
 ## 共通エラー
 
 | ステータス | 発生条件 |
@@ -493,6 +577,9 @@ GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}
 | ファイル | 内容 |
 |---|---|
 | `src/app.js` | Expressアプリ本体・ルーターのマウント |
+| `src/routes/auth.js` | アカウント作成・ログインAPI |
+| `src/middleware/auth.js` | Firebase IDトークン検証ミドルウェア |
+| `src/services/firebase.js` | firebase-admin 初期化 |
 | `src/routes/locations.js` | 座標保存API |
 | `src/routes/trips.js` | ログ取得・削除API |
 | `src/routes/maps.js` | 地図系API(到達圏・ルート・周辺スポット検索) |
