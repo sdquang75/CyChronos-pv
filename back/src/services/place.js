@@ -26,9 +26,28 @@ async function getNearbyPlaces(lng, lat, radius, type) {
     url.searchParams.set("language", "ja");            // 名前・住所を日本語で返させる(未指定だとローマ字になりがち)
     url.searchParams.set("key", token);                // APIキー
 
-    // Google に問い合わせ。HTTP自体が失敗ならthrow
-    // ※注意: キー不正などでも 200 が返ることがあり、本当の成否は data.status に入る
-    const response = await fetch(url);
+  const data = await fetchPlacesJson(url);
+  const results = [...(data.results ?? [])];
+
+  // Googleは1回につき最大20件・毎回同じ「有名さ順」しか返さない。
+  // next_page_token で2ページ目(最大+20件)を取り、提案の母集団を増やす。
+  // 3ページ目まで取ると更に+2秒かかるので、いまは2ページで止めている。
+  if (data.next_page_token) {
+    try {
+      results.push(...(await fetchNextPage(data.next_page_token, token)));
+    } catch (error) {
+      // 2ページ目の失敗は致命傷ではないので、1ページ目だけで続行する
+      console.error("Nearby Search 2ページ目の取得に失敗:", error.message);
+    }
+  }
+
+  return { ...data, results };
+}
+
+// Google に問い合わせ。HTTP自体が失敗ならthrow
+// ※注意: キー不正などでも 200 が返ることがあり、本当の成否は data.status に入る
+async function fetchPlacesJson(url) {
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Google Maps API error: ${response.status} ${response.statusText}`);
   }
@@ -38,6 +57,28 @@ async function getNearbyPlaces(lng, lat, radius, type) {
   }
 
   throw new Error(`Google Maps API error: ${data.status}`);
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// next_page_token は発行直後は無効で、有効になるまで数秒かかるGoogle側の癖がある。
+// 2秒待ってから取得し、まだ無効(INVALID_REQUEST)ならもう1回だけ待って再試行する
+async function fetchNextPage(pageToken, token) {
+  const url = new URL(`${BASE_URL}/maps/api/place/nearbysearch/json`);
+  url.searchParams.set("pagetoken", pageToken); // 検索条件は概ねトークンに入っているが…
+  url.searchParams.set("language", "ja");       // language は引き継がれず英語に戻るので毎回付ける
+  url.searchParams.set("key", token);
+
+  await sleep(2000);
+  try {
+    const data = await fetchPlacesJson(url);
+    return data.results ?? [];
+  } catch (error) {
+    if (!error.message.includes("INVALID_REQUEST")) throw error;
+    await sleep(1500);
+    const data = await fetchPlacesJson(url);
+    return data.results ?? [];
+  }
 }
 
 function normalizePlace(place) {
