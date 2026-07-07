@@ -430,15 +430,15 @@ class _BottomNavigation extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _BottomNavItem(
-            svgPath: 'assets/home_nav.svg',
+            svgPath: 'assets/icons/home_nav.svg',
             routePath: '/home',
           ),
           _BottomNavItem(
-            svgPath: 'assets/history_nav.svg',
+            svgPath: 'assets/icons/history_nav.svg',
             routePath: '/history',
           ),
           _BottomNavItem(
-            svgPath: 'assets/settings_nav.svg',
+            svgPath: 'assets/icons/settings_nav.svg',
             routePath: '/settings',
           ),
         ],

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'app_icons.dart';
+import 'package:cy/core/icons/app_icons.dart';
 
 // A single dropdown option shown in a DropdownField's picker sheet.
 class DropdownOption {

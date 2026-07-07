@@ -91,9 +91,9 @@ flutter:
     - assets/logo.png
     - assets/logo_long.png
     - assets/testimage.png
-    - assets/history_nav.svg
-    - assets/settings_nav.svg
-    - assets/home_nav.svg
+    - assets/icons/history_nav.svg
+    - assets/icons/settings_nav.svg
+    - assets/icons/home_nav.svg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

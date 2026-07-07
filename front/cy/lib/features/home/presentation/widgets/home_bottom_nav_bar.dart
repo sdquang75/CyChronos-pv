@@ -1,12 +1,11 @@
-import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'app_icons.dart';
+import 'package:cy/core/icons/app_icons.dart';
 
 // Floating frosted-glass pill bottom nav (Explore/Ride/Stats/Settings). The
-// active-tab indicator morphs (slides + bumps in scale) between tabs on tap,
-// and can also be dragged directly.
+// active-tab indicator slides between tabs on tap, and can also be dragged
+// directly.
 class HomeBottomNavBar extends StatefulWidget {
   const HomeBottomNavBar({
     super.key,
@@ -25,10 +24,10 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
     with SingleTickerProviderStateMixin {
   static const _tabCount = 4;
   static const _iconTabs = [
-    (label: 'Explore', svg: AppIcons.exploreTab),
-    (label: 'Ride', svg: AppIcons.rideTab),
-    (label: 'Stats', svg: AppIcons.statsTab),
-    (label: 'Settings', svg: AppIcons.settingsTab),
+    (label: 'Explore', svg: AppIcons.exploreTab, width: 20.0, height: 20.0),
+    (label: 'Ride', svg: AppIcons.rideTab, width: 24.0, height: 20.5),
+    (label: 'Stats', svg: AppIcons.statsTab, width: 22.0, height: 17.0),
+    (label: 'Settings', svg: AppIcons.settingsTab, width: 20.1, height: 20.0),
   ];
 
   late final AnimationController _controller;
@@ -45,7 +44,7 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
     _to = widget.currentIndex.toDouble();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 420),
+      duration: const Duration(milliseconds: 280),
     )..value = 1;
   }
 
@@ -72,20 +71,11 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
       ..forward();
   }
 
-  // Slight overshoot before settling reads as a "liquid" morph rather than a
-  // linear slide.
+  // No overshoot: settles directly into place for a firmer, iOS-like glide.
   double get _indicatorPosition {
     if (_dragPosition != null) return _dragPosition!;
-    final t = Curves.easeOutBack.transform(_controller.value);
+    final t = Curves.easeOutCubic.transform(_controller.value);
     return _from + (_to - _from) * t;
-  }
-
-  // Bumps up mid-transition and settles back to 1.0 — the "scale nhẹ rồi ổn
-  // định" bump the pill background gets while it moves.
-  double get _bumpScale {
-    if (_dragPosition != null) return 1.04;
-    final t = _controller.value.clamp(0.0, 1.0);
-    return 1 + 0.12 * math.sin(math.pi * t);
   }
 
   void _handleDragUpdate(DragUpdateDetails details, double tabWidth) {
@@ -110,9 +100,13 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 35, right: 35, top: 15, bottom: 5),
-      child: _buildPill(),
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.only(bottom: 5),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 35, right: 35, top: 15),
+        child: _buildPill(),
+      ),
     );
   }
 
@@ -134,8 +128,15 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
               filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.8),
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(48),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      offset: const Offset(0, -4),
+                      blurRadius: 20,
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -169,15 +170,12 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
                           top: -6,
                           bottom: -6,
                           width: tabWidth - 4,
-                          child: Transform.scale(
-                            scale: _bumpScale,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFF687966,
-                                ).withValues(alpha: 0.3),
-                                borderRadius: BorderRadius.circular(24),
-                              ),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF687966,
+                              ).withValues(alpha: 0.3),
+                              borderRadius: BorderRadius.circular(24),
                             ),
                           ),
                         );
@@ -216,8 +214,8 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
         children: [
           SvgPicture.string(
             _iconTabs[index].svg,
-            width: 20,
-            height: 20,
+            width: _iconTabs[index].width,
+            height: _iconTabs[index].height,
             colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
           ),
           const SizedBox(height: 4),

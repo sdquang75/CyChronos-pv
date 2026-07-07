@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'app_icons.dart';
+import 'package:cy/core/icons/app_icons.dart';
 
 // Primary CTA button ("目的地を探す") shown above the bottom nav on the Home tab.
 class FloatingCtaButton extends StatelessWidget {
