@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../auth/domain/auth_state.dart';
@@ -19,19 +20,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
 
   // Interactive States
-  int _selectedDuration = 45; // default 45 mins
+  final TextEditingController _hoursController = TextEditingController(text: '0');
+  final TextEditingController _minutesController = TextEditingController(text: '45');
   final Set<String> _selectedGenres = {'Cafe'}; // default Cafe selected
-  int _currentTab = 0; // 0: HOME, 1: ROUTE, 2: HISTORY, 3: PROFILE
-  bool _advancedExpanded = false;
+  int _currentTab = 0; // 0: HOME, 1: HISTORY, 2: PROFILE
 
-  // Advanced Config state variables (3 sliders)
-  double _speedKmh = 18.0;     // Cruising Speed
-  double _restMinutes = 15.0;  // Rest Duration
-  double _restFreqMin = 30.0;  // Rest Frequency (every X minutes)
+  // Cruising Speed setting (configured in Profile tab)
+  double _speedKmh = 18.0;
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _hoursController.dispose();
+    _minutesController.dispose();
     super.dispose();
   }
 
@@ -76,25 +77,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  void _toggleAdvanced() {
-    setState(() {
-      _advancedExpanded = !_advancedExpanded;
-    });
-
-    if (_advancedExpanded) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
-          final double targetOffset = _scrollController.offset + 230.0;
-          _scrollController.animateTo(
-            targetOffset,
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeInOutCubic,
-          );
-        }
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     ref.listen<RecommendationState>(recommendationProvider, (previous, next) {
@@ -116,7 +98,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 index: _currentTab,
                 children: [
                   _buildHomeTab(),
-                  _buildRouteTab(),
                   _buildHistoryTab(),
                   _buildProfileTab(),
                 ],
@@ -193,45 +174,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           _buildDurationSection(),
           const SizedBox(height: 36),
           _buildGenreSection(),
-          const SizedBox(height: 32),
-          _buildAdvancedConfigCard(),
         ],
       ),
     );
   }
 
-  // TAB 1: ROUTE SEARCH/EXPLORE SCREEN (MOCKUP)
-  Widget _buildRouteTab() {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 120),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildTabHeader(title: 'ルート探索', subtitle: '最適なサイクリングパス'),
-          const SizedBox(height: 24),
-          // Suggested Route Cards
-          _buildRouteCard(
-            title: '海沿いカフェ巡りコース',
-            distance: '18.5 km',
-            duration: '1時間15分',
-            difficulty: '初級',
-            tags: ['カフェ', '絶景'],
-          ),
-          const SizedBox(height: 16),
-          _buildRouteCard(
-            title: '歴史ある寺院と緑の丘ルート',
-            distance: '34.2 km',
-            duration: '2時間30分',
-            difficulty: '中級',
-            tags: ['寺院', '自然', 'ヒルクライム'],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // TAB 2: HISTORY ACTIVITIES SCREEN (MOCKUP)
+  // TAB 1: HISTORY ACTIVITIES SCREEN (MOCKUP)
   Widget _buildHistoryTab() {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -270,7 +218,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  // TAB 3: USER PROFILE SCREEN WITH LOGOUT BUTTON
+  // TAB 2: USER PROFILE SCREEN WITH LOGOUT BUTTON
   Widget _buildProfileTab() {
     final authState = ref.watch(authProvider);
     final user = authState is AuthAuthenticated ? authState.user : null;
@@ -376,6 +324,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 32),
+
+          // Cruising Speed Setting
+          const Text(
+            'SETTINGS',
+            style: TextStyle(
+              fontFamily: 'JetBrainsMono',
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+              letterSpacing: 0.7,
+              color: Color(0xFF484553),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFC9C4D5).withValues(alpha: 0.3)),
+            ),
+            child: _buildSliderRow(
+              label: '巡航速度',
+              valueText: '${_speedKmh.toStringAsFixed(1)} km/h',
+              value: _speedKmh,
+              min: 10.0,
+              max: 30.0,
+              divisions: 20,
+              onChanged: (val) {
+                setState(() {
+                  _speedKmh = val;
+                });
+              },
+            ),
           ),
           const SizedBox(height: 40),
 
@@ -516,9 +500,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  // Duration Picker
+  // Duration Input (hours & minutes text fields, digits only)
   Widget _buildDurationSection() {
-    final durations = [15, 30, 45, 60, 90, 120, 150, 180];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -533,76 +516,77 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        SizedBox(
-          height: 74,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            itemCount: durations.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final dur = durations[index];
-              final isSelected = _selectedDuration == dur;
-
-              return Center(
-                child: TweenAnimationBuilder<double>(
-                  duration: const Duration(milliseconds: 200),
-                  tween: Tween(begin: 0.0, end: isSelected ? 1.0 : 0.0),
-                  builder: (context, value, child) {
-                    final color = Color.lerp(
-                      const Color(0xFFFFFFFF).withValues(alpha: 0.8),
-                      const Color(0xFF19005C).withValues(alpha: 0.85),
-                      value,
-                    )!;
-                    final textColor = Color.lerp(
-                      const Color(0xFF191C1F),
-                      const Color(0xFFFFFFFF),
-                      value,
-                    )!;
-                    final borderColor = Color.lerp(
-                      const Color(0xFFC9C4D5).withValues(alpha: 0.5),
-                      const Color(0xFF19005C).withValues(alpha: 0.8),
-                      value,
-                    )!;
-
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedDuration = dur;
-                        });
-                      },
-                      child: Container(
-                        height: 66,
-                        constraints: BoxConstraints(
-                          minWidth: dur >= 100 ? 120 : 100,
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 18),
-                        decoration: BoxDecoration(
-                          color: color,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: borderColor, width: 1.5),
-                        ),
-                        child: Center(
-                          child: Text(
-                            dur >= 60 ? '${dur ~/ 60}時間' : '$dur分',
-                            style: TextStyle(
-                              fontFamily: 'HankenGrotesk',
-                              fontFamilyFallback: ['NotoSansJP'],
-                              fontWeight: FontWeight.w600,
-                              fontSize: 22,
-                              color: textColor,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
-          ),
+        Row(
+          children: [
+            _buildDurationField(controller: _hoursController),
+            const SizedBox(width: 8),
+            const Text(
+              '時間',
+              style: TextStyle(
+                fontFamily: 'HankenGrotesk',
+                fontFamilyFallback: ['NotoSansJP'],
+                fontWeight: FontWeight.w600,
+                fontSize: 18,
+                color: Color(0xFF191C1F),
+              ),
+            ),
+            const SizedBox(width: 24),
+            _buildDurationField(controller: _minutesController),
+            const SizedBox(width: 8),
+            const Text(
+              '分',
+              style: TextStyle(
+                fontFamily: 'HankenGrotesk',
+                fontFamilyFallback: ['NotoSansJP'],
+                fontWeight: FontWeight.w600,
+                fontSize: 18,
+                color: Color(0xFF191C1F),
+              ),
+            ),
+          ],
         ),
       ],
+    );
+  }
+
+  Widget _buildDurationField({required TextEditingController controller}) {
+    return SizedBox(
+      width: 90,
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(3),
+        ],
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontFamily: 'HankenGrotesk',
+          fontFamilyFallback: ['NotoSansJP'],
+          fontWeight: FontWeight.w600,
+          fontSize: 22,
+          color: Color(0xFF191C1F),
+        ),
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: const Color(0xFFFFFFFF).withValues(alpha: 0.8),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(24),
+            borderSide: BorderSide(
+              color: const Color(0xFFC9C4D5).withValues(alpha: 0.5),
+              width: 1.5,
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(24),
+            borderSide: BorderSide(
+              color: const Color(0xFF19005C).withValues(alpha: 0.8),
+              width: 1.5,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -697,155 +681,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           }).toList(),
         ),
       ],
-    );
-  }
-
-  // Advanced Config Card (Expandable with 3 sliders)
-  Widget _buildAdvancedConfigCard() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.7),
-        border: Border.all(color: Colors.white),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2E0094).withValues(alpha: 0.05),
-            blurRadius: 30,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: _toggleAdvanced,
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          SvgPicture.string(
-                            _kSettingsSvg,
-                            width: 20,
-                            height: 20,
-                            colorFilter: const ColorFilter.mode(
-                              Color(0xFF19005C),
-                              BlendMode.srcIn,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          const Text(
-                            '詳細設定',
-                            style: TextStyle(
-                              fontFamily: 'HankenGrotesk',
-                              fontFamilyFallback: ['NotoSansJP'],
-                              fontWeight: FontWeight.w700,
-                              fontSize: 24,
-                              color: Color(0xFF19005C),
-                            ),
-                          ),
-                        ],
-                      ),
-                      AnimatedRotation(
-                        turns: _advancedExpanded ? 0.25 : 0.0,
-                        duration: const Duration(milliseconds: 200),
-                        child: const Icon(
-                          Icons.chevron_right_rounded,
-                          color: Color(0xFF484553),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '速度・休憩時間の設定',
-                    style: TextStyle(
-                      fontFamily: 'HankenGrotesk',
-                      fontFamilyFallback: ['NotoSansJP'],
-                      fontWeight: FontWeight.w400,
-                      fontSize: 16,
-                      color: Color(0xFF484553),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Expanding sliders area
-          AnimatedSize(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            clipBehavior: Clip.antiAlias,
-            child: !_advancedExpanded
-                ? const SizedBox.shrink()
-                : Padding(
-                    padding: const EdgeInsets.only(left: 24, right: 24, bottom: 32),
-                    child: Column(
-                      children: [
-                        const Divider(height: 1, color: Color(0x33C9C4D5)),
-                        const SizedBox(height: 24),
-
-                        // Slider 1: 巡航速度 (Cruising Speed)
-                        _buildSliderRow(
-                          label: '巡航速度',
-                          valueText: '${_speedKmh.toStringAsFixed(1)} km/h',
-                          value: _speedKmh,
-                          min: 10.0,
-                          max: 30.0,
-                          divisions: 20,
-                          onChanged: (val) {
-                            setState(() {
-                              _speedKmh = val;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Slider 2: 休憩時間 (Rest Duration)
-                        _buildSliderRow(
-                          label: '休憩時間',
-                          valueText: '${_restMinutes.toInt()} 分',
-                          value: _restMinutes,
-                          min: 5.0,
-                          max: 45.0,
-                          divisions: 8,
-                          onChanged: (val) {
-                            setState(() {
-                              _restMinutes = val;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Slider 3: 休憩頻度 (Rest Frequency)
-                        _buildSliderRow(
-                          label: '休憩頻度',
-                          valueText: '毎 ${_restFreqMin.toInt()} 分',
-                          value: _restFreqMin,
-                          min: 15.0,
-                          max: 120.0,
-                          divisions: 7,
-                          onChanged: (val) {
-                            setState(() {
-                              _restFreqMin = val;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -967,7 +802,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildBottomNavBar() {
     final tabs = [
       {'label': 'HOME', 'svg': _kHomeTabSvg},
-      {'label': 'ROUTE', 'svg': _kRouteTabSvg},
       {'label': 'HISTORY', 'svg': _kHistoryTabSvg},
       {'label': 'PROFILE', 'svg': _kProfileTabSvg},
     ];
@@ -1036,90 +870,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   // MOCKUP SUB-WIDGETS FOR TABS
-
-  Widget _buildRouteCard({
-    required String title,
-    required String distance,
-    required String duration,
-    required String difficulty,
-    required List<String> tags,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFC9C4D5).withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontFamily: 'HankenGrotesk',
-              fontFamilyFallback: ['NotoSansJP'],
-              fontWeight: FontWeight.w700,
-              fontSize: 18,
-              color: Color(0xFF19005C),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _buildRouteStat(Icons.directions_bike_rounded, distance),
-              const SizedBox(width: 16),
-              _buildRouteStat(Icons.timer_rounded, duration),
-              const SizedBox(width: 16),
-              _buildRouteStat(Icons.trending_up_rounded, difficulty),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            children: tags.map((t) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1EBFF),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  t,
-                  style: const TextStyle(
-                    fontFamily: 'HankenGrotesk',
-                    fontFamilyFallback: ['NotoSansJP'],
-                    fontSize: 12,
-                    color: Color(0xFF19005C),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRouteStat(IconData icon, String label) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: const Color(0xFF484553)),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontFamilyFallback: ['NotoSansJP'],
-            fontSize: 13,
-            color: Color(0xFF484553),
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildHistoryItem({
     required String title,
@@ -1301,11 +1051,6 @@ const _kParkSvg = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.o
   <path d="M12 16v6" stroke="currentColor" stroke-width="2"/>
 </svg>''';
 
-const _kSettingsSvg = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
-  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-</svg>''';
-
 const _kArrowRightSvg = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
   <path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M12 5L19 12L12 5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1315,12 +1060,6 @@ const _kArrowRightSvg = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://ww
 const _kHomeTabSvg = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
   <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M9 22V12h6v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>''';
-
-const _kRouteTabSvg = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M9 20L3 17V4L9 7L15 4L21 7V20L15 17L9 20Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M9 7V20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M15 4V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>''';
 
 const _kHistoryTabSvg = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
