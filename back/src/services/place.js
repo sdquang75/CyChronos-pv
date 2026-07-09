@@ -1,7 +1,7 @@
 //スポットだすやつにょー
 
 const BASE_URL = "https://maps.googleapis.com"; // Google Maps APIのベースURL   
-const hidecategory = ["lodging", "hotel", "parking", "gas_station", "atm", "bank","hospital","doctor","pharmacy","school","university","police","fire_station","post_office","local_government_office"]
+const hidecategory = ["lodging", "hotel", "parking", "gas_station", "atm", "bank", "hospital", "doctor", "pharmacy", "school", "university", "police", "fire_station", "post_office", "local_government_office"]
 
 
 /**
@@ -13,18 +13,18 @@ const hidecategory = ["lodging", "hotel", "parking", "gas_station", "atm", "bank
  */
 async function getNearbyPlaces(lng, lat, radius, type) {
 
-    // .env に置いた Google Places のAPIキーを読み込む
-    const token = process.env.GOOGLE_PLACES_API_KEY;
+  // .env に置いた Google Places のAPIキーを読み込む
+  const token = process.env.GOOGLE_PLACES_API_KEY;
 
-    // Nearby Search のURLを組み立てる。location は「緯度,経度」の順（Mapboxと逆なので注意）
-    const url = new URL(`${BASE_URL}/maps/api/place/nearbysearch/json`);
-    url.searchParams.set("location", `${lat},${lng}`); // 検索の中心座標
-    url.searchParams.set("radius", radius);            // 検索半径(m)
-    if (type) {
-      url.searchParams.set("type", type);              // 施設の種類
-    }
-    url.searchParams.set("language", "ja");            // 名前・住所を日本語で返させる(未指定だとローマ字になりがち)
-    url.searchParams.set("key", token);                // APIキー
+  // Nearby Search のURLを組み立てる。location は「緯度,経度」の順（Mapboxと逆なので注意）
+  const url = new URL(`${BASE_URL}/maps/api/place/nearbysearch/json`);
+  url.searchParams.set("location", `${lat},${lng}`); // 検索の中心座標
+  url.searchParams.set("radius", radius);            // 検索半径(m)
+  if (type) {
+    url.searchParams.set("type", type);              // 施設の種類
+  }
+  url.searchParams.set("language", "ja");            // 名前・住所を日本語で返させる(未指定だとローマ字になりがち)
+  url.searchParams.set("key", token);                // APIキー
 
   const data = await fetchPlacesJson(url);
   const results = [...(data.results ?? [])];
@@ -139,4 +139,26 @@ function pickSuggestions(places, visitedPlaceIds, maxCount) {
   return picked;
 }
 
-module.exports = { getNearbyPlaces, normalizePlace, normalizePlacesResponse, shufflePlaces, pickSuggestions };
+function attachDurations(places, durations) {
+
+  return places.map((place, index) => {
+
+    return {
+      ...place,
+      durationSec: durations[index] ?? null,
+    };
+  });
+}
+
+// 指定時間(片道扱い ※片道/往復は未決着)内に行ける場所だけ残す。null(到達不能)は落とす。
+// durationSec フィールド自体が無い place は素通りさせる(Matrix失敗時に所要時間なしで続行するため)
+function filterWithinMinutes(places, minutes){
+  return places.filter((place) => {
+    if (place.durationSec === null || place.durationSec > minutes * 60) {
+      return false;
+    }
+    return true;
+  });
+}
+
+module.exports = { getNearbyPlaces, normalizePlace, normalizePlacesResponse, shufflePlaces, pickSuggestions, attachDurations, filterWithinMinutes };

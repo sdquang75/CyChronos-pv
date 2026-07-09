@@ -48,27 +48,55 @@ router.get("/", async (req, res) => {
       const isochroneData = await mapbox.getIsochrone(lng, lat, minutes);
       const searchArea = getSearchAreaFromIsochrone(isochroneData);
 
+
       const placesData = await places.getNearbyPlaces(
         searchArea.centerLng,
         searchArea.centerLat,
         searchArea.radius,
         type
       );
+      let normalizedPlaces = places.normalizePlacesResponse(placesData);
+      normalizedPlaces = normalizedPlaces.slice(0, 24);
+      try {
+        // 候補から座標だけの配列を作る
+        const coordsList = normalizedPlaces.map((place) => ({ lng: place.lng, lat: place.lat }));
+        // 現在地から各候補への所要時間(秒)を取る
+        const durations = await mapbox.getTravelTimes({ lng, lat }, coordsList);
+        //  候補に所要時間を貼り付けた結果で置き換える
+        normalizedPlaces = places.attachDurations(normalizedPlaces, durations);
+      }
+      catch (error) {
+        console.error(error);
+      }
       candidates = {
         searchArea,
-        normalizedPlaces: places.normalizePlacesResponse(placesData),
+        normalizedPlaces,
       };
+
       cache.set(cacheKey, candidates);
     }
+
 
     // user_id があれば訪問済みの place_id を取得(なければ除外なし=空配列)
     const visitedPlaceIds = userId === null ? [] : await visits.getVisitedPlaceIds(userId);
 
+    const filterdPlaces = places.filterWithinMinutes(candidates.normalizedPlaces, minutes);
+
     // 訪問済みを除外し、シャッフルして先頭N件だけ返す(足りなければ訪問済みで補充)
+
+    // 選抜した候補に、フロント表示用の「約◯分」を付けて返す
+    const picked = places.pickSuggestions(filterdPlaces, visitedPlaceIds, MAX_SUGGESTIONS);
+
     res.json({
       searchArea: candidates.searchArea,
-      places: places.pickSuggestions(candidates.normalizedPlaces, visitedPlaceIds, MAX_SUGGESTIONS),
+      places: picked.map((place) => ({
+        ...place,
+        durationMinutes: place.durationSec == null ? null : Math.round(place.durationSec / 60),
+      })),
     });
+
+
+
   } catch (error) {
     // どのAPIで失敗したか確認しやすくする
     console.error(error);
