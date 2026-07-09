@@ -27,6 +27,8 @@ router.get("/isochrone", async (req, res) => {
     const data = await mapbox.getIsochrone(lng, lat, minutes);
     res.json(data);
   } catch (error) {
+    // 失敗の原因(HTTPステータスやMapboxのエラー文)をサーバーログに残す
+    console.error(error);
     res.status(502).json({ error: "Mapbox APIの呼び出しに失敗しました" });
   }
 });
@@ -48,6 +50,8 @@ router.get("/route", async (req, res) => {
     const cyRoute = await mapbox.getCyclingRoute({ lng: fromLng, lat: fromLat }, { lng: toLng, lat: toLat });
     res.json(cyRoute);
   } catch (error) {
+    // 失敗の原因をサーバーログに残す
+    console.error(error);
     res.status(502).json({ error: "Mapbox APIの呼び出しに失敗しました" });
   }
 });
@@ -71,6 +75,8 @@ router.get("/places", async (req, res) => {
     const normalizedPlaces = places.normalizePlacesResponse(data);
     res.json(normalizedPlaces);
   } catch (error) {
+    // 失敗の原因をサーバーログに残す
+    console.error(error);
     res.status(502).json({ error: "Google Maps APIの呼び出しに失敗しました" });
   }
 });
