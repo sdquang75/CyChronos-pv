@@ -4,6 +4,9 @@ const places = require("../services/place");
 
 const router = express.Router();
 
+// 1回の提案で返す最大件数。母集団(最大40件)からランダムに抜くことで毎回顔ぶれが変わる
+const MAX_SUGGESTIONS = 10;
+
 router.get("/", async (req, res) => {
   // クエリは文字列で来るので parseFloat / parseInt で数値に変換
   const lng = parseFloat(req.query.lng);
@@ -35,10 +38,11 @@ router.get("/", async (req, res) => {
     );
     const normalizedPlaces = places.normalizePlacesResponse(placesData);
 
-    // フロントで使う名前をそろえる
+    // フロントで使う名前をそろえる。
+    // 全件返すと毎回同じ顔ぶれになるので、シャッフルしてから先頭N件だけ返す
     res.json({
       searchArea,
-      places: normalizedPlaces,
+      places: places.shufflePlaces(normalizedPlaces).slice(0, MAX_SUGGESTIONS),
     });
   } catch (error) {
     // どのAPIで失敗したか確認しやすくする

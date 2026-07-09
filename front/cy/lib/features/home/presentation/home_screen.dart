@@ -7,6 +7,7 @@ import '../../auth/domain/auth_state.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
 import '../domain/recommendation_state.dart';
 import 'providers/recommendation_provider.dart';
+import 'package:go_router/go_router.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -28,6 +29,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // Cruising Speed setting (configured in Profile tab)
   double _speedKmh = 18.0;
 
+  String _selectedPlacesType() {
+    if (_selectedGenres.isEmpty) {
+      return 'cafe';
+    }
+
+    final selected = _selectedGenres.first;
+
+    const typeMap = {
+      'Cafe': 'cafe',
+      'Nature': 'park',
+      'Food': 'restaurant',
+      'Temple': 'place_of_worship',
+      'Art': 'museum',
+      'Viewpoint': 'tourist_attraction',
+      'Shop': 'store',
+      'Landmark': 'tourist_attraction',
+      'Hill': 'park',
+      'Park': 'park',
+    };
+
+    return typeMap[selected] ?? 'cafe';
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -45,7 +69,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         message = '現在地を取得しています...';
       case RecommendationLoading():
         message = 'おすすめスポットを検索しています...';
-      case RecommendationLoaded():
+      case RecommendationLoaded(data: final data):
+        final places = data['places'] as List<dynamic>? ?? [];
+        context.push('/destination', extra: places);
         message = 'おすすめスポットを取得しました。';
       case RecommendationLocationServiceDisabled():
         message = '位置情報サービスが無効です。端末の設定をご確認ください。';
@@ -631,11 +657,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             return GestureDetector(
               onTap: () {
                 setState(() {
-                  if (isSelected) {
-                    _selectedGenres.remove(id);
-                  } else {
-                    _selectedGenres.add(id);
-                  }
+                  _selectedGenres
+                  ..clear()
+                  ..add(id);
                 });
               },
               child: AnimatedContainer(
@@ -748,9 +772,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Material(
         color: Colors.transparent,
+
         child: InkWell(
           onTap: () {
-            ref.read(recommendationProvider.notifier).fetchForCurrentLocation();
+            final hours = int.tryParse(_hoursController.text) ?? 0;
+            final minutes = int.tryParse(_minutesController.text) ?? 0;
+            final totalMinutes = hours * 60 + minutes;
+            if (totalMinutes < 1) {
+              ScaffoldMessenger.of(context).clearSnackBars();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text(
+                    '時間を入力してください。',
+                    style: TextStyle(
+                      fontFamily: 'HankenGrotesk',
+                      fontFamilyFallback: ['NotoSansJP'],
+                    ),
+                  ),
+                  backgroundColor: const Color(0xFF2A0088),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              );
+              return;
+            }
+            ref.read(recommendationProvider.notifier).fetchForCurrentLocation(
+              minutes: totalMinutes,
+              type: _selectedPlacesType(),
+            );
           },
           borderRadius: BorderRadius.circular(9999),
           child: Container(

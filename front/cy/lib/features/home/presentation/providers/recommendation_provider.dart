@@ -27,7 +27,10 @@ class RecommendationNotifier extends StateNotifier<RecommendationState> {
   RecommendationNotifier(this._locationService, this._repo)
       : super(const RecommendationInitial());
 
-  Future<void> fetchForCurrentLocation() async {
+  Future<void> fetchForCurrentLocation({
+    required int minutes,
+    required String type,
+  }) async {
     state = const RecommendationLocating();
     try {
       final position = await _locationService.getCurrentPosition();
@@ -37,6 +40,8 @@ class RecommendationNotifier extends StateNotifier<RecommendationState> {
       final data = await _repo.fetchRecommendations(
         latitude: position.latitude,
         longitude: position.longitude,
+        type: type,
+        minutes: minutes,
       );
       state = RecommendationLoaded(data);
     } on LocationServiceDisabledException {

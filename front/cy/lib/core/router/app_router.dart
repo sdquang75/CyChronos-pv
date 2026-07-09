@@ -100,17 +100,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/destination',
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const DestinationListScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 600),
-        ),
+        pageBuilder: (context, state) {
+          final places = state.extra as List<dynamic>? ?? [];
+
+          return CustomTransitionPage(
+            key: state.pageKey,
+            child: DestinationListScreen(places: places),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 600),
+          );
+        },
       ),
       GoRoute(
         path: '/route_confirm',
