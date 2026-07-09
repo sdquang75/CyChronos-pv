@@ -23,7 +23,7 @@
 | 到達圏取得 | GET | `/api/maps/isochrone` | lng, lat, minutes(クエリ) |
 | 自転車ルート取得 | GET | `/api/maps/route` | fromLng, fromLat, toLng, toLat(クエリ) |
 | 周辺スポット検索 | GET | `/api/maps/places` | lng, lat, radius, type(クエリ) |
-| スポット提案 | GET | `/api/suggest` | lng, lat, minutes, type(クエリ) |
+| スポット提案 | GET | `/api/suggest` | lng, lat, minutes, type, user_id(クエリ) |
 
 認証系の想定フロー: フロントでGoogleサインイン(Firebase Auth)→ 初回のみ**アカウント作成**で `users` に登録 → 2回目以降はアプリ起動時に**ログイン**で `user_id` とプロフィールを取得 → 以降のAPIはその `user_id` を使って呼び出す。
 
@@ -433,8 +433,10 @@ GET /api/maps/places?lng={lng}&lat={lat}&radius={radius}&type={type}
 
 「今いる場所から `minutes` 分で行ける範囲にあるスポット」を提案する。内部で **到達圏取得(Mapbox)** → 到達圏を四角形(bbox)で囲んで検索範囲を算出 → **周辺スポット検索(Google Places)** の順に実行する。
 
+`user_id` を渡すと、そのユーザーが過去に訪問したスポットを提案から除外する。未訪問だけで10件に満たない場合は訪問済みから補充する(候補ゼロにはならない)。
+
 ```
-GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}
+GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}&user_id={user_id}
 ```
 
 ### 引数
@@ -445,6 +447,7 @@ GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}
 | lat | クエリ | ○ | 現在地の緯度 |
 | minutes | クエリ | ○ | 移動可能時間(分)。1以上 |
 | type | クエリ | - | 施設の種類(省略時は `cafe`) |
+| user_id | クエリ | - | ユーザーID(正の整数)。指定時は訪問済みスポットを提案から除外(省略時は除外なし) |
 
 ### レスポンス(200 OK)
 
@@ -481,7 +484,7 @@ GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}
 | ステータス | 内容 |
 |---|---|
 | 200 OK | 検索範囲と提案スポット一覧 |
-| 400 Bad Request | lng / lat / minutes が数値でない、minutes が1未満 |
+| 400 Bad Request | lng / lat / minutes が数値でない、minutes が1未満、user_id が正の整数でない |
 | 502 Bad Gateway | 外部APIの呼び出しに失敗。`{"error": "Mapbox APIの呼び出しに失敗しました"}` または `{"error": "Google Maps APIの呼び出しに失敗しました"}` |
 
 ---

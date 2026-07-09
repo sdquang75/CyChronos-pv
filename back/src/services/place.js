@@ -125,4 +125,18 @@ function shufflePlaces(places) {
   return shuffled;
 }
 
-module.exports = { getNearbyPlaces, normalizePlace, normalizePlacesResponse, shufflePlaces };
+// 提案する候補の選抜: 訪問済みを除外してからランダムに maxCount 件選ぶ。
+// 未訪問だけで足りないときは訪問済みから補充する(候補ゼロで返すより再訪提案の方が親切)
+function pickSuggestions(places, visitedPlaceIds, maxCount) {
+  const visited = new Set(visitedPlaceIds);
+  const unvisited = places.filter((place) => !visited.has(place.id));
+  const revisitable = places.filter((place) => visited.has(place.id));
+
+  const picked = shufflePlaces(unvisited).slice(0, maxCount);
+  if (picked.length < maxCount) {
+    picked.push(...shufflePlaces(revisitable).slice(0, maxCount - picked.length));
+  }
+  return picked;
+}
+
+module.exports = { getNearbyPlaces, normalizePlace, normalizePlacesResponse, shufflePlaces, pickSuggestions };

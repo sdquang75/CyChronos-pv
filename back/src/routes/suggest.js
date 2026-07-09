@@ -1,6 +1,8 @@
 const express = require("express");
 const mapbox = require("../services/mapbox");
 const places = require("../services/place");
+const visits = require("../services/visits");
+const cache = require("../services/cache");
 
 const router = express.Router();
 
@@ -22,27 +24,50 @@ router.get("/", async (req, res) => {
     return res.status(400).json({ error: "minutes は1以上で指定してください" });
   }
 
+  // user_id は省略可。指定があれば訪問済みスポットを提案から除外する(trips系と同じくクエリで受ける)
+  let userId = null;
+  if (req.query.user_id !== undefined) {
+    userId = Number(req.query.user_id);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({ error: "user_id は正の整数で指定してください" });
+    }
+  }
+
   // ここから先でやりたいこと:
   // 1. Mapboxで「この時間で行ける範囲」を取る
   // 2. その範囲をざっくり四角形(bbox)で囲む
   // 3. bboxを使って、あとでGoogle Placesの検索範囲を決める
   try {
-    const isochroneData = await mapbox.getIsochrone(lng, lat, minutes);
-    const searchArea = getSearchAreaFromIsochrone(isochroneData);
+    // 同じ場所・同じ条件の検索は数分間キャッシュを使い回す(Mapbox+Google課金と2秒待ちの節約)。
+    // 座標は小数3桁(約100m)に丸め、GPSの微妙なブレでも同じキーに当たるようにする。
+    // キャッシュするのは母集団まで。除外・シャッフルは毎回やるので提案の顔ぶれは変わる
+    const cacheKey = `suggest:${lng.toFixed(3)},${lat.toFixed(3)},${minutes},${type}`;
+    let candidates = cache.get(cacheKey);
 
-    const placesData = await places.getNearbyPlaces(
-      searchArea.centerLng,
-      searchArea.centerLat,
-      searchArea.radius,
-      type
-    );
-    const normalizedPlaces = places.normalizePlacesResponse(placesData);
+    if (!candidates) {
+      const isochroneData = await mapbox.getIsochrone(lng, lat, minutes);
+      const searchArea = getSearchAreaFromIsochrone(isochroneData);
 
-    // フロントで使う名前をそろえる。
-    // 全件返すと毎回同じ顔ぶれになるので、シャッフルしてから先頭N件だけ返す
+      const placesData = await places.getNearbyPlaces(
+        searchArea.centerLng,
+        searchArea.centerLat,
+        searchArea.radius,
+        type
+      );
+      candidates = {
+        searchArea,
+        normalizedPlaces: places.normalizePlacesResponse(placesData),
+      };
+      cache.set(cacheKey, candidates);
+    }
+
+    // user_id があれば訪問済みの place_id を取得(なければ除外なし=空配列)
+    const visitedPlaceIds = userId === null ? [] : await visits.getVisitedPlaceIds(userId);
+
+    // 訪問済みを除外し、シャッフルして先頭N件だけ返す(足りなければ訪問済みで補充)
     res.json({
-      searchArea,
-      places: places.shufflePlaces(normalizedPlaces).slice(0, MAX_SUGGESTIONS),
+      searchArea: candidates.searchArea,
+      places: places.pickSuggestions(candidates.normalizedPlaces, visitedPlaceIds, MAX_SUGGESTIONS),
     });
   } catch (error) {
     // どのAPIで失敗したか確認しやすくする
