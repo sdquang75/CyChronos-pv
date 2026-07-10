@@ -31,7 +31,9 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           child: MaterialApp(
-            home: Scaffold(body: HomeTabView(onFindDestination: () {})),
+            home: Scaffold(
+              body: HomeTabView(onFindDestination: (minutes, type) {}),
+            ),
           ),
         ),
       );
