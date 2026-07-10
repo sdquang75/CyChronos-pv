@@ -56,6 +56,14 @@ test("durations の null(到達不能) と 不足分は null になる", () => {
   assert.deepStrictEqual(result.map((p) => p.durationSec), [100, null, null]);
 });
 
+test("distances も distanceM として付く(未指定なら null)", () => {
+  const withDistances = attachDurations(makePlaces(2), [100, 200], [1500, null]);
+  assert.deepStrictEqual(withDistances.map((p) => p.distanceM), [1500, null]);
+
+  const withoutDistances = attachDurations(makePlaces(2), [100, 200]); // 第3引数なし
+  assert.deepStrictEqual(withoutDistances.map((p) => p.distanceM), [null, null]);
+});
+
 test("attachDurations は元の配列を変更しない", () => {
   const original = makePlaces(2);
   attachDurations(original, [100, 200]);

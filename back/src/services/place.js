@@ -139,13 +139,15 @@ function pickSuggestions(places, visitedPlaceIds, maxCount) {
   return picked;
 }
 
-function attachDurations(places, durations) {
+// 各placeに所要時間(秒)と距離(m)を貼り付けた新しい配列を返す。対応する値が無い場合は null
+function attachDurations(places, durations, distances = []) {
 
   return places.map((place, index) => {
 
     return {
       ...place,
       durationSec: durations[index] ?? null,
+      distanceM: distances[index] ?? null
     };
   });
 }
