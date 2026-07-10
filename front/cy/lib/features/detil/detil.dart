@@ -352,7 +352,10 @@ class DetilScreen extends StatelessWidget {
                   ElevatedButton(
                     onPressed: () {
                       // ボタンが押されたときの処理
-                      GoRouter.of(context).go('/route_confirm');
+                      GoRouter.of(context).go('/route_confirm', extra: {
+                        'durationSec': durationSec,
+                        'distanceMeter': distanceMeter,
+                      }); // ルート確認画面に遷移
                     },
                     style: ElevatedButton.styleFrom(
                       minimumSize: Size( 250, 55), // 幅を50に設定

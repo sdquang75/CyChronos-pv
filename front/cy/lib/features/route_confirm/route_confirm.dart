@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 
 class RouteConfirmScreen extends StatelessWidget {
-  const RouteConfirmScreen({super.key});
+
+  final int durationSec;
+  final int distanceMeter;
+  const RouteConfirmScreen({
+    super.key, 
+    required this.durationSec, 
+    required this.distanceMeter
+  });
 
    @override
   Widget build(BuildContext context) {
@@ -92,7 +99,7 @@ class RouteConfirmScreen extends StatelessWidget {
                               ),
                               SizedBox(width: 4), // アイコンとテキストの間にスペースを追加
                               Text(
-                                '1.5',
+                                (distanceMeter / 1000).toStringAsFixed(3).replaceAll(RegExp(r'\.?0+$'), ''), // 距離を計算して表示（小数点以下3桁まで、末尾の0は削除） 
                                 style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
                               ),
                               SizedBox(width: 5), // アイコンとテキストの間にスペースを追加
@@ -157,7 +164,7 @@ class RouteConfirmScreen extends StatelessWidget {
                               ),
                               SizedBox(width: 4), // アイコンとテキストの間にスペースを追加
                               Text(
-                                '01',
+                                durationSec/3600 >= 1 ? (durationSec/3600).toStringAsFixed(0) : '0', // 時間を計算して表示
                                 style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
                               ),
                               SizedBox(width: 5),
@@ -167,7 +174,7 @@ class RouteConfirmScreen extends StatelessWidget {
                               ),
                               SizedBox(width: 5),
                               Text(
-                                '30',
+                                (durationSec % 3600 / 60) >= 1 ? (durationSec % 3600 / 60).toStringAsFixed(0) : '0', // 分を計算して表示
                                 style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
                               ),
                               SizedBox(width: 5),

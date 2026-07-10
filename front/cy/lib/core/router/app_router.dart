@@ -11,6 +11,7 @@ import '../../features/detil/detil.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/route_confirm/route_confirm.dart';
 
+
 // Bridges Riverpod state changes → GoRouter refresh
 class _AuthListenable extends ChangeNotifier {
   _AuthListenable(Ref ref) {
@@ -126,17 +127,28 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/route_confirm',
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const RouteConfirmScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 600),
-        ),
+        pageBuilder: (context, state){
+          // 1. ルート確認画面に渡すデータを取得
+          final extraMap = state.extra as Map<String, dynamic>? ?? {};
+          final durationSec = extraMap['durationSec'] as int? ?? 0;
+          final distanceMeter = extraMap['distanceMeter'] as int? ?? 0;
+
+          return CustomTransitionPage(
+            key: state.pageKey,
+            // 2. ルート確認画面にデータを渡す
+            child: RouteConfirmScreen(
+              durationSec: durationSec,
+              distanceMeter: distanceMeter,
+            ),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 600),
+          );
+        },
       ),
     ],
   );
