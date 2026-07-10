@@ -17,8 +17,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> checkAuth() async {
     state = const AuthLoading();
-    // Firebase restores session from cache synchronously
-    final user = _repo.getCurrentUser();
+    final user = await _repo.getCurrentUser();
     state = user != null
         ? AuthAuthenticated(user: user)
         : const AuthUnauthenticated();
