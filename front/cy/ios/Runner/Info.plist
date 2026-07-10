@@ -5,7 +5,7 @@
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
-		<string>Cy</string>
+		<string>Cyreform</string>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 		<key>CFBundleInfoDictionaryVersion</key>
 		<string>6.0</string>
 		<key>CFBundleName</key>
-		<string>cy</string>
+		<string>Cyreform</string>
 		<key>CFBundlePackageType</key>
 		<string>APPL</string>
 		<key>CFBundleShortVersionString</key>
@@ -49,7 +49,6 @@
 		<false/>
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>現在地周辺のおすすめスポットを表示するために位置情報を使用します。</string>
-
 		<!-- Facebook Login: TODO Meta for Developers で発行した実際の値に置き換えてください -->
 		<key>FacebookAppID</key>
 		<string>YOUR_FACEBOOK_APP_ID</string>

@@ -91,6 +91,7 @@ flutter:
   assets:
     - assets/logo.png
     - assets/logo_long.png
+    - assets/kitty.jpeg
     - assets/testimage.png
     - assets/icons/history_nav.svg
     - assets/icons/settings_nav.svg
@@ -137,7 +138,7 @@ flutter:
 
 flutter_native_splash:
   color: "#F8F9FE"
-  image: assets/logo.png
+  image: assets/kitty.jpeg
   android: true
   ios: true
   web: true
