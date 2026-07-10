@@ -10,10 +10,25 @@ import 'weather_header_card.dart';
 // and customize-card selections so they survive being hidden behind the
 // ExploreFlow's nested Navigator (e.g. when the destination list is pushed
 // on top, or another bottom-nav tab is selected).
+// ジャンルID(AdvancedConfigCardの選択肢) → Google Places の type
+const _genreTypes = {
+  'Cafe': 'cafe',
+  'Nature': 'park',
+  'Food': 'restaurant',
+  'Temple': 'place_of_worship',
+  'Art': 'museum',
+  'Viewpoint': 'tourist_attraction',
+  'Shop': 'store',
+  'Landmark': 'tourist_attraction',
+  'Hill': 'park',
+  'Park': 'park',
+};
+
 class HomeTabView extends StatefulWidget {
   const HomeTabView({super.key, required this.onFindDestination});
 
-  final VoidCallback onFindDestination;
+  // 余裕時間(分)とGoogle Placesのtypeを渡して、目的地一覧を開く
+  final void Function(int minutes, String type) onFindDestination;
 
   @override
   State<HomeTabView> createState() => _HomeTabViewState();
@@ -76,7 +91,12 @@ class _HomeTabViewState extends State<HomeTabView> {
               onGenreChanged: (id) => setState(() => _selectedGenreId = id),
             ),
             const SizedBox(height: 20),
-            FloatingCtaButton(onTap: widget.onFindDestination),
+            FloatingCtaButton(
+              onTap: () => widget.onFindDestination(
+                int.parse(_spareTimeMinutes),
+                _genreTypes[_selectedGenreId] ?? 'cafe',
+              ),
+            ),
           ],
         ),
       ),

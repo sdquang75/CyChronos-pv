@@ -4,4 +4,6 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- ローカル開発APIへのHTTP接続をdebugビルドだけ許可する -->
+    <application android:usesCleartextTraffic="true"/>
 </manifest>

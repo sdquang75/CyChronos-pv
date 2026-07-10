@@ -23,7 +23,7 @@
 | 到達圏取得 | GET | `/api/maps/isochrone` | lng, lat, minutes(クエリ) |
 | 自転車ルート取得 | GET | `/api/maps/route` | fromLng, fromLat, toLng, toLat(クエリ) |
 | 周辺スポット検索 | GET | `/api/maps/places` | lng, lat, radius, type(クエリ) |
-| スポット提案 | GET | `/api/suggest` | lng, lat, minutes, type(クエリ) |
+| スポット提案 | GET | `/api/suggest` | lng, lat, minutes, type, user_id(クエリ) |
 
 認証系の想定フロー: フロントでGoogleサインイン(Firebase Auth)→ 初回のみ**アカウント作成**で `users` に登録 → 2回目以降はアプリ起動時に**ログイン**で `user_id` とプロフィールを取得 → 以降のAPIはその `user_id` を使って呼び出す。
 
@@ -49,10 +49,11 @@ POST /api/trips/start
 |---|---|---|---|
 | user_id | integer | ○ | ユーザーID |
 | destination_name | string | - | 目的地名(省略時は空文字) |
+| destination_place_id | string | - | 目的地のGoogle Place ID(省略時は null)。「8. スポット提案」の `places[].id` をそのまま渡す。保存しておくと次回以降の提案からそのスポットが除外される |
 | destination_url | string | - | 目的地URL(省略時は null) |
 
 ```json
-{ "user_id": 1 }
+{ "user_id": 1, "destination_place_id": "ChIJxxxxxxxxxxxxxxxx" }
 ```
 
 ### レスポンス(201 Created)
@@ -64,7 +65,7 @@ POST /api/trips/start
 | ステータス | 内容 |
 |---|---|
 | 201 Created | 作成成功。作成された trip_id を返す |
-| 400 Bad Request | user_id 不正 |
+| 400 Bad Request | user_id 不正、destination_place_id が255文字以内の文字列でない |
 | 404 Not Found | ユーザーが存在しない |
 
 ---
@@ -97,6 +98,7 @@ POST /api/trips/{trip_id}/end
   "trip_id": 4,
   "user_id": 1,
   "destination_name": "",
+  "destination_place_id": null,
   "destination_url": null,
   "start_time": "2026-07-03T02:52:22.000Z",
   "end_time": "2026-07-03T02:52:32.000Z",
@@ -179,6 +181,7 @@ GET /api/trips?user_id={user_id}
     "trip_id": 1,
     "user_id": 1,
     "destination_name": "大阪城公園",
+    "destination_place_id": null,
     "destination_url": "https://www.osakacastle.net/",
     "start_time": "2026-06-26T01:00:00.000Z",
     "end_time": "2026-06-26T02:20:00.000Z",
@@ -223,6 +226,7 @@ GET /api/trips/{trip_id}?user_id={user_id}
   "trip_id": 1,
   "user_id": 1,
   "destination_name": "大阪城公園",
+  "destination_place_id": null,
   "destination_url": "https://www.osakacastle.net/",
   "start_time": "2026-06-26T01:00:00.000Z",
   "end_time": "2026-06-26T02:20:00.000Z",
@@ -431,10 +435,14 @@ GET /api/maps/places?lng={lng}&lat={lat}&radius={radius}&type={type}
 
 ## 8. スポット提案(仮)
 
-「今いる場所から `minutes` 分で行ける範囲にあるスポット」を提案する。内部で **到達圏取得(Mapbox)** → 到達圏を四角形(bbox)で囲んで検索範囲を算出 → **周辺スポット検索(Google Places)** の順に実行する。
+「今いる場所から `minutes` 分で行ける範囲にあるスポット」を提案する。内部で **到達圏取得(Mapbox)** → 到達圏を四角形(bbox)で囲んで検索範囲を算出 → **周辺スポット検索(Google Places)** → **所要時間の一括取得(Mapbox Matrix)** の順に実行する。
+
+各候補には現在地から自転車での所要時間(`durationMinutes`)が付く。所要時間が `minutes` を超える候補・自転車で到達できない候補は除外される(※`minutes` は片道扱い)。
+
+`user_id` を渡すと、そのユーザーが過去に訪問したスポットを提案から除外する。未訪問だけで10件に満たない場合は訪問済みから補充する(候補ゼロにはならない)。
 
 ```
-GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}
+GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}&user_id={user_id}
 ```
 
 ### 引数
@@ -445,6 +453,7 @@ GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}
 | lat | クエリ | ○ | 現在地の緯度 |
 | minutes | クエリ | ○ | 移動可能時間(分)。1以上 |
 | type | クエリ | - | 施設の種類(省略時は `cafe`) |
+| user_id | クエリ | - | ユーザーID(正の整数)。指定時は訪問済みスポットを提案から除外(省略時は除外なし) |
 
 ### レスポンス(200 OK)
 
@@ -469,19 +478,26 @@ GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}
       "lng": 135.5030,
       "address": "大阪市中央区…",
       "rating": 4.2,
-      "genre": "cafe"
+      "genre": "cafe",
+      "durationSec": 1116.1,
+      "durationMinutes": 19,
+      "distanceM": 3620.5,
+      "distanceKm": 3.6
     }
   ]
 }
 ```
 
 - `searchArea`: 到達圏から算出した検索範囲。`bbox` は到達圏を囲む四角形、`centerLng`/`centerLat` はその中心、`radius` は Places 検索に使った半径(m、上限50km)
-- `places`: 「7. 周辺スポット検索」と同じ形式の配列
+- `places`: 「7. 周辺スポット検索」の形式に所要時間を足した配列
+- `durationMinutes`: 現在地からそのスポットまで自転車で走った場合の所要時間(分、四捨五入)。**表示にはこちらを使う**。`durationSec` は元の秒数
+- `distanceKm`: 現在地からの走行距離(km、小数1桁)。**数値型**なので `6` は「6.0km」の意味(フロントで `toStringAsFixed(1)` 等で整形)。`distanceM` は元のメートル値
+- ⚠️ 所要時間の取得(Mapbox Matrix)が失敗した場合も提案自体は返るが、そのときは `durationMinutes` が `null` になり、時間超過の除外も行われない。フロントは `null` のとき「約◯分」表示をスキップすること
 
 | ステータス | 内容 |
 |---|---|
 | 200 OK | 検索範囲と提案スポット一覧 |
-| 400 Bad Request | lng / lat / minutes が数値でない、minutes が1未満 |
+| 400 Bad Request | lng / lat / minutes が数値でない、minutes が1未満、user_id が正の整数でない |
 | 502 Bad Gateway | 外部APIの呼び出しに失敗。`{"error": "Mapbox APIの呼び出しに失敗しました"}` または `{"error": "Google Maps APIの呼び出しに失敗しました"}` |
 
 ---

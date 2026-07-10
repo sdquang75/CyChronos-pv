@@ -1,8 +1,13 @@
 const express = require("express");
 const mapbox = require("../services/mapbox");
 const places = require("../services/place");
+const visits = require("../services/visits");
+const cache = require("../services/cache");
 
 const router = express.Router();
+
+// 1回の提案で返す最大件数。母集団(最大40件)からランダムに抜くことで毎回顔ぶれが変わる
+const MAX_SUGGESTIONS = 10;
 
 router.get("/", async (req, res) => {
   // クエリは文字列で来るので parseFloat / parseInt で数値に変換
@@ -19,27 +24,81 @@ router.get("/", async (req, res) => {
     return res.status(400).json({ error: "minutes は1以上で指定してください" });
   }
 
+  // user_id は省略可。指定があれば訪問済みスポットを提案から除外する(trips系と同じくクエリで受ける)
+  let userId = null;
+  if (req.query.user_id !== undefined) {
+    userId = Number(req.query.user_id);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({ error: "user_id は正の整数で指定してください" });
+    }
+  }
+
   // ここから先でやりたいこと:
   // 1. Mapboxで「この時間で行ける範囲」を取る
   // 2. その範囲をざっくり四角形(bbox)で囲む
   // 3. bboxを使って、あとでGoogle Placesの検索範囲を決める
   try {
-    const isochroneData = await mapbox.getIsochrone(lng, lat, minutes);
-    const searchArea = getSearchAreaFromIsochrone(isochroneData);
+    // 同じ場所・同じ条件の検索は数分間キャッシュを使い回す(Mapbox+Google課金と2秒待ちの節約)。
+    // 座標は小数3桁(約100m)に丸め、GPSの微妙なブレでも同じキーに当たるようにする。
+    // キャッシュするのは母集団まで。除外・シャッフルは毎回やるので提案の顔ぶれは変わる
+    const cacheKey = `suggest:${lng.toFixed(3)},${lat.toFixed(3)},${minutes},${type}`;
+    let candidates = cache.get(cacheKey);
 
-    const placesData = await places.getNearbyPlaces(
-      searchArea.centerLng,
-      searchArea.centerLat,
-      searchArea.radius,
-      type
-    );
-    const normalizedPlaces = places.normalizePlacesResponse(placesData);
+    if (!candidates) {
+      const isochroneData = await mapbox.getIsochrone(lng, lat, minutes);
+      const searchArea = getSearchAreaFromIsochrone(isochroneData);
 
-    // フロントで使う名前をそろえる
+
+      const placesData = await places.getNearbyPlaces(
+        searchArea.centerLng,
+        searchArea.centerLat,
+        searchArea.radius,
+        type
+      );
+      let normalizedPlaces = places.normalizePlacesResponse(placesData);
+      normalizedPlaces = normalizedPlaces.slice(0, 24);
+      try {
+        // 候補から座標だけの配列を作る
+        const coordsList = normalizedPlaces.map((place) => ({ lng: place.lng, lat: place.lat }));
+        // 現在地から各候補への所要時間(秒)と距離(m)を取る
+        const { durations, distances } = await mapbox.getTravelTimes({ lng, lat }, coordsList);
+        //  候補に所要時間と距離を貼り付けた結果で置き換える
+        normalizedPlaces = places.attachDurations(normalizedPlaces, durations, distances);
+      }
+      catch (error) {
+        console.error(error);
+      }
+      candidates = {
+        searchArea,
+        normalizedPlaces,
+      };
+
+      cache.set(cacheKey, candidates);
+    }
+
+
+    // user_id があれば訪問済みの place_id を取得(なければ除外なし=空配列)
+    const visitedPlaceIds = userId === null ? [] : await visits.getVisitedPlaceIds(userId);
+
+    const filterdPlaces = places.filterWithinMinutes(candidates.normalizedPlaces, minutes);
+
+    // 訪問済みを除外し、シャッフルして先頭N件だけ返す(足りなければ訪問済みで補充)
+
+    // 選抜した候補に、フロント表示用の「約◯分」を付けて返す
+    const picked = places.pickSuggestions(filterdPlaces, visitedPlaceIds, MAX_SUGGESTIONS);
+
     res.json({
-      searchArea,
-      places: normalizedPlaces,
+      searchArea: candidates.searchArea,
+      places: picked.map((place) => ({
+        ...place,
+        durationMinutes: place.durationSec == null ? null : Math.round(place.durationSec / 60),
+        // kmの小数1桁(例: 6316m -> 6.3)。/1000してからtoFixedだと文字列になるので、100で割って丸めて10で割る
+        distanceKm: place.distanceM == null ? null : Math.round(place.distanceM / 100) / 10,
+      })),
     });
+
+
+
   } catch (error) {
     // どのAPIで失敗したか確認しやすくする
     console.error(error);

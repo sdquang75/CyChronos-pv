@@ -28,6 +28,7 @@ erDiagram
         bigint_unsigned trip_id PK "AUTO_INCREMENT"
         bigint_unsigned user_id FK "users.user_id"
         varchar_255 destination_name "目的地名"
+        varchar_255 destination_place_id "Google Places のPlace ID"
         text destination_url "目的地URL"
         datetime start_time "開始日時"
         datetime end_time "終了日時"
@@ -96,16 +97,17 @@ Firebase認証と連携するアプリ利用者の情報。
 | 1 | trip_id | bigint unsigned | NOT NULL | AUTO_INCREMENT | PK | トリップID |
 | 2 | user_id | bigint unsigned | NOT NULL | - | FK | 所有ユーザー(users.user_id) |
 | 3 | destination_name | varchar(255) | NOT NULL | - | | 目的地名(未設定時は空文字) |
-| 4 | destination_url | text | NULL | NULL | | 目的地の参考URL |
-| 5 | start_time | datetime | NOT NULL | - | | 走行開始日時 |
-| 6 | end_time | datetime | NULL | NULL | | 走行終了日時(走行中はNULL) |
-| 7 | total_distance_m | int unsigned | NULL | NULL | | 総走行距離(メートル) |
-| 8 | duration_sec | int unsigned | NULL | NULL | | 走行時間(秒) |
-| 9 | average_speed_kmh | decimal(5,2) | NULL | NULL | | 平均速度(km/h) |
-| 10 | status | enum('active','completed','cancelled') | NOT NULL | 'active' | | トリップ状態 |
-| 11 | created_at | datetime | NOT NULL | CURRENT_TIMESTAMP | | 作成日時 |
-| 12 | updated_at | datetime | NOT NULL | CURRENT_TIMESTAMP(更新時自動) | | 更新日時 |
-| 13 | deleted_at | datetime | NULL | NULL | | 論理削除日時(NULL=有効) |
+| 4 | destination_place_id | varchar(255) | NULL | NULL | | 目的地のGoogle Places Place ID |
+| 5 | destination_url | text | NULL | NULL | | 目的地の参考URL |
+| 6 | start_time | datetime | NOT NULL | - | | 走行開始日時 |
+| 7 | end_time | datetime | NULL | NULL | | 走行終了日時(走行中はNULL) |
+| 8 | total_distance_m | int unsigned | NULL | NULL | | 総走行距離(メートル) |
+| 9 | duration_sec | int unsigned | NULL | NULL | | 走行時間(秒) |
+| 10 | average_speed_kmh | decimal(5,2) | NULL | NULL | | 平均速度(km/h) |
+| 11 | status | enum('active','completed','cancelled') | NOT NULL | 'active' | | トリップ状態 |
+| 12 | created_at | datetime | NOT NULL | CURRENT_TIMESTAMP | | 作成日時 |
+| 13 | updated_at | datetime | NOT NULL | CURRENT_TIMESTAMP(更新時自動) | | 更新日時 |
+| 14 | deleted_at | datetime | NULL | NULL | | 論理削除日時(NULL=有効) |
 
 インデックス:
 
@@ -114,6 +116,7 @@ Firebase認証と連携するアプリ利用者の情報。
 | PRIMARY | 主キー | trip_id |
 | idx_trip_history_user_start | 通常 | user_id, deleted_at, start_time |
 | idx_trip_history_status | 通常 | status |
+| idx_trip_history_user_destination_place | 通常 | user_id, destination_place_id |
 
 外部キー:
 

@@ -36,7 +36,7 @@ CREATE TABLE `location_log` (
   UNIQUE KEY `uq_location_log_trip_log_num` (`trip_id`,`log_num`),
   KEY `idx_location_log_trip_recorded_at` (`trip_id`,`recorded_at`),
   CONSTRAINT `fk_location_log_trip` FOREIGN KEY (`trip_id`) REFERENCES `trip_history` (`trip_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -45,7 +45,7 @@ CREATE TABLE `location_log` (
 
 LOCK TABLES `location_log` WRITE;
 /*!40000 ALTER TABLE `location_log` DISABLE KEYS */;
-INSERT INTO `location_log` VALUES (1,1,1,34.6937000,135.5023000,'2026-06-26 10:00:10',0.00,5.20,'2026-06-26 12:03:24'),(2,1,2,34.6941000,135.5030000,'2026-06-26 10:05:00',10.50,4.80,'2026-06-26 12:03:24'),(3,1,3,34.6950000,135.5042000,'2026-06-26 10:10:00',12.20,6.10,'2026-06-26 12:03:24'),(4,1,4,34.6873000,135.5262000,'2026-06-26 11:20:00',0.00,5.00,'2026-06-26 12:03:24'),(5,2,1,34.6937000,135.5023000,'2026-06-25 14:00:10',0.00,5.50,'2026-06-26 12:03:24'),(6,2,2,34.6805000,135.4900000,'2026-06-25 14:20:00',13.00,6.30,'2026-06-26 12:03:24'),(7,2,3,34.6551000,135.4289000,'2026-06-25 15:10:00',0.00,5.70,'2026-06-26 12:03:24'),(8,3,1,34.7000000,135.5000000,'2026-06-26 08:30:10',0.00,4.90,'2026-06-26 12:03:24'),(9,3,2,34.6978000,135.5015000,'2026-06-26 08:35:00',11.80,5.40,'2026-06-26 12:03:24'),(10,3,3,34.6929000,135.5031000,'2026-06-26 08:40:00',12.60,5.10,'2026-06-26 12:03:24');
+INSERT INTO `location_log` VALUES (1,1,1,34.6937000,135.5023000,'2026-06-26 10:00:10',0.00,5.20,'2026-06-26 12:03:24'),(2,1,2,34.6941000,135.5030000,'2026-06-26 10:05:00',10.50,4.80,'2026-06-26 12:03:24'),(3,1,3,34.6950000,135.5042000,'2026-06-26 10:10:00',12.20,6.10,'2026-06-26 12:03:24'),(4,1,4,34.6873000,135.5262000,'2026-06-26 11:20:00',0.00,5.00,'2026-06-26 12:03:24'),(5,2,1,34.6937000,135.5023000,'2026-06-25 14:00:10',0.00,5.50,'2026-06-26 12:03:24'),(6,2,2,34.6805000,135.4900000,'2026-06-25 14:20:00',13.00,6.30,'2026-06-26 12:03:24'),(7,2,3,34.6551000,135.4289000,'2026-06-25 15:10:00',0.00,5.70,'2026-06-26 12:03:24'),(8,3,1,34.7000000,135.5000000,'2026-06-26 08:30:10',0.00,4.90,'2026-06-26 12:03:24'),(9,3,2,34.6978000,135.5015000,'2026-06-26 08:35:00',11.80,5.40,'2026-06-26 12:03:24'),(10,3,3,34.6929000,135.5031000,'2026-06-26 08:40:00',12.60,5.10,'2026-06-26 12:03:24'),(11,1,5,34.7000000,135.5100000,'2026-07-03 11:25:02',NULL,NULL,'2026-07-03 11:25:02'),(12,4,1,34.6900000,135.5000000,'2026-07-03 11:52:32',NULL,NULL,'2026-07-03 11:52:32'),(13,5,1,42.0000000,42.0000000,'2026-07-03 13:11:10',NULL,NULL,'2026-07-03 13:11:10'),(14,6,1,30.0000000,30.0000000,'2026-07-05 21:12:38',NULL,NULL,'2026-07-05 21:12:38'),(15,6,2,31.0000000,31.0000000,'2026-07-05 21:12:58',NULL,NULL,'2026-07-05 21:12:58'),(16,6,3,32.0000000,32.0000000,'2026-07-05 21:13:06',NULL,NULL,'2026-07-05 21:13:06'),(17,6,4,33.0000000,33.0000000,'2026-07-05 21:14:45',NULL,NULL,'2026-07-05 21:14:45'),(18,6,5,34.0000000,34.0000000,'2026-07-05 21:14:52',NULL,NULL,'2026-07-05 21:14:52'),(19,6,6,35.0000000,35.0000000,'2026-07-05 21:15:00',NULL,NULL,'2026-07-05 21:15:00'),(20,6,7,36.0000000,36.0000000,'2026-07-05 21:15:10',NULL,NULL,'2026-07-05 21:15:10');
 /*!40000 ALTER TABLE `location_log` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -60,6 +60,7 @@ CREATE TABLE `trip_history` (
   `trip_id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `user_id` bigint unsigned NOT NULL,
   `destination_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `destination_place_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `destination_url` text COLLATE utf8mb4_unicode_ci,
   `start_time` datetime NOT NULL,
   `end_time` datetime DEFAULT NULL,
@@ -73,8 +74,9 @@ CREATE TABLE `trip_history` (
   PRIMARY KEY (`trip_id`),
   KEY `idx_trip_history_user_start` (`user_id`,`deleted_at`,`start_time`),
   KEY `idx_trip_history_status` (`status`),
+  KEY `idx_trip_history_user_destination_place` (`user_id`,`destination_place_id`),
   CONSTRAINT `fk_trip_history_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -83,7 +85,7 @@ CREATE TABLE `trip_history` (
 
 LOCK TABLES `trip_history` WRITE;
 /*!40000 ALTER TABLE `trip_history` DISABLE KEYS */;
-INSERT INTO `trip_history` VALUES (1,1,'大阪城公園','https://www.osakacastle.net/','2026-06-26 10:00:00','2026-06-26 11:20:00',12500,4800,9.38,'completed','2026-06-26 11:51:57','2026-06-26 11:51:57',NULL),(2,1,'海遊館','https://www.kaiyukan.com/','2026-06-25 14:00:00','2026-06-25 15:10:00',9800,4200,8.40,'completed','2026-06-26 11:51:57','2026-06-26 11:51:57',NULL),(3,2,'中之島公園','https://www.osakapark140526.osgf.or.jp/nakanoshima/','2026-06-26 08:30:00',NULL,NULL,NULL,NULL,'active','2026-06-26 11:51:57','2026-06-26 11:51:57',NULL);
+INSERT INTO `trip_history` VALUES (1,1,'大阪城公園',NULL,'https://www.osakacastle.net/','2026-06-26 10:00:00','2026-06-26 11:20:00',12500,4800,9.38,'completed','2026-06-26 11:51:57','2026-06-26 11:51:57',NULL),(2,1,'海遊館',NULL,'https://www.kaiyukan.com/','2026-06-25 14:00:00','2026-06-25 15:10:00',9800,4200,8.40,'completed','2026-06-26 11:51:57','2026-06-26 11:51:57',NULL),(3,2,'中之島公園',NULL,'https://www.osakapark140526.osgf.or.jp/nakanoshima/','2026-06-26 08:30:00',NULL,NULL,NULL,NULL,'active','2026-06-26 11:51:57','2026-07-03 11:25:37','2026-07-03 11:25:37'),(4,1,'',NULL,NULL,'2026-07-03 11:52:22','2026-07-03 11:52:32',NULL,NULL,NULL,'completed','2026-07-03 11:52:22','2026-07-03 11:57:25','2026-07-03 11:57:25'),(5,1,'株式会社weed',NULL,NULL,'2026-07-03 13:10:46','2026-07-03 13:11:50',NULL,NULL,NULL,'completed','2026-07-03 13:10:46','2026-07-03 13:11:50',NULL),(6,1,';',NULL,NULL,'2026-07-05 21:11:51','2026-07-05 21:15:19',NULL,NULL,NULL,'completed','2026-07-05 21:11:51','2026-07-05 21:15:19',NULL);
 /*!40000 ALTER TABLE `trip_history` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -106,7 +108,7 @@ CREATE TABLE `users` (
   PRIMARY KEY (`user_id`),
   UNIQUE KEY `uq_users_firebase_uid` (`firebase_uid`),
   KEY `idx_users_deleted_at` (`deleted_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -115,7 +117,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'firebase_uid_dummy_001','testuser1@example.com','テストユーザー1','https://example.com/images/user1.png','2026-06-26 11:51:47','2026-06-26 11:51:47',NULL),(2,'firebase_uid_dummy_002','testuser2@example.com','テストユーザー2','https://example.com/images/user2.png','2026-06-26 11:51:47','2026-06-26 11:51:47',NULL);
+INSERT INTO `users` VALUES (1,'firebase_uid_dummy_001','testuser1@example.com','テストユーザー1','https://example.com/images/user1.png','2026-06-26 11:51:47','2026-06-26 11:51:47',NULL),(2,'firebase_uid_dummy_002','testuser2@example.com','テストユーザー2','https://example.com/images/user2.png','2026-06-26 11:51:47','2026-06-26 11:51:47',NULL),(3,'e6jzCHkYLHMJDYOaVzXWMfcR7ax2','tk196vvv@gmail.com','あああ','https://lh3.googleusercontent.com/a/ACg8ocJa93DCvrd3ME9OB-j5ecjNlq4dcTDrD732P1vvwmPmQVdFuQ=s96-c','2026-07-07 23:15:55','2026-07-07 23:15:55',NULL);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -128,4 +130,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-07-03 10:03:22
+-- Dump completed on 2026-07-09 11:22:46

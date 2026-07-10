@@ -13,15 +13,21 @@ function parseId(value, name, res) {
 }
 
 const TRIP_COLUMNS =
-  "trip_id, user_id, destination_name, destination_url, start_time, end_time, " +
+  "trip_id, user_id, destination_name, destination_place_id, destination_url, start_time, end_time, " +
   "total_distance_m, duration_sec, average_speed_kmh, status, created_at, updated_at";
 
 // トリップ開始: 新しい trip_history を作成し trip_id を返す
-// 引数: user_id
+// 引数: user_id, destination_place_id(省略可)
 router.post("/start", async (req, res) => {
   const body = req.body ?? {};
   const userId = parseId(body.user_id, "user_id", res);
   if (userId === null) return;
+
+  // 目的地のGoogle Place ID(/api/suggest の places[].id)。訪問済み除外に使うので、あれば保存する
+  const destinationPlaceId = body.destination_place_id ?? null;
+  if (destinationPlaceId !== null && (typeof destinationPlaceId !== "string" || destinationPlaceId.length > 255)) {
+    return res.status(400).json({ error: "destination_place_id は255文字以内の文字列で指定してください" });
+  }
 
   const [users] = await pool.query(
     "SELECT user_id FROM users WHERE user_id = ? AND deleted_at IS NULL",
@@ -32,9 +38,9 @@ router.post("/start", async (req, res) => {
   }
 
   const [result] = await pool.query(
-    "INSERT INTO trip_history (user_id, destination_name, destination_url, start_time, status) " +
-      "VALUES (?, ?, ?, NOW(), 'active')",
-    [userId, body.destination_name ?? "", body.destination_url ?? null]
+    "INSERT INTO trip_history (user_id, destination_name, destination_place_id, destination_url, start_time, status) " +
+      "VALUES (?, ?, ?, ?, NOW(), 'active')",
+    [userId, body.destination_name ?? "", destinationPlaceId, body.destination_url ?? null]
   );
 
   res.status(201).json({ trip_id: result.insertId });

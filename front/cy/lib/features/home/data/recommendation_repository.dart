@@ -10,10 +10,17 @@ class RecommendationRepository {
   Future<dynamic> fetchRecommendations({
     required double latitude,
     required double longitude,
+    required String type,
+    required int minutes,
   }) async {
-    final response = await _dio.post(
-      '/api/recommendations',
-      data: {'latitude': latitude, 'longitude': longitude},
+    final response = await _dio.get(
+      '/api/suggest',
+      queryParameters: {
+        'lat': latitude,
+        'lng': longitude,
+        'type': type,
+        'minutes': minutes,
+      },
     );
     return response.data;
   }

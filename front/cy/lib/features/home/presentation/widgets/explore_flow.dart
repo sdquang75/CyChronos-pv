@@ -17,9 +17,11 @@ class ExploreFlow extends StatefulWidget {
 class _ExploreFlowState extends State<ExploreFlow> {
   final _navigatorKey = GlobalKey<NavigatorState>();
 
-  void _openDestinationList() {
+  void _openDestinationList(int minutes, String type) {
     _navigatorKey.currentState?.push(
-      MaterialPageRoute(builder: (_) => const DestinationListScreen()),
+      MaterialPageRoute(
+        builder: (_) => DestinationListScreen(minutes: minutes, type: type),
+      ),
     );
   }
 

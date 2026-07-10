@@ -16,7 +16,16 @@ import 'package:cy/features/route_confirm/widgets/route_card_pieces.dart';
 // morphs the card open to reveal the Route Details metrics + "start"
 // button — the same pieces RouteConfirmScreen uses.
 class DestinationListScreen extends ConsumerStatefulWidget {
-  const DestinationListScreen({super.key});
+  const DestinationListScreen({
+    super.key,
+    this.minutes = 30,
+    this.type = 'cafe',
+  });
+
+  // Search radius (spare time to travel) and Google Places type, threaded in
+  // from the Home tab's customize card via ExploreFlow.
+  final int minutes;
+  final String type;
 
   @override
   ConsumerState<DestinationListScreen> createState() =>
@@ -122,7 +131,10 @@ class _DestinationListScreenState
     // the list can switch from the mock placeholder to live data without
     // requiring the user to press search first.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(recommendationProvider.notifier).fetchForCurrentLocation();
+      ref.read(recommendationProvider.notifier).fetchForCurrentLocation(
+            minutes: widget.minutes,
+            type: widget.type,
+          );
     });
   }
 
@@ -420,24 +432,32 @@ class _GenreChip extends StatelessWidget {
   }
 }
 
-// Lenient mapping from the backend's (currently unconfirmed) recommendation
-// payload shape into the same fields the mock data uses, so the card list
-// can render real results as soon as the endpoint exists without needing
-// another UI rewrite. Unrecognized/malformed entries are skipped; if none
-// of the response parses, the caller falls back to the mock list.
+// Maps a /api/suggest response ({ searchArea, places: [...] }) into the same
+// fields the mock data uses, so the card list can render real results without
+// another UI rewrite. Each place is { id, name, lat, lng, address, rating,
+// genre, durationMinutes, distanceKm } (see back/src/routes/suggest.js).
+// Unrecognized/malformed entries are skipped; if none of the response
+// parses, the caller falls back to the mock list.
 List<Map<String, String>> _parseApiDestinations(dynamic data) {
-  if (data is! List) return const [];
+  final places = data is Map ? data['places'] : data;
+  if (places is! List) return const [];
 
   final parsed = <Map<String, String>>[];
-  for (final item in data) {
+  for (final item in places) {
     if (item is! Map) continue;
-    final title = item['title'] ?? item['name'];
+    final title = item['name'] ?? item['title'];
     if (title == null) continue;
+    final durationMinutes = item['durationMinutes'];
+    final distanceKm = item['distanceKm'];
     parsed.add({
       'title': title.toString(),
       'genre': (item['genre'] ?? item['category'] ?? '').toString(),
-      'duration': (item['duration'] ?? item['durationText'] ?? '').toString(),
-      'distance': (item['distance'] ?? item['distanceText'] ?? '').toString(),
+      'duration': durationMinutes == null
+          ? (item['duration'] ?? item['durationText'] ?? '').toString()
+          : '$durationMinutes min',
+      'distance': distanceKm == null
+          ? (item['distance'] ?? item['distanceText'] ?? '').toString()
+          : '$distanceKm km',
       'elevation': (item['elevation'] ?? item['elevationText'] ?? '')
           .toString(),
       'image':
