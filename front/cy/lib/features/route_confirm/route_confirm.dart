@@ -16,7 +16,7 @@ class RouteConfirmScreen extends StatelessWidget {
     this.distanceText = '12.4 km',
     this.durationText = '45 min',
     this.elevationText = '42 m',
-    this.thumbnailAsset = 'assets/testimage.png',
+    this.thumbnailAsset = 'assets/kitty.jpeg',
   });
 
   // Google place_id from DestinationListScreen's /api/suggest result. Null

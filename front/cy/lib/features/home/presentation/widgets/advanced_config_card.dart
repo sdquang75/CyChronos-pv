@@ -4,21 +4,24 @@ import 'package:cy/core/icons/app_icons.dart';
 import 'package:cy/core/theme/app_colors.dart';
 import 'dropdown_field.dart';
 
-const _stayDurationOptions = [
-  DropdownOption(id: '30', label: '30 分'),
-  DropdownOption(id: '60', label: '1 時間'),
-  DropdownOption(id: '90', label: '1.5 時間'),
-  DropdownOption(id: '120', label: '2 時間'),
-  DropdownOption(id: '180', label: '3 時間+'),
+// 分数を "15 分" / "1 時間" / "1時間15分" のようなラベルに変換する
+String _minutesLabel(int minutes) {
+  if (minutes < 60) return '$minutes 分';
+  final hours = minutes ~/ 60;
+  final remainder = minutes % 60;
+  return remainder == 0 ? '$hours 時間' : '$hours時間$remainder分';
+}
+
+List<DropdownOption> _minuteOptions(int stepMinutes, int maxMinutes) => [
+  for (var m = stepMinutes; m <= maxMinutes; m += stepMinutes)
+    DropdownOption(id: '$m', label: _minutesLabel(m)),
 ];
 
-const _spareTimeOptions = [
-  DropdownOption(id: '15', label: '15 分'),
-  DropdownOption(id: '30', label: '30 分'),
-  DropdownOption(id: '45', label: '45 分'),
-  DropdownOption(id: '60', label: '60 分'),
-  DropdownOption(id: '90', label: '90 分'),
-];
+// 滞在時間: 目的地に着いてから過ごす時間。15分刻みで最大3時間
+final _stayDurationOptions = _minuteOptions(15, 180);
+
+// 余裕時間: 往復の移動+滞在をまかなう合計予算。30分刻みで最大5時間
+final _spareTimeOptions = _minuteOptions(30, 300);
 
 const _genreOptions = [
   DropdownOption(id: null, label: 'すべて'),

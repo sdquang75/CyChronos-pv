@@ -39,6 +39,11 @@ class DropdownField extends StatelessWidget {
     // stretches past the app's own phone-frame width on a wide viewport.
     final picked = await showModalBottomSheet<String?>(
       context: context,
+      // ExploreFlow が独自の(ネストした)Navigatorを持つため、指定しないと
+      // その中のOverlayにしか描画されず、HomeScreenのStack内で後ろに置かれた
+      // HomeBottomNavBarの下に隠れてしまう。ルートのNavigator/Overlayに
+      // 出すことで、ボトムナビより確実に手前に表示する
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       constraints: BoxConstraints(

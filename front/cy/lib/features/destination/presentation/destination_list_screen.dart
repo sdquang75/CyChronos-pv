@@ -41,7 +41,7 @@ class _DestinationListScreenState
       'duration': '45 min',
       'distance': '9.8 km',
       'elevation': '58 m',
-      'image': 'assets/testimage.png',
+      'image': 'assets/kitty.jpeg',
     },
     {
       'title': '川沿いカフェ',
@@ -49,7 +49,7 @@ class _DestinationListScreenState
       'duration': '25 min',
       'distance': '5.4 km',
       'elevation': '12 m',
-      'image': 'assets/testimage.png',
+      'image': 'assets/kitty.jpeg',
     },
     {
       'title': '大阪城公園',
@@ -57,7 +57,7 @@ class _DestinationListScreenState
       'duration': '30 min',
       'distance': '6.7 km',
       'elevation': '18 m',
-      'image': 'assets/testimage.png',
+      'image': 'assets/kitty.jpeg',
     },
     {
       'title': '箕面の滝',
@@ -65,7 +65,7 @@ class _DestinationListScreenState
       'duration': '60 min',
       'distance': '14.2 km',
       'elevation': '96 m',
-      'image': 'assets/testimage.png',
+      'image': 'assets/kitty.jpeg',
     },
     {
       'title': '中之島公園',
@@ -73,7 +73,7 @@ class _DestinationListScreenState
       'duration': '20 min',
       'distance': '4.1 km',
       'elevation': '6 m',
-      'image': 'assets/testimage.png',
+      'image': 'assets/kitty.jpeg',
     },
     {
       'title': '靱公園',
@@ -81,7 +81,7 @@ class _DestinationListScreenState
       'duration': '18 min',
       'distance': '3.5 km',
       'elevation': '4 m',
-      'image': 'assets/testimage.png',
+      'image': 'assets/kitty.jpeg',
     },
     {
       'title': '北浜カフェ',
@@ -89,7 +89,7 @@ class _DestinationListScreenState
       'duration': '22 min',
       'distance': '4.8 km',
       'elevation': '9 m',
-      'image': 'assets/testimage.png',
+      'image': 'assets/kitty.jpeg',
     },
     {
       'title': '淀川河川公園',
@@ -97,7 +97,7 @@ class _DestinationListScreenState
       'duration': '35 min',
       'distance': '8.0 km',
       'elevation': '10 m',
-      'image': 'assets/testimage.png',
+      'image': 'assets/kitty.jpeg',
     },
     {
       'title': '天王寺公園',
@@ -105,7 +105,7 @@ class _DestinationListScreenState
       'duration': '40 min',
       'distance': '9.1 km',
       'elevation': '22 m',
-      'image': 'assets/testimage.png',
+      'image': 'assets/kitty.jpeg',
     },
     {
       'title': '街角ベーカリー',
@@ -113,7 +113,7 @@ class _DestinationListScreenState
       'duration': '15 min',
       'distance': '2.9 km',
       'elevation': '3 m',
-      'image': 'assets/testimage.png',
+      'image': 'assets/kitty.jpeg',
     },
   ];
 
@@ -217,7 +217,7 @@ class _DestinationListScreenState
           distanceText: destination['distance'] ?? '12.4 km',
           durationText: destination['duration'] ?? '45 min',
           elevationText: destination['elevation'] ?? '42 m',
-          thumbnailAsset: destination['image'] ?? 'assets/testimage.png',
+          thumbnailAsset: destination['image'] ?? 'assets/kitty.jpeg',
         ),
       ),
     );
@@ -471,7 +471,7 @@ List<Map<String, String>> _parseApiDestinations(dynamic data) {
       'elevation': (item['elevation'] ?? item['elevationText'] ?? '')
           .toString(),
       'image':
-          (item['image'] ?? item['thumbnailAsset'] ?? 'assets/testimage.png')
+          (item['image'] ?? item['thumbnailAsset'] ?? 'assets/kitty.jpeg')
               .toString(),
     });
   }

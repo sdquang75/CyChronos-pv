@@ -41,6 +41,17 @@ class _HomeTabViewState extends State<HomeTabView> {
   String _spareTimeMinutes = '30';
   String? _selectedGenreId;
 
+  // 余裕時間は「往復の移動+滞在」をまかなう合計予算という前提で、滞在時間を
+  // 引いた残りを2等分し、片道の移動時間としてバックエンドに渡す。
+  // 滞在時間が余裕時間に近い/超えるほど選択でも、最低5分は確保する
+  // (0分だとMapboxのisochroneが引けずAPIが400を返す)
+  int get _travelMinutesEachWay {
+    final spareTime = int.parse(_spareTimeMinutes);
+    final stayDuration = int.parse(_stayDurationMinutes);
+    final travelMinutes = ((spareTime - stayDuration) / 2).round();
+    return travelMinutes < 5 ? 5 : travelMinutes;
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -93,8 +104,10 @@ class _HomeTabViewState extends State<HomeTabView> {
             const SizedBox(height: 20),
             FloatingCtaButton(
               onTap: () => widget.onFindDestination(
-                int.parse(_spareTimeMinutes),
-                _genreTypes[_selectedGenreId] ?? 'cafe',
+                _travelMinutesEachWay,
+                // "すべて"(selectedGenreId == null)は絞り込みなし='' を送る。
+                // 'cafe'固定にすると「すべて」を選んでもカフェしか出なくなる
+                _genreTypes[_selectedGenreId] ?? '',
               ),
             ),
           ],
