@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cy/core/theme/app_colors.dart';
 
 // Wraps a screen's content in the same "phone frame" HomeScreen uses, so
 // every screen looks consistent across viewport sizes: full-bleed on an
@@ -26,7 +27,7 @@ class AppScreenFrame extends StatelessWidget {
     if (!isLargeScreen) return child;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF191C1F),
+      backgroundColor: AppColors.frameBackground,
       body: Center(
         child: Container(
           width: width,

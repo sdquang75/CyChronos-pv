@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cy/core/theme/app_colors.dart';
 
 // Shared title/subtitle header used by the Route, History and Profile tabs.
 class HomeTabHeader extends StatelessWidget {
@@ -19,7 +20,7 @@ class HomeTabHeader extends StatelessWidget {
             fontFamilyFallback: ['NotoSansJP'],
             fontWeight: FontWeight.w700,
             fontSize: 28,
-            color: Color(0xFF19005C),
+            color: AppColors.terracottaDeep,
           ),
         ),
         const SizedBox(height: 6),
@@ -30,7 +31,7 @@ class HomeTabHeader extends StatelessWidget {
             fontFamilyFallback: ['NotoSansJP'],
             fontWeight: FontWeight.w400,
             fontSize: 14,
-            color: Color(0xFF484553),
+            color: AppColors.textSecondary,
           ),
         ),
       ],

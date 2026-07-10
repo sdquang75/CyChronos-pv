@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cy/core/theme/app_colors.dart';
 import 'package:cy/core/widgets/app_screen_frame.dart';
 import 'providers/auth_provider.dart';
 import '../domain/auth_state.dart';
@@ -85,7 +86,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               'ログインに失敗しました。もう一度お試しください。',
               style: TextStyle(fontFamily: 'Inter'),
             ),
-            backgroundColor: const Color(0xFF19005C),
+            backgroundColor: AppColors.terracottaDeep,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -96,16 +97,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
     Widget content = Scaffold(
       body: Container(
-        color: const Color(0xFFFDFCF8),
+        color: AppColors.bgWarm,
         child: Stack(
           children: [
             Positioned.fill(
               child: Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Color(0x33D5E8D1), Color(0x00D5E8D1)],
+                    colors: [
+                      AppColors.greenGradient.withValues(alpha: 0.2),
+                      AppColors.greenGradient.withValues(alpha: 0),
+                    ],
                   ),
                 ),
               ),
@@ -136,19 +140,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           child: _buildLoginCard(isLoading),
                         ),
                       ),
-                      const SizedBox(height: 32),
-                      const Text(
-                        '© 2026 CYCHRONOS',
-                        style: TextStyle(
-                          fontFamily: 'HankenGrotesk',
-                          fontFamilyFallback: ['NotoSansJP'],
-                          fontSize: 12,
-                          color: Color(0x992E0094),
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
                     ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: SafeArea(
+                top: false,
+                minimum: const EdgeInsets.only(bottom: 24),
+                child: Center(
+                  child: Text(
+                    '© 2026 CYCHRONOS',
+                    style: TextStyle(
+                      fontFamily: 'HankenGrotesk',
+                      fontFamilyFallback: const ['NotoSansJP'],
+                      fontSize: 12,
+                      color: AppColors.terracottaShadow.withValues(alpha: 0.6),
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 1.2,
+                    ),
                   ),
                 ),
               ),
@@ -181,10 +195,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(25),
-            border: Border.all(color: const Color(0xFFC4C8C0)),
+            border: Border.all(color: AppColors.borderMedium),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF1F2687).withValues(alpha: 0.07),
+                color: AppColors.terracottaCardShadow.withValues(alpha: 0.07),
                 blurRadius: 32,
                 offset: const Offset(0, 8),
               ),
@@ -201,7 +215,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   fontFamilyFallback: ['NotoSansJP'],
                   fontSize: 30,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF8BA88E),
+                  color: AppColors.greenSocial,
                   letterSpacing: -0.75,
                   height: 36 / 30,
                 ),
@@ -218,7 +232,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       fontFamilyFallback: ['NotoSansJP'],
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: Color(0xFF475569),
+                      color: AppColors.textSlate,
                       height: 22.75 / 14,
                     ),
                   ),
@@ -262,26 +276,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 children: [
                   GestureDetector(
                     onTap: () {},
-                    child: const Text(
+                    child: Text(
                       '利用規約',
                       style: TextStyle(
                         fontFamily: 'Inter',
-                        fontFamilyFallback: ['NotoSansJP'],
+                        fontFamilyFallback: const ['NotoSansJP'],
                         fontSize: 12,
-                        color: Color(0xCC64748B),
+                        color: AppColors.textSlateMuted.withValues(
+                          alpha: 0.8,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 16),
                   GestureDetector(
                     onTap: () {},
-                    child: const Text(
+                    child: Text(
                       'プライバシーポリシー',
                       style: TextStyle(
                         fontFamily: 'Inter',
-                        fontFamilyFallback: ['NotoSansJP'],
+                        fontFamilyFallback: const ['NotoSansJP'],
                         fontSize: 12,
-                        color: Color(0xCC64748B),
+                        color: AppColors.textSlateMuted.withValues(
+                          alpha: 0.8,
+                        ),
                       ),
                     ),
                   ),

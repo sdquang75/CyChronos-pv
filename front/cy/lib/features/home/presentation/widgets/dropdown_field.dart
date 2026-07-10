@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cy/core/icons/app_icons.dart';
+import 'package:cy/core/theme/app_colors.dart';
 import 'package:cy/core/widgets/app_screen_frame.dart';
 
 // A single dropdown option shown in a DropdownField's picker sheet.
@@ -57,7 +58,7 @@ class DropdownField extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD1D5D0),
+                  color: AppColors.borderLight,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -73,7 +74,7 @@ class DropdownField extends StatelessWidget {
                       fontFamilyFallback: ['NotoSansJP'],
                       fontWeight: FontWeight.w700,
                       fontSize: 18,
-                      color: Color(0xFF19005C),
+                      color: AppColors.terracottaDeep,
                     ),
                   ),
                 ),
@@ -97,13 +98,13 @@ class DropdownField extends StatelessWidget {
                               ? FontWeight.w700
                               : FontWeight.w400,
                           fontSize: 16,
-                          color: const Color(0xFF1B1C1C),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       trailing: isSelected
                           ? const Icon(
                               Icons.check_rounded,
-                              color: Color(0xFF4A654E),
+                              color: AppColors.greenPrimary,
                             )
                           : null,
                     );
@@ -134,7 +135,7 @@ class DropdownField extends StatelessWidget {
             fontWeight: FontWeight.w500,
             fontSize: 12,
             letterSpacing: 0.6,
-            color: Color(0xFF1B1C1C),
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 12),
@@ -147,12 +148,12 @@ class DropdownField extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               decoration: BoxDecoration(
-                color: const Color(0xFFF6F3F2),
+                color: AppColors.surfaceHover,
                 borderRadius: BorderRadius.circular(8),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF1B1C1C).withValues(alpha: 0.05),
-                    blurRadius: 6,
+                    color: AppColors.textPrimary.withValues(alpha: 0.05),
+                    blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
                 ],
@@ -167,7 +168,7 @@ class DropdownField extends StatelessWidget {
                         fontFamilyFallback: ['NotoSansJP'],
                         fontWeight: FontWeight.w500,
                         fontSize: 16,
-                        color: Color(0xFF1B1C1C),
+                        color: AppColors.textPrimary,
                       ),
                     ),
                   ),
@@ -176,7 +177,7 @@ class DropdownField extends StatelessWidget {
                     width: 12,
                     height: 8,
                     colorFilter: const ColorFilter.mode(
-                      Color(0xFF484553),
+                      AppColors.textSecondary,
                       BlendMode.srcIn,
                     ),
                   ),

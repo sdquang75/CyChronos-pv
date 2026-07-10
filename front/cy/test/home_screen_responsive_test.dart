@@ -31,18 +31,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           child: MaterialApp(
-            home: Scaffold(
-              body: HomeTabView(
-                scrollController: ScrollController(),
-                stayDurationMinutes: '30',
-                onStayDurationChanged: (_) {},
-                spareTimeMinutes: '30',
-                onSpareTimeChanged: (_) {},
-                selectedGenreId: null,
-                onGenreChanged: (_) {},
-                onFindDestination: () {},
-              ),
-            ),
+            home: Scaffold(body: HomeTabView(onFindDestination: () {})),
           ),
         ),
       );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cy/core/theme/app_colors.dart';
 
 class SocialLoginButton extends StatefulWidget {
   final Widget icon;
@@ -53,8 +54,8 @@ class _SocialLoginButtonState extends State<SocialLoginButton> {
               border: Border.all(
                 color:
                     _hovered
-                        ? const Color(0xFF8BA88E)
-                        : const Color(0xFFC4C8C0).withValues(alpha: 0.75),
+                        ? AppColors.greenSocial
+                        : AppColors.borderMedium.withValues(alpha: 0.75),
               ),
               boxShadow: [
                 BoxShadow(
@@ -64,36 +65,40 @@ class _SocialLoginButtonState extends State<SocialLoginButton> {
                 ),
               ],
             ),
-            child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 24,
-                    height: 24,
-                    child:
-                        widget.isLoading
-                            ? const CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Color(0xFF8BA88E),
-                              ),
-                            )
-                            : widget.icon,
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    widget.label,
-                    style: const TextStyle(
-                      fontFamily: 'HankenGrotesk',
-                      fontFamilyFallback: ['NotoSansJP'],
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF334155),
+            // Icon pinned to a fixed leading position (not centered together
+            // with the label) so the Google/LINE/Facebook icons line up in
+            // the same vertical column across all three buttons, regardless
+            // of how long each label text is.
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 24,
+                  height: 24,
+                  child:
+                      widget.isLoading
+                          ? const CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.greenSocial,
+                            ),
+                          )
+                          : widget.icon,
+                ),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      widget.label,
+                      style: const TextStyle(
+                        fontFamily: 'HankenGrotesk',
+                        fontFamilyFallback: ['NotoSansJP'],
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSlateDark,
+                      ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cy/core/theme/app_colors.dart';
 import 'home_tab_header.dart';
 
 // TAB: ROUTE SEARCH/EXPLORE SCREEN (MOCKUP)
@@ -60,7 +61,7 @@ class _RouteCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFFC9C4D5).withValues(alpha: 0.3),
+          color: AppColors.terracottaBorder.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
@@ -73,7 +74,7 @@ class _RouteCard extends StatelessWidget {
               fontFamilyFallback: ['NotoSansJP'],
               fontWeight: FontWeight.w700,
               fontSize: 18,
-              color: Color(0xFF19005C),
+              color: AppColors.terracottaDeep,
             ),
           ),
           const SizedBox(height: 12),
@@ -96,7 +97,7 @@ class _RouteCard extends StatelessWidget {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1EBFF),
+                  color: AppColors.terracottaChipBg,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -105,7 +106,7 @@ class _RouteCard extends StatelessWidget {
                     fontFamily: 'HankenGrotesk',
                     fontFamilyFallback: ['NotoSansJP'],
                     fontSize: 12,
-                    color: Color(0xFF19005C),
+                    color: AppColors.terracottaDeep,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -128,7 +129,7 @@ class _RouteStat extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: const Color(0xFF484553)),
+        Icon(icon, size: 16, color: AppColors.textSecondary),
         const SizedBox(width: 4),
         Text(
           label,
@@ -136,7 +137,7 @@ class _RouteStat extends StatelessWidget {
             fontFamily: 'Inter',
             fontFamilyFallback: ['NotoSansJP'],
             fontSize: 13,
-            color: Color(0xFF484553),
+            color: AppColors.textSecondary,
           ),
         ),
       ],

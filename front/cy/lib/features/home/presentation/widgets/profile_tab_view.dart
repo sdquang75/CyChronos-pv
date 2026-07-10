@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cy/core/theme/app_colors.dart';
 import '../../../auth/domain/auth_state.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import 'home_tab_header.dart';
@@ -30,11 +31,11 @@ class ProfileTabView extends ConsumerWidget {
               color: Colors.white,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: const Color(0xFFC9C4D5).withValues(alpha: 0.3),
+                color: AppColors.terracottaBorder.withValues(alpha: 0.3),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF2E0094).withValues(alpha: 0.03),
+                  color: AppColors.terracottaShadow.withValues(alpha: 0.03),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -45,7 +46,7 @@ class ProfileTabView extends ConsumerWidget {
                 // Avatar: Google photo or fallback SVG
                 CircleAvatar(
                   radius: 48,
-                  backgroundColor: const Color(0xFFF1EBFF),
+                  backgroundColor: AppColors.terracottaChipBg,
                   backgroundImage: (user?.photoUrl != null)
                       ? NetworkImage(user!.photoUrl!)
                       : null,
@@ -53,7 +54,7 @@ class ProfileTabView extends ConsumerWidget {
                       ? const Icon(
                           Icons.person_rounded,
                           size: 44,
-                          color: Color(0xFF19005C),
+                          color: AppColors.terracottaDeep,
                         )
                       : null,
                 ),
@@ -65,7 +66,7 @@ class ProfileTabView extends ConsumerWidget {
                     fontFamilyFallback: ['NotoSansJP'],
                     fontWeight: FontWeight.w700,
                     fontSize: 22,
-                    color: Color(0xFF19005C),
+                    color: AppColors.terracottaDeep,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -74,7 +75,7 @@ class ProfileTabView extends ConsumerWidget {
                   style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 14,
-                    color: const Color(0xFF484553).withValues(alpha: 0.8),
+                    color: AppColors.textSecondary.withValues(alpha: 0.8),
                   ),
                 ),
               ],
@@ -90,7 +91,7 @@ class ProfileTabView extends ConsumerWidget {
               fontWeight: FontWeight.w500,
               fontSize: 13,
               letterSpacing: 0.7,
-              color: Color(0xFF484553),
+              color: AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 12),
@@ -125,10 +126,10 @@ class ProfileTabView extends ConsumerWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEA4335).withValues(alpha: 0.1),
+                  color: AppColors.danger.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: const Color(0xFFEA4335).withValues(alpha: 0.3),
+                    color: AppColors.danger.withValues(alpha: 0.3),
                     width: 1.5,
                   ),
                 ),
@@ -137,7 +138,7 @@ class ProfileTabView extends ConsumerWidget {
                   children: [
                     Icon(
                       Icons.logout_rounded,
-                      color: Color(0xFFEA4335),
+                      color: AppColors.danger,
                       size: 20,
                     ),
                     SizedBox(width: 10),
@@ -148,7 +149,7 @@ class ProfileTabView extends ConsumerWidget {
                         fontFamilyFallback: ['NotoSansJP'],
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
-                        color: Color(0xFFEA4335),
+                        color: AppColors.danger,
                       ),
                     ),
                   ],
@@ -181,13 +182,13 @@ class _StatCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFFC9C4D5).withValues(alpha: 0.3),
+          color: AppColors.terracottaBorder.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: const Color(0xFF2A0088), size: 24),
+          Icon(icon, color: AppColors.terracottaAccent, size: 24),
           const SizedBox(height: 16),
           Text(
             label,
@@ -195,7 +196,7 @@ class _StatCard extends StatelessWidget {
               fontFamily: 'HankenGrotesk',
               fontFamilyFallback: ['NotoSansJP'],
               fontSize: 12,
-              color: const Color(0xFF484553).withValues(alpha: 0.8),
+              color: AppColors.textSecondary.withValues(alpha: 0.8),
             ),
           ),
           const SizedBox(height: 4),
@@ -205,7 +206,7 @@ class _StatCard extends StatelessWidget {
               fontFamily: 'JetBrainsMono',
               fontWeight: FontWeight.w800,
               fontSize: 20,
-              color: Color(0xFF19005C),
+              color: AppColors.terracottaDeep,
             ),
           ),
         ],

@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:cy/core/widgets/app_screen_frame.dart';
+import 'package:cy/core/theme/app_colors.dart';
 import 'package:cy/core/widgets/app_top_bar.dart';
-import 'package:cy/features/home/presentation/widgets/home_bottom_nav_bar.dart';
 import 'package:cy/features/route_confirm/widgets/route_card_pieces.dart';
 
-// "Confirm Route" screen — shown after a destination is picked (from
-// DestinationListScreen / DetilScreen) so the rider can review the route
-// summary before starting. Reuses the same green/HankenGrotesk design
-// system and floating HomeBottomNavBar as the Home tab.
+// "Confirm Route" screen — shown after a destination is picked from
+// DestinationListScreen, both pushed on the Explore tab's own nested
+// Navigator (see ExploreFlow), so this sits on top of the shared
+// AppScreenFrame/HomeBottomNavBar that HomeScreen already provides.
 class RouteConfirmScreen extends StatelessWidget {
   const RouteConfirmScreen({
     super.key,
@@ -29,70 +27,47 @@ class RouteConfirmScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppScreenFrame(child: _buildContent(context));
-  }
-
-  Widget _buildContent(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          color: Color(0xFFFDFCF8),
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0x33D5E8D1), Color(0x00D5E8D1)],
-          ),
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.bgWarm,
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppColors.greenGradient.withValues(alpha: 0.2),
+            AppColors.greenGradient.withValues(alpha: 0),
+          ],
         ),
-        child: Stack(
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Positioned.fill(
-              child: SafeArea(
-                bottom: false,
+            const AppTopBar(title: 'Confirm Route'),
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.only(bottom: 110),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const AppTopBar(title: 'Confirm Route'),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.only(bottom: 110),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _MapPreview(thumbnailAsset: thumbnailAsset),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                20,
-                                16,
-                                20,
-                                24,
-                              ),
-                              child: _RouteSummaryCard(
-                                destinationName: destinationName,
-                                waypointLabels: waypointLabels,
-                                distanceText: distanceText,
-                                durationText: durationText,
-                                elevationText: elevationText,
-                                thumbnailAsset: thumbnailAsset,
-                              ),
-                            ),
-                          ],
-                        ),
+                    _MapPreview(thumbnailAsset: thumbnailAsset),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                      child: _RouteSummaryCard(
+                        destinationName: destinationName,
+                        waypointLabels: waypointLabels,
+                        distanceText: distanceText,
+                        durationText: durationText,
+                        elevationText: elevationText,
+                        thumbnailAsset: thumbnailAsset,
                       ),
                     ),
                   ],
                 ),
-              ),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: HomeBottomNavBar(
-                currentIndex: 0,
-                onTap: (_) => context.go('/home'),
               ),
             ),
           ],
@@ -118,7 +93,7 @@ class _MapPreview extends StatelessWidget {
         height: 202,
         width: double.infinity,
         decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFD1D5D0)),
+          border: Border.all(color: AppColors.borderLight),
           borderRadius: BorderRadius.circular(12),
           image: DecorationImage(
             image: AssetImage(thumbnailAsset),
@@ -160,7 +135,7 @@ class _RouteSummaryCard extends StatelessWidget {
             fontFamilyFallback: ['NotoSansJP'],
           ),
         ),
-        backgroundColor: const Color(0xFF4A654E),
+        backgroundColor: AppColors.greenPrimary,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -174,11 +149,11 @@ class _RouteSummaryCard extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFD1D5D0)),
+        border: Border.all(color: AppColors.borderLight),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1B1C1C).withValues(alpha: 0.05),
+            color: AppColors.textPrimary.withValues(alpha: 0.05),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -190,7 +165,7 @@ class _RouteSummaryCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.only(bottom: 16),
             decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0xFFE4E2E1))),
+              border: Border(bottom: BorderSide(color: AppColors.dividerLight)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -224,7 +199,7 @@ class _RouteSummaryCard extends StatelessWidget {
                           fontFamilyFallback: ['NotoSansJP'],
                           fontWeight: FontWeight.w600,
                           fontSize: 18,
-                          color: Color(0xFF1B1C1C),
+                          color: AppColors.textPrimary,
                           height: 24 / 18,
                         ),
                       ),

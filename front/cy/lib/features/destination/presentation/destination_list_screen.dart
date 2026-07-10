@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:cy/core/widgets/app_screen_frame.dart';
+import 'package:cy/core/theme/app_colors.dart';
 import 'package:cy/core/widgets/app_top_bar.dart';
 import 'package:cy/core/widgets/staggered_entrance.dart';
 import 'package:cy/core/widgets/tap_scale.dart';
 import 'package:cy/features/home/domain/recommendation_state.dart';
 import 'package:cy/features/home/presentation/providers/recommendation_provider.dart';
-import 'package:cy/features/home/presentation/widgets/home_bottom_nav_bar.dart';
+import 'package:cy/features/route_confirm/route_confirm.dart';
 import 'package:cy/features/route_confirm/widgets/route_card_pieces.dart';
 
 // Destination search & results screen, built directly from the Figma
@@ -190,124 +189,100 @@ class _DestinationListScreenState
 
   void _startRoute(Map<String, String> destination) {
     HapticFeedback.mediumImpact();
-    context.push(
-      '/route_confirm',
-      extra: {
-        'destinationName': destination['title'],
-        'distanceText': destination['distance'],
-        'durationText': destination['duration'],
-        'elevationText': destination['elevation'],
-        'thumbnailAsset': destination['image'],
-      },
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RouteConfirmScreen(
+          destinationName: destination['title'] ?? 'ABC park',
+          distanceText: destination['distance'] ?? '12.4 km',
+          durationText: destination['duration'] ?? '45 min',
+          elevationText: destination['elevation'] ?? '42 m',
+          thumbnailAsset: destination['image'] ?? 'assets/testimage.png',
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return AppScreenFrame(child: _buildContent(context));
-  }
-
-  Widget _buildContent(BuildContext context) {
     final results = _filteredDestinations;
 
-    return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          color: Color(0xFFFDFCF8),
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0x33D5E8D1), Color(0x00D5E8D1)],
-          ),
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.bgWarm,
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppColors.greenGradient.withValues(alpha: 0.2),
+            AppColors.greenGradient.withValues(alpha: 0),
+          ],
         ),
-        child: Stack(
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
           children: [
-            Positioned.fill(
-              child: SafeArea(
-                bottom: false,
-                child: Column(
-                  children: [
-                    const AppTopBar(title: 'おすすめスポット'),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                      child: Column(
-                        children: [
-                          _SearchBar(
-                            controller: _searchController,
-                            isSearching: _isSearching,
-                            onChanged: (value) =>
-                                setState(() => _query = value),
-                            onSubmit: _runSearch,
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            height: 34,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: _genres.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(width: 8),
-                              itemBuilder: (context, index) {
-                                final genre = _genres[index];
-                                return _GenreChip(
-                                  label: genre,
-                                  selected: genre == _selectedGenre,
-                                  onTap: () => _onGenreSelected(genre),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
+            const AppTopBar(title: 'おすすめスポット'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+              child: Column(
+                children: [
+                  _SearchBar(
+                    controller: _searchController,
+                    isSearching: _isSearching,
+                    onChanged: (value) => setState(() => _query = value),
+                    onSubmit: _runSearch,
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 34,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _genres.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, index) {
+                        final genre = _genres[index];
+                        return _GenreChip(
+                          label: genre,
+                          selected: genre == _selectedGenre,
+                          onTap: () => _onGenreSelected(genre),
+                        );
+                      },
                     ),
-                    Expanded(
-                      child: _isSearching
-                          ? const _SearchingIndicator()
-                          : results.isEmpty
-                          ? const _NoResults()
-                          : ListView.builder(
-                              physics: const BouncingScrollPhysics(),
-                              padding: const EdgeInsets.fromLTRB(
-                                20,
-                                4,
-                                20,
-                                120,
-                              ),
-                              itemCount: results.length,
-                              itemBuilder: (context, index) {
-                                final destination = results[index];
-                                return StaggeredEntrance(
-                                  key: ValueKey(
-                                    '$_searchGeneration-${destination['title']}',
-                                  ),
-                                  delay: Duration(milliseconds: 45 * index),
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(bottom: 14),
-                                    child: _DestinationRouteCard(
-                                      destination: destination,
-                                      isExpanded: _expandedIndex == index,
-                                      onToggle: () => _onCardToggled(index),
-                                      onStart: () => _startRoute(destination),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: HomeBottomNavBar(
-                currentIndex: 0,
-                onTap: (_) => context.go('/home'),
-              ),
+            Expanded(
+              child: _isSearching
+                  ? const _SearchingIndicator()
+                  : results.isEmpty
+                  ? const _NoResults()
+                  : ListView.builder(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 120),
+                      itemCount: results.length,
+                      itemBuilder: (context, index) {
+                        final destination = results[index];
+                        return StaggeredEntrance(
+                          key: ValueKey(
+                            '$_searchGeneration-${destination['title']}',
+                          ),
+                          delay: Duration(milliseconds: 45 * index),
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 14),
+                            child: _DestinationRouteCard(
+                              destination: destination,
+                              isExpanded: _expandedIndex == index,
+                              onToggle: () => _onCardToggled(index),
+                              onStart: () => _startRoute(destination),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
@@ -338,12 +313,12 @@ class _SearchBar extends StatelessWidget {
       padding: const EdgeInsets.only(left: 16, right: 4),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFD1D5D0)),
+        border: Border.all(color: AppColors.borderLight),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          const Icon(Icons.search_rounded, size: 20, color: Color(0xFF5F5E5A)),
+          const Icon(Icons.search_rounded, size: 20, color: AppColors.textMuted),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
@@ -355,7 +330,7 @@ class _SearchBar extends StatelessWidget {
                 fontFamily: 'HankenGrotesk',
                 fontFamilyFallback: ['NotoSansJP'],
                 fontSize: 15,
-                color: Color(0xFF1B1C1C),
+                color: AppColors.textPrimary,
               ),
               decoration: const InputDecoration(
                 isCollapsed: true,
@@ -365,7 +340,7 @@ class _SearchBar extends StatelessWidget {
                   fontFamily: 'HankenGrotesk',
                   fontFamilyFallback: ['NotoSansJP'],
                   fontSize: 15,
-                  color: Color(0xFF5F5E5A),
+                  color: AppColors.textMuted,
                 ),
               ),
             ),
@@ -380,7 +355,7 @@ class _SearchBar extends StatelessWidget {
                 height: 40,
                 alignment: Alignment.center,
                 decoration: const BoxDecoration(
-                  color: Color(0xFF4A654E),
+                  color: AppColors.greenPrimary,
                   shape: BoxShape.circle,
                 ),
                 child: isSearching
@@ -427,7 +402,7 @@ class _GenreChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF4A654E) : const Color(0xFFDDE6DE),
+          color: selected ? AppColors.greenPrimary : AppColors.greenChipBgLight,
           borderRadius: BorderRadius.circular(9999),
         ),
         child: Text(
@@ -437,7 +412,7 @@ class _GenreChip extends StatelessWidget {
             fontFamilyFallback: const ['NotoSansJP'],
             fontWeight: FontWeight.w600,
             fontSize: 13,
-            color: selected ? Colors.white : const Color(0xFF4A654E),
+            color: selected ? Colors.white : AppColors.greenPrimary,
           ),
         ),
       ),
@@ -484,7 +459,7 @@ class _SearchingIndicator extends StatelessWidget {
         height: 24,
         child: CircularProgressIndicator(
           strokeWidth: 2.5,
-          color: Color(0xFF4A654E),
+          color: AppColors.greenPrimary,
         ),
       ),
     );
@@ -504,7 +479,7 @@ class _NoResults extends StatelessWidget {
           fontFamilyFallback: ['NotoSansJP'],
           fontWeight: FontWeight.w600,
           fontSize: 14,
-          color: Color(0xFF5F5E5A),
+          color: AppColors.textMuted,
         ),
       ),
     );
@@ -539,13 +514,13 @@ class _DestinationRouteCard extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
-          border: Border.all(color: const Color(0xFFD1D5D0)),
+          border: Border.all(color: AppColors.borderLight),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: const Color(
-                0xFF1B1C1C,
-              ).withValues(alpha: isExpanded ? 0.06 : 0.03),
+              color: AppColors.textPrimary.withValues(
+                alpha: isExpanded ? 0.06 : 0.03,
+              ),
               blurRadius: isExpanded ? 16 : 8,
               offset: Offset(0, isExpanded ? 6 : 2),
             ),
@@ -564,7 +539,7 @@ class _DestinationRouteCard extends StatelessWidget {
                 border: Border(
                   bottom: BorderSide(
                     color: isExpanded
-                        ? const Color(0xFFE4E2E1)
+                        ? AppColors.dividerLight
                         : Colors.transparent,
                   ),
                 ),
@@ -603,7 +578,7 @@ class _DestinationRouteCard extends StatelessWidget {
                             fontFamilyFallback: ['NotoSansJP'],
                             fontWeight: FontWeight.w600,
                             fontSize: 18,
-                            color: Color(0xFF1B1C1C),
+                            color: AppColors.textPrimary,
                             height: 24 / 18,
                           ),
                         ),
@@ -616,7 +591,7 @@ class _DestinationRouteCard extends StatelessWidget {
                     curve: Curves.easeOutCubic,
                     child: const Icon(
                       Icons.keyboard_arrow_down_rounded,
-                      color: Color(0xFF5F5E5A),
+                      color: AppColors.textMuted,
                     ),
                   ),
                 ],

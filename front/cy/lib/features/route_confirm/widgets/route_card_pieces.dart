@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cy/core/theme/app_colors.dart';
 
 // Reusable pieces of the Figma "Confirm Route" Bottom Action Card
 // (waypoint badge, distance/time/elevation metric, divider, "start"
@@ -15,7 +16,7 @@ class WaypointBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFDDE6DE),
+        color: AppColors.greenChipBgLight,
         borderRadius: BorderRadius.circular(9999),
       ),
       child: Text(
@@ -25,7 +26,7 @@ class WaypointBadge extends StatelessWidget {
           fontWeight: FontWeight.w600,
           fontSize: 12,
           letterSpacing: 0.24,
-          color: Color(0xFF4A654E),
+          color: AppColors.greenPrimary,
           height: 16 / 12,
         ),
       ),
@@ -51,7 +52,7 @@ class RouteMetric extends StatelessWidget {
             fontWeight: FontWeight.w500,
             fontSize: 12,
             letterSpacing: 0.6,
-            color: Color(0xFF424842),
+            color: AppColors.textOliveMuted,
           ),
         ),
         const SizedBox(height: 4),
@@ -61,7 +62,7 @@ class RouteMetric extends StatelessWidget {
             fontFamily: 'HankenGrotesk',
             fontWeight: FontWeight.w600,
             fontSize: 18,
-            color: Color(0xFF4A654E),
+            color: AppColors.greenPrimary,
             height: 24 / 18,
           ),
         ),
@@ -75,7 +76,7 @@ class MetricDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(width: 1, height: 32, color: const Color(0xFFE4E2E1));
+    return Container(width: 1, height: 32, color: AppColors.dividerLight);
   }
 }
 
@@ -105,11 +106,11 @@ class RouteStartButton extends StatelessWidget {
           width: double.infinity,
           height: height,
           decoration: BoxDecoration(
-            color: const Color(0xFF4A654E),
+            color: AppColors.greenPrimary,
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF1B1C1C).withValues(alpha: 0.1),
+                color: AppColors.textPrimary.withValues(alpha: 0.1),
                 blurRadius: 16,
                 offset: const Offset(0, 6),
               ),

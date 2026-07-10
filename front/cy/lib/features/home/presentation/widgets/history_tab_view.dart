@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cy/core/theme/app_colors.dart';
 import 'home_tab_header.dart';
 
 // TAB: HISTORY ACTIVITIES SCREEN (MOCKUP)
@@ -68,7 +69,7 @@ class _HistoryItem extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFFC9C4D5).withValues(alpha: 0.3),
+          color: AppColors.terracottaBorder.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
@@ -84,7 +85,7 @@ class _HistoryItem extends StatelessWidget {
                   fontFamilyFallback: ['NotoSansJP'],
                   fontWeight: FontWeight.w700,
                   fontSize: 16,
-                  color: Color(0xFF19005C),
+                  color: AppColors.terracottaDeep,
                 ),
               ),
               Text(
@@ -92,7 +93,7 @@ class _HistoryItem extends StatelessWidget {
                 style: TextStyle(
                   fontFamily: 'JetBrainsMono',
                   fontSize: 12,
-                  color: const Color(0xFF484553).withValues(alpha: 0.6),
+                  color: AppColors.textSecondary.withValues(alpha: 0.6),
                 ),
               ),
             ],
@@ -129,7 +130,7 @@ class _HistoryStat extends StatelessWidget {
             fontFamily: 'HankenGrotesk',
             fontFamilyFallback: ['NotoSansJP'],
             fontSize: 12,
-            color: const Color(0xFF484553).withValues(alpha: 0.6),
+            color: AppColors.textSecondary.withValues(alpha: 0.6),
           ),
         ),
         const SizedBox(height: 2),
@@ -139,7 +140,7 @@ class _HistoryStat extends StatelessWidget {
             fontFamily: 'JetBrainsMono',
             fontWeight: FontWeight.w700,
             fontSize: 15,
-            color: Color(0xFF191C1F),
+            color: AppColors.terracottaDeep,
           ),
         ),
       ],

@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cy/core/icons/app_icons.dart';
+import 'package:cy/core/theme/app_colors.dart';
 
 // Floating frosted-glass pill bottom nav (Explore/Ride/Stats/Settings). The
 // active-tab indicator slides between tabs on tap, and can also be dragged
@@ -172,9 +173,9 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
                           width: tabWidth - 4,
                           child: DecoratedBox(
                             decoration: BoxDecoration(
-                              color: const Color(
-                                0xFF687966,
-                              ).withValues(alpha: 0.3),
+                              color: AppColors.greenIndicator.withValues(
+                                alpha: 0.3,
+                              ),
                               borderRadius: BorderRadius.circular(24),
                             ),
                           ),
@@ -202,9 +203,7 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
 
   Widget _buildTabItem(int index) {
     final isSelected = widget.currentIndex == index;
-    final color = isSelected
-        ? const Color(0xFF4F604E)
-        : const Color(0xFF5F5E5A);
+    final color = isSelected ? AppColors.greenIcon : AppColors.textMuted;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

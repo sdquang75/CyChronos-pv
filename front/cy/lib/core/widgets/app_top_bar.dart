@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cy/core/theme/app_colors.dart';
 
 // Shared "Header - TopAppBar" from the Figma Confirm Route frame: back
 // button + bold title with a bottom hairline. Reused by any screen that
@@ -24,7 +25,7 @@ class AppTopBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFC2C8C0))),
+        border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
       ),
       child: Row(
         children: [
@@ -35,15 +36,25 @@ class AppTopBar extends StatelessWidget {
               customBorder: const CircleBorder(),
               onTap:
                   onBack ??
-                  () => context.canPop()
-                      ? context.pop()
-                      : context.go(fallbackRoute),
+                  () {
+                    // Prefer popping the nearest Navigator (e.g. the Explore
+                    // tab's own nested flow) before falling back to the
+                    // app-wide GoRouter stack.
+                    final navigator = Navigator.of(context);
+                    if (navigator.canPop()) {
+                      navigator.pop();
+                    } else if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go(fallbackRoute);
+                    }
+                  },
               child: const Padding(
                 padding: EdgeInsets.all(5),
                 child: Icon(
                   Icons.arrow_back_rounded,
                   size: 16,
-                  color: Color(0xFF4A654E),
+                  color: AppColors.greenPrimary,
                 ),
               ),
             ),
@@ -57,7 +68,7 @@ class AppTopBar extends StatelessWidget {
               fontWeight: FontWeight.w700,
               fontSize: 22,
               letterSpacing: -0.55,
-              color: Color(0xFF4A654E),
+              color: AppColors.greenPrimary,
               height: 28 / 22,
             ),
           ),

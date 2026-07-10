@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cy/core/theme/app_colors.dart';
 import 'package:cy/core/widgets/app_screen_frame.dart';
 import 'providers/auth_provider.dart';
 import '../domain/auth_state.dart';
@@ -66,7 +67,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   Widget build(BuildContext context) {
     Widget content = Scaffold(
       body: Container(
-        color: const Color(0xFFF8F9FE),
+        color: AppColors.bgCool,
         child: Stack(
           children: [
             Positioned.fill(
@@ -75,7 +76,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   gradient: RadialGradient(
                     center: Alignment.topLeft,
                     radius: 1.414,
-                    colors: [Color(0xFFE6DEFF), Color(0x00E6DEFF)],
+                    colors: [
+                      AppColors.terracottaHazeA,
+                      Color(0x00E6DEFF),
+                    ],
                     stops: [0.0, 0.5],
                   ),
                 ),
@@ -87,7 +91,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   gradient: RadialGradient(
                     center: Alignment.topRight,
                     radius: 1.414,
-                    colors: [Color(0xFFFCF6FF), Color(0x00FCF6FF)],
+                    colors: [
+                      AppColors.terracottaHazeC,
+                      Color(0x00FCF6FF),
+                    ],
                     stops: [0.0, 0.5],
                   ),
                 ),
@@ -99,7 +106,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   gradient: RadialGradient(
                     center: Alignment.bottomRight,
                     radius: 1.414,
-                    colors: [Color(0xFFE8DEFF), Color(0x00E8DEFF)],
+                    colors: [
+                      AppColors.terracottaHazeB,
+                      Color(0x00E8DEFF),
+                    ],
                     stops: [0.0, 0.5],
                   ),
                 ),
@@ -111,7 +121,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   gradient: RadialGradient(
                     center: Alignment.bottomLeft,
                     radius: 1.414,
-                    colors: [Color(0xFFF8F9FE), Color(0x00F8F9FE)],
+                    colors: [
+                      AppColors.bgCool,
+                      Color(0x00F8F9FE),
+                    ],
                     stops: [0.0, 0.5],
                   ),
                 ),
@@ -139,7 +152,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                           fontFamilyFallback: ['NotoSansJP'],
                           fontSize: 48,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF19005C),
+                          color: AppColors.terracottaDeep,
                           letterSpacing: -0.96,
                         ),
                       ),
@@ -150,7 +163,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         child: CircularProgressIndicator(
                           strokeWidth: 3,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            Color(0xFF6049C5),
+                            AppColors.terracottaGlow,
                           ),
                         ),
                       ),
@@ -166,11 +179,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               child: Center(
                 child: Text(
                   '© 2026 CyChronos',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'JetBrainsMono',
-                    fontFamilyFallback: ['NotoSansJP'],
+                    fontFamilyFallback: const ['NotoSansJP'],
                     fontSize: 12,
-                    color: Color(0x99484553),
+                    color: AppColors.textSecondary.withValues(alpha: 0.6),
                     fontWeight: FontWeight.w500,
                   ),
                 ),

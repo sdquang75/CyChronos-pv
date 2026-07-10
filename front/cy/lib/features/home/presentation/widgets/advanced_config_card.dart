@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cy/core/icons/app_icons.dart';
+import 'package:cy/core/theme/app_colors.dart';
 import 'dropdown_field.dart';
 
 const _stayDurationOptions = [
@@ -57,10 +58,10 @@ class AdvancedConfigCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFD1D5D0)),
+        border: Border.all(color: AppColors.borderLight),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -73,7 +74,7 @@ class AdvancedConfigCard extends StatelessWidget {
                 width: 18,
                 height: 18,
                 colorFilter: const ColorFilter.mode(
-                  Color(0xFF19005C),
+                  AppColors.terracottaDeep,
                   BlendMode.srcIn,
                 ),
               ),
@@ -85,7 +86,7 @@ class AdvancedConfigCard extends StatelessWidget {
                   fontFamilyFallback: ['NotoSansJP'],
                   fontWeight: FontWeight.w500,
                   fontSize: 24,
-                  color: Color(0xFF19005C),
+                  color: AppColors.terracottaDeep,
                 ),
               ),
             ],
@@ -98,7 +99,7 @@ class AdvancedConfigCard extends StatelessWidget {
               fontFamilyFallback: ['NotoSansJP'],
               fontWeight: FontWeight.w400,
               fontSize: 16,
-              color: Color(0xFF484553),
+              color: AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 24),
