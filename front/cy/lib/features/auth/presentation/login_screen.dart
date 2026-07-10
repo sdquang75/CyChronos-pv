@@ -178,7 +178,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Widget _buildHeader() {
     return Column(
       children: [
-        Image.asset('assets/kitty.jpeg', width: 72, fit: BoxFit.contain),
+        Image.asset('assets/kittytr.png', width: 72, fit: BoxFit.contain),
       ],
     );
   }
