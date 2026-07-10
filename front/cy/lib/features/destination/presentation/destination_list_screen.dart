@@ -138,9 +138,17 @@ class _DestinationListScreenState
     });
   }
 
+  // True while the first /api/suggest request is still in flight — the mock
+  // list must NOT be shown during this window, or it briefly looks like real
+  // results before getting swapped out from under the user.
+  bool get _isLoadingRecommendations {
+    final state = ref.watch(recommendationProvider);
+    return state is RecommendationLocating || state is RecommendationLoading;
+  }
+
   // Prefers real backend recommendations when available; falls back to the
-  // mock list otherwise (e.g. while loading, on error, or before the
-  // endpoint is implemented) so the screen never looks empty.
+  // mock list otherwise (e.g. on error, permission denied, or before the
+  // endpoint is implemented) so the screen never looks permanently empty.
   List<Map<String, String>> get _sourceDestinations {
     final recommendationState = ref.watch(recommendationProvider);
     final apiDestinations = recommendationState is RecommendationLoaded
@@ -204,6 +212,7 @@ class _DestinationListScreenState
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => RouteConfirmScreen(
+          placeId: destination['id'],
           destinationName: destination['title'] ?? 'ABC park',
           distanceText: destination['distance'] ?? '12.4 km',
           durationText: destination['duration'] ?? '45 min',
@@ -268,7 +277,7 @@ class _DestinationListScreenState
               ),
             ),
             Expanded(
-              child: _isSearching
+              child: _isSearching || _isLoadingRecommendations
                   ? const _SearchingIndicator()
                   : results.isEmpty
                   ? const _NoResults()
@@ -450,6 +459,7 @@ List<Map<String, String>> _parseApiDestinations(dynamic data) {
     final durationMinutes = item['durationMinutes'];
     final distanceKm = item['distanceKm'];
     parsed.add({
+      'id': (item['id'] ?? '').toString(),
       'title': title.toString(),
       'genre': (item['genre'] ?? item['category'] ?? '').toString(),
       'duration': durationMinutes == null

@@ -10,6 +10,7 @@ import 'package:cy/features/route_confirm/widgets/route_card_pieces.dart';
 class RouteConfirmScreen extends StatelessWidget {
   const RouteConfirmScreen({
     super.key,
+    this.placeId,
     this.destinationName = 'ABC park',
     this.waypointLabels = const ['A', 'B', 'C'],
     this.distanceText = '12.4 km',
@@ -18,6 +19,10 @@ class RouteConfirmScreen extends StatelessWidget {
     this.thumbnailAsset = 'assets/testimage.png',
   });
 
+  // Google place_id from DestinationListScreen's /api/suggest result. Null
+  // for mock/placeholder destinations. Carried through so the "start" button
+  // can record it as trip_history.destination_place_id.
+  final String? placeId;
   final String destinationName;
   final List<String> waypointLabels;
   final String distanceText;
