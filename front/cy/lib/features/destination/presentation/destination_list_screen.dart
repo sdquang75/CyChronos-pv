@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cy/core/widgets/app_screen_frame.dart';
 import 'package:cy/core/widgets/app_top_bar.dart';
 import 'package:cy/core/widgets/staggered_entrance.dart';
 import 'package:cy/core/widgets/tap_scale.dart';
+import 'package:cy/features/home/domain/recommendation_state.dart';
+import 'package:cy/features/home/presentation/providers/recommendation_provider.dart';
 import 'package:cy/features/home/presentation/widgets/home_bottom_nav_bar.dart';
 import 'package:cy/features/route_confirm/widgets/route_card_pieces.dart';
 
@@ -13,14 +16,16 @@ import 'package:cy/features/route_confirm/widgets/route_card_pieces.dart';
 // card shrunk down to just its Destination Summary row, and tapping it
 // morphs the card open to reveal the Route Details metrics + "start"
 // button — the same pieces RouteConfirmScreen uses.
-class DestinationListScreen extends StatefulWidget {
+class DestinationListScreen extends ConsumerStatefulWidget {
   const DestinationListScreen({super.key});
 
   @override
-  State<DestinationListScreen> createState() => _DestinationListScreenState();
+  ConsumerState<DestinationListScreen> createState() =>
+      _DestinationListScreenState();
 }
 
-class _DestinationListScreenState extends State<DestinationListScreen> {
+class _DestinationListScreenState
+    extends ConsumerState<DestinationListScreen> {
   static const List<Map<String, String>> _destinations = [
     {
       'title': '五月山公園',
@@ -107,14 +112,35 @@ class _DestinationListScreenState extends State<DestinationListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedGenre = 'すべて';
   String _query = '';
-  bool _hasSearched = false;
   bool _isSearching = false;
   int _searchGeneration = 0;
   int? _expandedIndex;
 
+  @override
+  void initState() {
+    super.initState();
+    // Fetch real nearby recommendations as soon as this screen opens, so
+    // the list can switch from the mock placeholder to live data without
+    // requiring the user to press search first.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(recommendationProvider.notifier).fetchForCurrentLocation();
+    });
+  }
+
+  // Prefers real backend recommendations when available; falls back to the
+  // mock list otherwise (e.g. while loading, on error, or before the
+  // endpoint is implemented) so the screen never looks empty.
+  List<Map<String, String>> get _sourceDestinations {
+    final recommendationState = ref.watch(recommendationProvider);
+    final apiDestinations = recommendationState is RecommendationLoaded
+        ? _parseApiDestinations(recommendationState.data)
+        : const <Map<String, String>>[];
+    return apiDestinations.isNotEmpty ? apiDestinations : _destinations;
+  }
+
   List<Map<String, String>> get _filteredDestinations {
     final query = _query.trim();
-    return _destinations.where((destination) {
+    return _sourceDestinations.where((destination) {
       final matchesGenre =
           _selectedGenre == 'すべて' ||
           destination['genre']!.contains(_selectedGenre);
@@ -143,7 +169,6 @@ class _DestinationListScreenState extends State<DestinationListScreen> {
     if (!mounted) return;
     setState(() {
       _isSearching = false;
-      _hasSearched = true;
       _searchGeneration++;
     });
   }
@@ -154,7 +179,7 @@ class _DestinationListScreenState extends State<DestinationListScreen> {
     setState(() {
       _selectedGenre = genre;
       _expandedIndex = null;
-      if (_hasSearched) _searchGeneration++;
+      _searchGeneration++;
     });
   }
 
@@ -240,8 +265,6 @@ class _DestinationListScreenState extends State<DestinationListScreen> {
                     Expanded(
                       child: _isSearching
                           ? const _SearchingIndicator()
-                          : !_hasSearched
-                          ? const _EmptyPrompt()
                           : results.isEmpty
                           ? const _NoResults()
                           : ListView.builder(
@@ -422,39 +445,32 @@ class _GenreChip extends StatelessWidget {
   }
 }
 
-class _EmptyPrompt extends StatelessWidget {
-  const _EmptyPrompt();
+// Lenient mapping from the backend's (currently unconfirmed) recommendation
+// payload shape into the same fields the mock data uses, so the card list
+// can render real results as soon as the endpoint exists without needing
+// another UI rewrite. Unrecognized/malformed entries are skipped; if none
+// of the response parses, the caller falls back to the mock list.
+List<Map<String, String>> _parseApiDestinations(dynamic data) {
+  if (data is! List) return const [];
 
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.explore_outlined,
-              size: 40,
-              color: Color(0xFF5F5E5A),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              '検索ボタンを押して\n周辺のおすすめスポットを探しましょう',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontFamilyFallback: ['NotoSansJP'],
-                fontSize: 14,
-                height: 1.5,
-                color: Color(0xFF5F5E5A),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  final parsed = <Map<String, String>>[];
+  for (final item in data) {
+    if (item is! Map) continue;
+    final title = item['title'] ?? item['name'];
+    if (title == null) continue;
+    parsed.add({
+      'title': title.toString(),
+      'genre': (item['genre'] ?? item['category'] ?? '').toString(),
+      'duration': (item['duration'] ?? item['durationText'] ?? '').toString(),
+      'distance': (item['distance'] ?? item['distanceText'] ?? '').toString(),
+      'elevation': (item['elevation'] ?? item['elevationText'] ?? '')
+          .toString(),
+      'image':
+          (item['image'] ?? item['thumbnailAsset'] ?? 'assets/testimage.png')
+              .toString(),
+    });
   }
+  return parsed;
 }
 
 class _SearchingIndicator extends StatelessWidget {

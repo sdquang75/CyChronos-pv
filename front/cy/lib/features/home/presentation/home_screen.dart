@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cy/core/widgets/app_screen_frame.dart';
-import '../domain/recommendation_state.dart';
 import 'providers/recommendation_provider.dart';
 import 'providers/weather_provider.dart';
 import 'widgets/history_tab_view.dart';
@@ -46,53 +45,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.dispose();
   }
 
-  void _showRecommendationFeedback(RecommendationState state) {
-    if (!mounted) return;
-
-    String? message;
-    switch (state) {
-      case RecommendationLocating():
-        message = '現在地を取得しています...';
-      case RecommendationLoading():
-        message = 'おすすめスポットを検索しています...';
-      case RecommendationLoaded():
-        message = 'おすすめスポットを取得しました。';
-      case RecommendationLocationServiceDisabled():
-        message = '位置情報サービスが無効です。端末の設定をご確認ください。';
-      case RecommendationPermissionDenied():
-        message = '位置情報の利用を許可してください。';
-      case RecommendationPermissionDeniedForever():
-        message = '位置情報の利用が拒否されています。設定アプリから許可してください。';
-      case RecommendationError(message: final msg):
-        message = 'エラーが発生しました: $msg';
-      case RecommendationInitial():
-        message = null;
-    }
-
-    if (message == null) return;
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(
-            fontFamily: 'HankenGrotesk',
-            fontFamilyFallback: ['NotoSansJP'],
-          ),
-        ),
-        backgroundColor: const Color(0xFF2A0088),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    ref.listen<RecommendationState>(recommendationProvider, (previous, next) {
-      _showRecommendationFeedback(next);
-    });
-
     return AppScreenFrame(child: _buildContent(context));
   }
 
