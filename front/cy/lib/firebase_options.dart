@@ -17,13 +17,19 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      return web;
+      throw UnsupportedError(
+        'DefaultFirebaseOptions have not been configured for web - '
+        'you can reconfigure this by running the FlutterFire CLI again.',
+      );
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        return ios;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for ios - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.macOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for macos - '
@@ -46,30 +52,11 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAiJNYxUSDWwu7OImu-mFhlV_64mTXYzMo',
-    appId: '1:479697853521:web:871b56f500c4d2d0e9ec70',
-    messagingSenderId: '479697853521',
-    projectId: 'phonic-impact-310713',
-    authDomain: 'phonic-impact-310713.firebaseapp.com',
-    storageBucket: 'phonic-impact-310713.firebasestorage.app',
-    measurementId: 'G-4DM0XBGPH1',
-  );
-
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCNjxsW_TK4C6HIm8k933rKdhPHR8ufMPI',
-    appId: '1:479697853521:android:c063ab6cf13beff9e9ec70',
-    messagingSenderId: '479697853521',
-    projectId: 'phonic-impact-310713',
-    storageBucket: 'phonic-impact-310713.firebasestorage.app',
-  );
-
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBtjs2BawJI7ZCjAMWHklcC1gw19UyYUpU',
-    appId: '1:479697853521:ios:ea4dd3ce3d6681eee9ec70',
-    messagingSenderId: '479697853521',
-    projectId: 'phonic-impact-310713',
-    storageBucket: 'phonic-impact-310713.firebasestorage.app',
-    iosBundleId: 'com.cychronos.cy',
+    apiKey: 'AIzaSyCqJfvQipILDhN1QG5H3UgESwXHdDoIrQM',
+    appId: '1:535054530233:android:d6bfb66b404665222bcd68',
+    messagingSenderId: '535054530233',
+    projectId: 'cychronos-48bd6',
+    storageBucket: 'cychronos-48bd6.firebasestorage.app',
   );
 }
