@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:cy/core/widgets/app_screen_frame.dart';
 import '../domain/recommendation_state.dart';
 import 'providers/recommendation_provider.dart';
 import 'providers/weather_provider.dart';
@@ -91,10 +93,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _showRecommendationFeedback(next);
     });
 
-    final size = MediaQuery.of(context).size;
-    final bool isLargeScreen = size.width > 390 || size.height > 844;
+    return AppScreenFrame(child: _buildContent(context));
+  }
 
-    Widget content = Scaffold(
+  Widget _buildContent(BuildContext context) {
+    return Scaffold(
       backgroundColor: const Color(0xFFF8F9FE),
       body: Stack(
         children: [
@@ -118,9 +121,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     selectedGenreId: _selectedGenreId,
                     onGenreChanged: (id) =>
                         setState(() => _selectedGenreId = id),
-                    onFindDestination: () => ref
-                        .read(recommendationProvider.notifier)
-                        .fetchForCurrentLocation(),
+                    // Home > search > destination results: hands off to the
+                    // dedicated search screen instead of surfacing results
+                    // inline on the Home tab.
+                    onFindDestination: () => context.push('/destination'),
                   ),
                   const RouteTabView(),
                   const HistoryTabView(),
@@ -144,31 +148,5 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
     );
-
-    if (isLargeScreen) {
-      return Scaffold(
-        backgroundColor: const Color(0xFF191C1F),
-        body: Center(
-          child: Container(
-            width: 390,
-            height: 844,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(40),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.4),
-                  blurRadius: 40,
-                  offset: const Offset(0, 20),
-                ),
-              ],
-            ),
-            child: content,
-          ),
-        ),
-      );
-    }
-
-    return content;
   }
 }

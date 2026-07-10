@@ -39,6 +39,31 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<void> signInWithFacebook() async {
+    state = const AuthLoading();
+    try {
+      final user = await _repo.signInWithFacebook();
+      state = AuthAuthenticated(user: user);
+    } on Exception catch (e) {
+      final msg = e.toString();
+      if (msg.contains('sign_in_cancelled')) {
+        state = const AuthUnauthenticated();
+      } else {
+        state = AuthError(msg);
+      }
+    }
+  }
+
+  Future<void> signInWithLine() async {
+    state = const AuthLoading();
+    try {
+      final user = await _repo.signInWithLine();
+      state = AuthAuthenticated(user: user);
+    } on Exception catch (e) {
+      state = AuthError(e.toString());
+    }
+  }
+
   Future<void> signOut() async {
     await _repo.signOut();
     state = const AuthUnauthenticated();

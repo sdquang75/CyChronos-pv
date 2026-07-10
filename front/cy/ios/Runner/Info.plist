@@ -49,5 +49,27 @@
 		<false/>
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>現在地周辺のおすすめスポットを表示するために位置情報を使用します。</string>
+
+		<!-- Facebook Login: TODO Meta for Developers で発行した実際の値に置き換えてください -->
+		<key>FacebookAppID</key>
+		<string>YOUR_FACEBOOK_APP_ID</string>
+		<key>FacebookClientToken</key>
+		<string>YOUR_FACEBOOK_CLIENT_TOKEN</string>
+		<key>FacebookDisplayName</key>
+		<string>CyChronos</string>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>fbYOUR_FACEBOOK_APP_ID</string>
+				</array>
+			</dict>
+		</array>
+		<key>LSApplicationQueriesSchemes</key>
+		<array>
+			<string>fbapi</string>
+			<string>fb-messenger-share-api</string>
+		</array>
 	</dict>
 </plist>

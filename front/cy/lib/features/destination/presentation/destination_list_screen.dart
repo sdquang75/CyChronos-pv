@@ -1,7 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cy/core/widgets/app_screen_frame.dart';
+import 'package:cy/core/widgets/app_top_bar.dart';
+import 'package:cy/core/widgets/staggered_entrance.dart';
+import 'package:cy/core/widgets/tap_scale.dart';
+import 'package:cy/features/home/presentation/widgets/home_bottom_nav_bar.dart';
+import 'package:cy/features/route_confirm/widgets/route_card_pieces.dart';
 
+// Destination search & results screen, built directly from the Figma
+// "Confirm Route" frame's Bottom Action Card: each result is that exact
+// card shrunk down to just its Destination Summary row, and tapping it
+// morphs the card open to reveal the Route Details metrics + "start"
+// button — the same pieces RouteConfirmScreen uses.
 class DestinationListScreen extends StatefulWidget {
   const DestinationListScreen({super.key});
 
@@ -10,279 +21,400 @@ class DestinationListScreen extends StatefulWidget {
 }
 
 class _DestinationListScreenState extends State<DestinationListScreen> {
-  String selectedGenre = 'すべて';
-
-  final List<Map<String, String>> destinations = [
+  static const List<Map<String, String>> _destinations = [
     {
       'title': '五月山公園',
-      'info': '自転車で約45分',
       'genre': '自然 / 公園',
-      'image': 'assets/logo.jpg',
+      'duration': '45 min',
+      'distance': '9.8 km',
+      'elevation': '58 m',
+      'image': 'assets/testimage.png',
     },
     {
       'title': '川沿いカフェ',
-      'info': '自転車で約25分',
       'genre': 'カフェ',
-      'image': 'assets/logo.jpg',
+      'duration': '25 min',
+      'distance': '5.4 km',
+      'elevation': '12 m',
+      'image': 'assets/testimage.png',
     },
     {
       'title': '大阪城公園',
-      'info': '自転車で約30分',
       'genre': '観光 / 公園',
-      'image': 'assets/logo.jpg',
+      'duration': '30 min',
+      'distance': '6.7 km',
+      'elevation': '18 m',
+      'image': 'assets/testimage.png',
     },
     {
       'title': '箕面の滝',
-      'info': '自転車で約60分',
       'genre': '自然 / 観光',
-      'image': 'assets/logo.jpg',
+      'duration': '60 min',
+      'distance': '14.2 km',
+      'elevation': '96 m',
+      'image': 'assets/testimage.png',
     },
     {
       'title': '中之島公園',
-      'info': '自転車で約20分',
       'genre': '公園 / 観光',
-      'image': 'assets/logo.jpg',
+      'duration': '20 min',
+      'distance': '4.1 km',
+      'elevation': '6 m',
+      'image': 'assets/testimage.png',
     },
     {
       'title': '靱公園',
-      'info': '自転車で約18分',
       'genre': '自然 / 公園',
-      'image': 'assets/logo.jpg',
+      'duration': '18 min',
+      'distance': '3.5 km',
+      'elevation': '4 m',
+      'image': 'assets/testimage.png',
     },
     {
       'title': '北浜カフェ',
-      'info': '自転車で約22分',
       'genre': 'カフェ / 観光',
-      'image': 'assets/logo.jpg',
+      'duration': '22 min',
+      'distance': '4.8 km',
+      'elevation': '9 m',
+      'image': 'assets/testimage.png',
     },
     {
       'title': '淀川河川公園',
-      'info': '自転車で約35分',
       'genre': '自然 / 公園',
-      'image': 'assets/logo.jpg',
+      'duration': '35 min',
+      'distance': '8.0 km',
+      'elevation': '10 m',
+      'image': 'assets/testimage.png',
     },
     {
       'title': '天王寺公園',
-      'info': '自転車で約40分',
       'genre': '公園 / 観光',
-      'image': 'assets/logo.jpg',
+      'duration': '40 min',
+      'distance': '9.1 km',
+      'elevation': '22 m',
+      'image': 'assets/testimage.png',
     },
     {
       'title': '街角ベーカリー',
-      'info': '自転車で約15分',
       'genre': 'カフェ',
-      'image': 'assets/logo.jpg',
+      'duration': '15 min',
+      'distance': '2.9 km',
+      'elevation': '3 m',
+      'image': 'assets/testimage.png',
     },
   ];
 
+  final TextEditingController _searchController = TextEditingController();
+  String _selectedGenre = 'すべて';
+  String _query = '';
+  bool _hasSearched = false;
+  bool _isSearching = false;
+  int _searchGeneration = 0;
+  int? _expandedIndex;
+
+  List<Map<String, String>> get _filteredDestinations {
+    final query = _query.trim();
+    return _destinations.where((destination) {
+      final matchesGenre =
+          _selectedGenre == 'すべて' ||
+          destination['genre']!.contains(_selectedGenre);
+      final matchesQuery =
+          query.isEmpty ||
+          destination['title']!.contains(query) ||
+          destination['genre']!.contains(query);
+      return matchesGenre && matchesQuery;
+    }).toList();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _runSearch() async {
+    FocusScope.of(context).unfocus();
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _isSearching = true;
+      _expandedIndex = null;
+    });
+    await Future.delayed(const Duration(milliseconds: 320));
+    if (!mounted) return;
+    setState(() {
+      _isSearching = false;
+      _hasSearched = true;
+      _searchGeneration++;
+    });
+  }
+
+  void _onGenreSelected(String genre) {
+    if (genre == _selectedGenre) return;
+    HapticFeedback.selectionClick();
+    setState(() {
+      _selectedGenre = genre;
+      _expandedIndex = null;
+      if (_hasSearched) _searchGeneration++;
+    });
+  }
+
+  void _onCardToggled(int index) {
+    HapticFeedback.selectionClick();
+    setState(() => _expandedIndex = _expandedIndex == index ? null : index);
+  }
+
+  void _startRoute(Map<String, String> destination) {
+    HapticFeedback.mediumImpact();
+    context.push(
+      '/route_confirm',
+      extra: {
+        'destinationName': destination['title'],
+        'distanceText': destination['distance'],
+        'durationText': destination['duration'],
+        'elevationText': destination['elevation'],
+        'thumbnailAsset': destination['image'],
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final filteredDestinations = selectedGenre == 'すべて'
-        ? destinations
-        : destinations.where((destination) {
-            return destination['genre']!.contains(selectedGenre);
-          }).toList();
+    return AppScreenFrame(child: _buildContent(context));
+  }
+
+  Widget _buildContent(BuildContext context) {
+    final results = _filteredDestinations;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      body: SafeArea(
-        child: Center(
-          child: SizedBox(
-            width: 330,
-            child: Container(
-              color: Colors.white,
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 34, 18, 0),
-                    child: Image.asset(
-                      'assets/logo_long.png',
-                      width: 200,
-                    ),
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      child: Container(
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.black54),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'おすすめスポット',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-
-                            const SizedBox(height: 6),
-
-                            const Row(
-                              children: [
-                                Text(
-                                  '空き時間：',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  '1',
-                                  style: TextStyle(fontSize: 11),
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  '時間',
-                                  style: TextStyle(fontSize: 11),
-                                ),
-                                SizedBox(width: 12),
-                                Text(
-                                  '00',
-                                  style: TextStyle(fontSize: 11),
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  '分',
-                                  style: TextStyle(fontSize: 11),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 8),
-
-                            Wrap(
-                              alignment: WrapAlignment.end,
-                              spacing: 5,
-                              runSpacing: 5,
-                              children: ['すべて', '自然', 'カフェ', '観光', '公園']
-                                  .map((genre) {
-                                return _SmallChip(
-                                  text: genre,
-                                  selected: selectedGenre == genre,
-                                  onTap: () {
-                                    setState(() {
-                                      selectedGenre = genre;
-                                    });
-                                  },
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          color: Color(0xFFFDFCF8),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0x33D5E8D1), Color(0x00D5E8D1)],
+          ),
+        ),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: SafeArea(
+                bottom: false,
+                child: Column(
+                  children: [
+                    const AppTopBar(title: 'おすすめスポット'),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                      child: Column(
+                        children: [
+                          _SearchBar(
+                            controller: _searchController,
+                            isSearching: _isSearching,
+                            onChanged: (value) =>
+                                setState(() => _query = value),
+                            onSubmit: _runSearch,
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: 34,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _genres.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(width: 8),
+                              itemBuilder: (context, index) {
+                                final genre = _genres[index];
+                                return _GenreChip(
+                                  label: genre,
+                                  selected: genre == _selectedGenre,
+                                  onTap: () => _onGenreSelected(genre),
                                 );
-                              }).toList(),
+                              },
                             ),
-
-                            const SizedBox(height: 14),
-
-                            Expanded(
-                              child: filteredDestinations.isEmpty
-                                  ? const Center(
-                                      child: Text(
-                                        '該当する目的地がありません',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    )
-                                  : ListView.builder(
-                                      padding: EdgeInsets.zero,
-                                      itemCount: filteredDestinations.length,
-                                      itemBuilder: (context, index) {
-                                        return _DestinationCard(
-                                          destination:
-                                              filteredDestinations[index],
-                                        );
-                                      },
-                                    ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _ActionButton(
-                        text: '情報変更',
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('情報変更画面は後で'),
+                    Expanded(
+                      child: _isSearching
+                          ? const _SearchingIndicator()
+                          : !_hasSearched
+                          ? const _EmptyPrompt()
+                          : results.isEmpty
+                          ? const _NoResults()
+                          : ListView.builder(
+                              physics: const BouncingScrollPhysics(),
+                              padding: const EdgeInsets.fromLTRB(
+                                20,
+                                4,
+                                20,
+                                120,
+                              ),
+                              itemCount: results.length,
+                              itemBuilder: (context, index) {
+                                final destination = results[index];
+                                return StaggeredEntrance(
+                                  key: ValueKey(
+                                    '$_searchGeneration-${destination['title']}',
+                                  ),
+                                  delay: Duration(milliseconds: 45 * index),
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(bottom: 14),
+                                    child: _DestinationRouteCard(
+                                      destination: destination,
+                                      isExpanded: _expandedIndex == index,
+                                      onToggle: () => _onCardToggled(index),
+                                      onStart: () => _startRoute(destination),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
-                          );
-                        },
-                      ),
-                      _ActionButton(
-                        text: '再提案',
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('再提案機能は後で'),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  Container(
-                    height: 1,
-                    color: const Color(0xFF3B00D9),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  const _BottomNavigation(),
-                ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: HomeBottomNavBar(
+                currentIndex: 0,
+                onTap: (_) => context.go('/home'),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _SmallChip extends StatelessWidget {
-  final String text;
-  final bool selected;
-  final VoidCallback onTap;
+const _genres = ['すべて', '自然', 'カフェ', '観光', '公園'];
 
-  const _SmallChip({
-    required this.text,
+class _SearchBar extends StatelessWidget {
+  const _SearchBar({
+    required this.controller,
+    required this.isSearching,
+    required this.onChanged,
+    required this.onSubmit,
+  });
+
+  final TextEditingController controller;
+  final bool isSearching;
+  final ValueChanged<String> onChanged;
+  final Future<void> Function() onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.only(left: 16, right: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFD1D5D0)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.search_rounded, size: 20, color: Color(0xFF5F5E5A)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              onChanged: onChanged,
+              onSubmitted: (_) => onSubmit(),
+              textInputAction: TextInputAction.search,
+              style: const TextStyle(
+                fontFamily: 'HankenGrotesk',
+                fontFamilyFallback: ['NotoSansJP'],
+                fontSize: 15,
+                color: Color(0xFF1B1C1C),
+              ),
+              decoration: const InputDecoration(
+                isCollapsed: true,
+                border: InputBorder.none,
+                hintText: 'スポットを検索',
+                hintStyle: TextStyle(
+                  fontFamily: 'HankenGrotesk',
+                  fontFamilyFallback: ['NotoSansJP'],
+                  fontSize: 15,
+                  color: Color(0xFF5F5E5A),
+                ),
+              ),
+            ),
+          ),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(9999),
+              onTap: isSearching ? null : onSubmit,
+              child: Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF4A654E),
+                  shape: BoxShape.circle,
+                ),
+                child: isSearching
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GenreChip extends StatelessWidget {
+  const _GenreChip({
+    required this.label,
     required this.selected,
     required this.onTap,
   });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF3B00D9) : Colors.white,
-          border: Border.all(color: const Color(0xFF3B00D9)),
-          borderRadius: BorderRadius.circular(8),
+          color: selected ? const Color(0xFF4A654E) : const Color(0xFFDDE6DE),
+          borderRadius: BorderRadius.circular(9999),
         ),
         child: Text(
-          text,
+          label,
           style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            color: selected ? Colors.white : const Color(0xFF3B00D9),
+            fontFamily: 'HankenGrotesk',
+            fontFamilyFallback: const ['NotoSansJP'],
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+            color: selected ? Colors.white : const Color(0xFF4A654E),
           ),
         ),
       ),
@@ -290,184 +422,230 @@ class _SmallChip extends StatelessWidget {
   }
 }
 
-class _DestinationCard extends StatelessWidget {
-  final Map<String, String> destination;
-
-  const _DestinationCard({
-    required this.destination,
-  });
+class _EmptyPrompt extends StatelessWidget {
+  const _EmptyPrompt();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.black54),
-        borderRadius: BorderRadius.circular(7),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 64,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.black54),
-              color: Colors.white,
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.explore_outlined,
+              size: 40,
+              color: Color(0xFF5F5E5A),
             ),
-            child: ClipRRect(
-              child: Image.asset(
-                destination['image'] ?? 'assets/logo.jpg',
-                fit: BoxFit.cover,
+            const SizedBox(height: 12),
+            const Text(
+              '検索ボタンを押して\n周辺のおすすめスポットを探しましょう',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontFamilyFallback: ['NotoSansJP'],
+                fontSize: 14,
+                height: 1.5,
+                color: Color(0xFF5F5E5A),
               ),
             ),
-          ),
-
-          const SizedBox(width: 14),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  destination['title']!,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-
-                const SizedBox(height: 4),
-
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 5),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.black45),
-                  ),
-                  child: Text(
-                    destination['info']!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 4),
-
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.black45),
-                  ),
-                  child: Text(
-                    destination['genre']!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  final String text;
-  final VoidCallback onPressed;
-
-  const _ActionButton({
-    required this.text,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 118,
-      height: 38,
-      child: OutlinedButton(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(
-            color: Color(0xFF3B00D9),
-            width: 2,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(5),
-          ),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Color(0xFF3B00D9),
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _BottomNavigation extends StatelessWidget {
-  const _BottomNavigation();
+class _SearchingIndicator extends StatelessWidget {
+  const _SearchingIndicator();
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.only(bottom: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _BottomNavItem(
-            svgPath: 'assets/icons/home_nav.svg',
-            routePath: '/home',
-          ),
-          _BottomNavItem(
-            svgPath: 'assets/icons/history_nav.svg',
-            routePath: '/history',
-          ),
-          _BottomNavItem(
-            svgPath: 'assets/icons/settings_nav.svg',
-            routePath: '/settings',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BottomNavItem extends StatelessWidget {
-  final String svgPath;
-  final String routePath;
-
-  const _BottomNavItem({
-    required this.svgPath,
-    required this.routePath,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        context.go(routePath);
-      },
+    return const Center(
       child: SizedBox(
-        width: 70,
-        height: 50,
-        child: SvgPicture.asset(
-          svgPath,
-          fit: BoxFit.contain,
+        width: 24,
+        height: 24,
+        child: CircularProgressIndicator(
+          strokeWidth: 2.5,
+          color: Color(0xFF4A654E),
+        ),
+      ),
+    );
+  }
+}
+
+class _NoResults extends StatelessWidget {
+  const _NoResults();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Text(
+        '該当する目的地がありません',
+        style: TextStyle(
+          fontFamily: 'HankenGrotesk',
+          fontFamilyFallback: ['NotoSansJP'],
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+          color: Color(0xFF5F5E5A),
+        ),
+      ),
+    );
+  }
+}
+
+// The Figma "Bottom Action Card", shrunk to just its Destination Summary
+// row when collapsed. Tapping it morphs the card open (AnimatedSize) to
+// reveal the Route Details metrics + "start" button underneath — same
+// pieces as RouteConfirmScreen's card, just embedded in a list.
+class _DestinationRouteCard extends StatelessWidget {
+  const _DestinationRouteCard({
+    required this.destination,
+    required this.isExpanded,
+    required this.onToggle,
+    required this.onStart,
+  });
+
+  final Map<String, String> destination;
+  final bool isExpanded;
+  final VoidCallback onToggle;
+  final VoidCallback onStart;
+
+  @override
+  Widget build(BuildContext context) {
+    return TapScale(
+      onTap: onToggle,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: const Color(0xFFD1D5D0)),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(
+                0xFF1B1C1C,
+              ).withValues(alpha: isExpanded ? 0.06 : 0.03),
+              blurRadius: isExpanded ? 16 : 8,
+              offset: Offset(0, isExpanded ? 6 : 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // "Destination Summary" — always visible, this is the
+            // "shrunk down" state of the card.
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 320),
+              curve: Curves.easeOutCubic,
+              padding: EdgeInsets.only(bottom: isExpanded ? 16 : 0),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: isExpanded
+                        ? const Color(0xFFE4E2E1)
+                        : Colors.transparent,
+                  ),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(
+                      destination['image']!,
+                      width: 64,
+                      height: 64,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Wrap(
+                          spacing: 2,
+                          children: [
+                            WaypointBadge(label: 'A'),
+                            WaypointBadge(label: 'B'),
+                            WaypointBadge(label: 'C'),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          destination['title']!,
+                          style: const TextStyle(
+                            fontFamily: 'HankenGrotesk',
+                            fontFamilyFallback: ['NotoSansJP'],
+                            fontWeight: FontWeight.w600,
+                            fontSize: 18,
+                            color: Color(0xFF1B1C1C),
+                            height: 24 / 18,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: isExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOutCubic,
+                    child: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: Color(0xFF5F5E5A),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // "Route Details (Metrics)" + "Actions → Button" — revealed
+            // when the card is tapped open.
+            AnimatedSize(
+              duration: const Duration(milliseconds: 320),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: isExpanded
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 20),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              RouteMetric(
+                                label: 'DISTANCE',
+                                value: destination['distance']!,
+                              ),
+                              const MetricDivider(),
+                              RouteMetric(
+                                label: 'TIME',
+                                value: destination['duration']!,
+                              ),
+                              const MetricDivider(),
+                              RouteMetric(
+                                label: 'ELEVATION',
+                                value: destination['elevation']!,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        RouteStartButton(onTap: onStart),
+                      ],
+                    )
+                  : const SizedBox(width: double.infinity),
+            ),
+          ],
         ),
       ),
     );

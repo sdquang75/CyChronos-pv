@@ -1,0 +1,68 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+// Shared "Header - TopAppBar" from the Figma Confirm Route frame: back
+// button + bold title with a bottom hairline. Reused by any screen that
+// needs the same back-navigation header (Confirm Route, destination
+// search, ...). Top padding matches HomeTabView's 20px inset above the
+// "CyChronos" title so the back button sits level with it, clear of the
+// safe-area edge/notch.
+class AppTopBar extends StatelessWidget {
+  const AppTopBar({
+    super.key,
+    required this.title,
+    this.onBack,
+    this.fallbackRoute = '/home',
+  });
+
+  final String title;
+  final VoidCallback? onBack;
+  final String fallbackRoute;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFC2C8C0))),
+      ),
+      child: Row(
+        children: [
+          Material(
+            color: Colors.transparent,
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap:
+                  onBack ??
+                  () => context.canPop()
+                      ? context.pop()
+                      : context.go(fallbackRoute),
+              child: const Padding(
+                padding: EdgeInsets.all(5),
+                child: Icon(
+                  Icons.arrow_back_rounded,
+                  size: 16,
+                  color: Color(0xFF4A654E),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            title,
+            style: const TextStyle(
+              fontFamily: 'HankenGrotesk',
+              fontFamilyFallback: ['NotoSansJP'],
+              fontWeight: FontWeight.w700,
+              fontSize: 22,
+              letterSpacing: -0.55,
+              color: Color(0xFF4A654E),
+              height: 28 / 22,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

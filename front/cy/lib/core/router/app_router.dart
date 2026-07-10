@@ -114,17 +114,30 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/route_confirm',
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const RouteConfirmScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 600),
-        ),
+        pageBuilder: (context, state) {
+          // Optional data forwarded from DestinationListScreen when a card's
+          // "ルートを確認する" CTA is tapped.
+          final extra = state.extra;
+          final data = extra is Map<String, dynamic> ? extra : null;
+
+          return CustomTransitionPage(
+            key: state.pageKey,
+            child: RouteConfirmScreen(
+              destinationName: data?['destinationName'] as String? ?? 'ABC park',
+              distanceText: data?['distanceText'] as String? ?? '12.4 km',
+              durationText: data?['durationText'] as String? ?? '45 min',
+              thumbnailAsset:
+                  data?['thumbnailAsset'] as String? ?? 'assets/testimage.png',
+            ),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 600),
+          );
+        },
       ),
     ],
   );

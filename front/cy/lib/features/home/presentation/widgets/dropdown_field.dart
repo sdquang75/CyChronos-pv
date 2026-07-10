@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cy/core/icons/app_icons.dart';
+import 'package:cy/core/widgets/app_screen_frame.dart';
 
 // A single dropdown option shown in a DropdownField's picker sheet.
 class DropdownOption {
@@ -31,9 +32,18 @@ class DropdownField extends StatelessWidget {
       .label;
 
   Future<void> _openPicker(BuildContext context) async {
+    // Longer option lists (e.g. genre, 11 entries) can otherwise grow
+    // taller than the screen and overflow — cap the sheet's height (and
+    // let its internal ListView scroll instead) and its width, so it never
+    // stretches past the app's own phone-frame width on a wide viewport.
     final picked = await showModalBottomSheet<String?>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.white,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+        maxWidth: AppScreenFrame.width,
+      ),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),

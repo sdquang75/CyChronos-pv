@@ -264,13 +264,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               SocialLoginButton(
                 icon: SvgPicture.string(_kLineSvg),
                 label: 'LINEでログイン',
-                onPressed: () => GoRouter.of(context).go('/home'),
+                isLoading: isLoading,
+                onPressed:
+                    isLoading
+                        ? null
+                        : () => ref.read(authProvider.notifier).signInWithLine(),
               ),
               const SizedBox(height: 16),
               SocialLoginButton(
                 icon: SvgPicture.string(_kFacebookSvg),
                 label: 'Facebookでログイン',
-                onPressed: () => GoRouter.of(context).go('/home'),
+                isLoading: isLoading,
+                onPressed:
+                    isLoading
+                        ? null
+                        : () =>
+                            ref.read(authProvider.notifier).signInWithFacebook(),
               ),
               const SizedBox(height: 40),
               Row(
