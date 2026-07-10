@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cy/core/widgets/app_screen_frame.dart';
 import 'providers/auth_provider.dart';
 import '../domain/auth_state.dart';
 
@@ -63,9 +64,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final bool isLargeScreen = size.width > 390 || size.height > 884;
-
     Widget content = Scaffold(
       body: Container(
         color: const Color(0xFFF8F9FE),
@@ -183,30 +181,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       ),
     );
 
-    if (isLargeScreen) {
-      return Scaffold(
-        backgroundColor: const Color(0xFF191C1F),
-        body: Center(
-          child: Container(
-            width: 390,
-            height: 884,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(40),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 40,
-                  offset: const Offset(0, 20),
-                ),
-              ],
-            ),
-            child: content,
-          ),
-        ),
-      );
-    }
-
-    return content;
+    return AppScreenFrame(child: content);
   }
 }

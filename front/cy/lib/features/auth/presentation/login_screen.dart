@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cy/core/widgets/app_screen_frame.dart';
 import 'providers/auth_provider.dart';
 import '../domain/auth_state.dart';
 import 'widgets/social_login_button.dart';
@@ -92,8 +93,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     });
 
     final isLoading = ref.watch(authProvider) is AuthLoading;
-    final size = MediaQuery.of(context).size;
-    final bool isLargeScreen = size.width > 390 || size.height > 926;
 
     Widget content = Scaffold(
       body: Container(
@@ -159,31 +158,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       ),
     );
 
-    if (isLargeScreen) {
-      return Scaffold(
-        backgroundColor: const Color(0xFF191C1F),
-        body: Center(
-          child: Container(
-            width: 390,
-            height: 926,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(40),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 40,
-                  offset: const Offset(0, 20),
-                ),
-              ],
-            ),
-            child: content,
-          ),
-        ),
-      );
-    }
-
-    return content;
+    return AppScreenFrame(child: content);
   }
 
   Widget _buildHeader() {
