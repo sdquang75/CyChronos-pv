@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
@@ -120,9 +122,17 @@ class DestinationListScreen extends StatelessWidget {
                                       padding: EdgeInsets.zero,
                                       itemCount: places.length,
                                       itemBuilder: (context, index) {
+                                        final rawDestination =
+                                            places[index];
+
+                                        if (rawDestination is! Map) {
+                                          return const SizedBox.shrink();
+                                        }
+
                                         final destination =
-                                            places[index]
-                                                as Map<String, dynamic>;
+                                            Map<String, dynamic>.from(
+                                          rawDestination,
+                                        );
 
                                         return _DestinationCard(
                                           destination: destination,
@@ -169,13 +179,6 @@ class DestinationListScreen extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 14),
-
-                  Container(
-                    height: 1,
-                    color: const Color(0xFF3B00D9),
-                  ),
-
-                  const SizedBox(height: 10),
 
                   const _BottomNavigation(),
                 ],
@@ -354,54 +357,195 @@ class _ActionButton extends StatelessWidget {
 class _BottomNavigation extends StatelessWidget {
   const _BottomNavigation();
 
+  void _showComingSoon(
+    BuildContext context,
+    String screenName,
+  ) {
+    ScaffoldMessenger.of(context).clearSnackBars();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '$screenNameへの移動は後で実装します',
+          style: const TextStyle(
+            fontFamily: 'HankenGrotesk',
+            fontFamilyFallback: ['NotoSansJP'],
+          ),
+        ),
+        backgroundColor: const Color(0xFF2A0088),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.only(bottom: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _BottomNavItem(
-            svgPath: 'assets/home_nav.svg',
-            routePath: '/home',
+    return SizedBox(
+      height: 88.92,
+      child: ClipRRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 20,
+            sigmaY: 20,
           ),
-          _BottomNavItem(
-            svgPath: 'assets/history_nav.svg',
-            routePath: '/history',
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F9FE).withValues(
+                alpha: 0.8,
+              ),
+              border: Border(
+                top: BorderSide(
+                  color: const Color(0xFFC9C4D5).withValues(
+                    alpha: 0.3,
+                  ),
+                  width: 1,
+                ),
+              ),
+            ),
+            padding: const EdgeInsets.only(
+              top: 12,
+              bottom: 20,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _BottomNavItem(
+                  label: 'HOME',
+                  svgData: _kHomeTabSvg,
+                  isSelected: true,
+                  onTap: () {
+                    context.go('/home');
+                  },
+                ),
+                _BottomNavItem(
+                  label: 'HISTORY',
+                  svgData: _kHistoryTabSvg,
+                  onTap: () {
+                    _showComingSoon(
+                      context,
+                      '履歴画面',
+                    );
+                  },
+                ),
+                _BottomNavItem(
+                  label: 'SETTINGS',
+                  icon: Icons.settings_outlined,
+                  onTap: () {
+                    _showComingSoon(
+                      context,
+                      '設定画面',
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
-          _BottomNavItem(
-            svgPath: 'assets/settings_nav.svg',
-            routePath: '/settings',
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
 class _BottomNavItem extends StatelessWidget {
-  final String svgPath;
-  final String routePath;
-
   const _BottomNavItem({
-    required this.svgPath,
-    required this.routePath,
+    required this.label,
+    required this.onTap,
+    this.svgData,
+    this.icon,
+    this.isSelected = false,
   });
+
+  final String label;
+  final VoidCallback onTap;
+  final String? svgData;
+  final IconData? icon;
+  final bool isSelected;
 
   @override
   Widget build(BuildContext context) {
+    final Color color = isSelected
+        ? const Color(0xFF19005C)
+        : const Color(0xFF484553);
+
     return GestureDetector(
-      onTap: () {
-        context.go(routePath);
-      },
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
       child: SizedBox(
-        width: 70,
-        height: 50,
-        child: SvgPicture.asset(
-          svgPath,
-          fit: BoxFit.contain,
+        width: 82,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 28,
+              height: 24,
+              child: icon != null
+                  ? Icon(
+                      icon,
+                      color: color,
+                      size: 25,
+                    )
+                  : SvgPicture.string(
+                      svgData!,
+                      colorFilter: ColorFilter.mode(
+                        color,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'JetBrainsMono',
+                fontWeight: isSelected
+                    ? FontWeight.w700
+                    : FontWeight.w500,
+                fontSize: 10,
+                color: color,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
+
+const _kHomeTabSvg = '''
+<svg viewBox="0 0 24 24" fill="none"
+    xmlns="http://www.w3.org/2000/svg">
+  <path
+    d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"/>
+  <path
+    d="M9 22V12h6v10"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"/>
+</svg>
+''';
+
+const _kHistoryTabSvg = '''
+<svg viewBox="0 0 24 24" fill="none"
+    xmlns="http://www.w3.org/2000/svg">
+  <circle
+    cx="12"
+    cy="12"
+    r="10"
+    stroke="currentColor"
+    stroke-width="2"/>
+  <path
+    d="M12 6V12L16 14"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"/>
+</svg>
+''';
