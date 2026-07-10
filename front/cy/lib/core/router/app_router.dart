@@ -88,7 +88,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/detil',
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
-          child: const DetilScreen(),
+          child: const DetilScreen( 
+            name: '観光地名',
+            address: '住所000-0000',
+            genre: 'ジャンル',
+            imagePath: 'testimage.png',
+            durationSec: 3600, // 例: 1時間
+            distanceMeter: 1500, // 例: 1.5km
+            description: '00県00市00町00番地にある観光スポットです。美しい景色や歴史的な建造物が楽しめます。',
+          ),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(
               opacity: animation,

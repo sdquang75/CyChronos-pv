@@ -2,7 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class DetilScreen extends StatelessWidget {
-  const DetilScreen({super.key});
+
+  final String name;
+  final String address;
+  final String genre;
+  final String imagePath; // 画像のパスを指定
+  final int durationSec;
+  final int distanceMeter; // 距離をメートル単位で指定
+  final String description; // 場所紹介のテキストを指定
+
+
+  const DetilScreen(
+    {
+      super.key, 
+      required this.name,
+      required this.address,
+      required this.genre,
+      required this.imagePath, // 画像のパスを受け取る
+      required this.durationSec,
+      required this.distanceMeter, // 距離を受け取る
+      required this.description, // 場所紹介のテキストを受け取る
+    });
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +54,7 @@ class DetilScreen extends StatelessWidget {
               margin: EdgeInsets.all(8),
               decoration: BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage('assets/testimage.png'),
+                  image: AssetImage(imagePath.isNotEmpty ? 'assets/$imagePath' : 'assets/testimage.png'),
                   fit: BoxFit.cover,
                 ),
                 borderRadius: BorderRadius.circular(12), // 圓角
@@ -59,7 +79,7 @@ class DetilScreen extends StatelessWidget {
                     ),
                     child: 
                       Text(
-                        '場所名',
+                        name.isNotEmpty ? name : '観光地名',
                         style: TextStyle(fontSize: 25, color: Colors.black), // 文字サイズと色
                       ),
                   ),
@@ -87,26 +107,7 @@ class DetilScreen extends StatelessWidget {
                           ),
                           child: Center(
                             child: Text(
-                              'tag1',
-                              style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
-                            ),
-                          ),
-                        ),
-                        Container(
-                          width: 80,
-                          height: 35,
-                          padding: EdgeInsets.symmetric(horizontal: 8), // 左右の余白を追加
-                          margin: EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12), // 圓角
-                            border: Border.all(
-                              color: const Color.fromARGB(255, 185, 185, 185), // 枠線の色
-                              width: 1.0, // 枠線の太さ
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'tag2',
+                              genre.isNotEmpty ? genre : 'ジャンル',
                               style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
                             ),
                           ),
@@ -168,7 +169,7 @@ class DetilScreen extends StatelessWidget {
                           ),
                           child: 
                             Text(
-                              'oo県oo市oo町oo番地',
+                              address.isNotEmpty ? address : '住所',
                               style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
                           ),
                         ),
@@ -226,7 +227,7 @@ class DetilScreen extends StatelessWidget {
                               ),
                               SizedBox(width: 4), // アイコンとテキストの間にスペースを追加
                               Text(
-                                '1.5',
+                                (distanceMeter / 1000).toStringAsFixed(3).replaceAll(RegExp(r'\.?0+$'), ''), // 距離を計算して表示（小数点以下3桁まで、末尾の0は削除） 
                                 style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
                               ),
                               SizedBox(width: 5), // アイコンとテキストの間にスペースを追加
@@ -291,7 +292,7 @@ class DetilScreen extends StatelessWidget {
                               ),
                               SizedBox(width: 4), // アイコンとテキストの間にスペースを追加
                               Text(
-                                '01',
+                                durationSec/3600 >= 1 ? (durationSec/3600).toStringAsFixed(0) : '0', // 時間を計算して表示
                                 style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
                               ),
                               SizedBox(width: 5),
@@ -301,7 +302,7 @@ class DetilScreen extends StatelessWidget {
                               ),
                               SizedBox(width: 5),
                               Text(
-                                '30',
+                                (durationSec % 3600 / 60) >= 1 ? (durationSec % 3600 / 60).toStringAsFixed(0) : '0', // 分を計算して表示
                                 style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
                               ),
                               SizedBox(width: 5),
@@ -332,7 +333,7 @@ class DetilScreen extends StatelessWidget {
                         ),
                         SizedBox(height: 8), // 上下の余白を追加
                         Text(
-                          '00県00市00町00番地にある観光スポットです。美しい景色や歴史的な建造物が楽しめます。',
+                          description.isNotEmpty ? description : '場所の紹介テキスト', // 場所紹介のテキストを表示
                           style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
                         ),  
                       ],
