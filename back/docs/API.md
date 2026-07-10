@@ -480,7 +480,9 @@ GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}&user_id={user
       "rating": 4.2,
       "genre": "cafe",
       "durationSec": 1116.1,
-      "durationMinutes": 19
+      "durationMinutes": 19,
+      "distanceM": 3620.5,
+      "distanceKm": 3.6
     }
   ]
 }
@@ -489,6 +491,7 @@ GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}&user_id={user
 - `searchArea`: 到達圏から算出した検索範囲。`bbox` は到達圏を囲む四角形、`centerLng`/`centerLat` はその中心、`radius` は Places 検索に使った半径(m、上限50km)
 - `places`: 「7. 周辺スポット検索」の形式に所要時間を足した配列
 - `durationMinutes`: 現在地からそのスポットまで自転車で走った場合の所要時間(分、四捨五入)。**表示にはこちらを使う**。`durationSec` は元の秒数
+- `distanceKm`: 現在地からの走行距離(km、小数1桁)。**数値型**なので `6` は「6.0km」の意味(フロントで `toStringAsFixed(1)` 等で整形)。`distanceM` は元のメートル値
 - ⚠️ 所要時間の取得(Mapbox Matrix)が失敗した場合も提案自体は返るが、そのときは `durationMinutes` が `null` になり、時間超過の除外も行われない。フロントは `null` のとき「約◯分」表示をスキップすること
 
 | ステータス | 内容 |

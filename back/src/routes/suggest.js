@@ -60,10 +60,10 @@ router.get("/", async (req, res) => {
       try {
         // 候補から座標だけの配列を作る
         const coordsList = normalizedPlaces.map((place) => ({ lng: place.lng, lat: place.lat }));
-        // 現在地から各候補への所要時間(秒)を取る
-        const durations = await mapbox.getTravelTimes({ lng, lat }, coordsList);
-        //  候補に所要時間を貼り付けた結果で置き換える
-        normalizedPlaces = places.attachDurations(normalizedPlaces, durations);
+        // 現在地から各候補への所要時間(秒)と距離(m)を取る
+        const { durations, distances } = await mapbox.getTravelTimes({ lng, lat }, coordsList);
+        //  候補に所要時間と距離を貼り付けた結果で置き換える
+        normalizedPlaces = places.attachDurations(normalizedPlaces, durations, distances);
       }
       catch (error) {
         console.error(error);
@@ -92,6 +92,8 @@ router.get("/", async (req, res) => {
       places: picked.map((place) => ({
         ...place,
         durationMinutes: place.durationSec == null ? null : Math.round(place.durationSec / 60),
+        // kmの小数1桁(例: 6316m -> 6.3)。/1000してからtoFixedだと文字列になるので、100で割って丸めて10で割る
+        distanceKm: place.distanceM == null ? null : Math.round(place.distanceM / 100) / 10,
       })),
     });
 

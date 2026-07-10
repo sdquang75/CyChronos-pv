@@ -71,7 +71,8 @@ async function getTravelTimes(from, destinations) {
   const url = new URL(`${BASE_URL}/directions-matrix/v1/mapbox/cycling/${coords}`);
   url.searchParams.set("access_token", token);
   url.searchParams.set("sources", "0");
-  url.searchParams.set("annotations", "duration");
+  url.searchParams.set("annotations", "duration,distance");
+
 
   const response = await fetch(url);
 
@@ -79,6 +80,10 @@ async function getTravelTimes(from, destinations) {
     throw new Error(`Mapbox API error: ${response.status} ${response.statusText}`);
   }
   const data = await response.json();
+  const distance = data.distances?.[0];
+  if (!Array.isArray(distance)) {
+    throw new Error("Mapbox API error: distances が取得できませんでした");
+  }
   const durations = data.durations?.[0];
   if (!Array.isArray(durations)) {
     throw new Error("Mapbox API error: durations が取得できませんでした");
@@ -87,10 +92,11 @@ async function getTravelTimes(from, destinations) {
   // durations[0] の先頭は「出発地→出発地」の0秒なので取り除く。
   // これで戻り値のインデックスが destinations と1対1で揃う
   const destinationDurations = durations.slice(1);
+  const destinationDistances = distance.slice(1);
   if (destinationDurations.length !== destinations.length) {
     throw new Error("Mapbox API error: durations の件数が目的地の数と一致しません");
   }
-  return destinationDurations;
+  return { durations: destinationDurations, distances: destinationDistances };
 }
 
 module.exports = { getIsochrone, getCyclingRoute, getTravelTimes };
