@@ -1,7 +1,22 @@
 //スポットだすやつにょー
 
 const BASE_URL = "https://maps.googleapis.com"; // Google Maps APIのベースURL   
-const hidecategory = ["lodging", "hotel", "parking", "gas_station", "atm", "bank", "hospital", "doctor", "pharmacy", "school", "university", "police", "fire_station", "post_office", "local_government_office"]
+const hidecategory = [
+  // 宿泊・生活インフラ系(サイクリングの目的地として弱い)
+  "lodging", "hotel", "parking", "gas_station", "atm", "bank", "hospital", "doctor", "pharmacy",
+  "school", "university", "police", "fire_station", "post_office", "local_government_office",
+  // 会社・事業所系(観光目的地ではないので除外)
+  "insurance_agency", "real_estate_agency", "lawyer", "accounting", "finance",
+  "general_contractor", "electrician", "plumber", "roofing_contractor", "painter",
+  "moving_company", "storage", "car_dealer", "car_repair", "car_rental", "car_wash",
+  "locksmith", "laundry", "funeral_home", "cemetery", "courthouse", "embassy", "city_hall",
+  "travel_agency", "dentist", "veterinary_care", "physiotherapist", "taxi_stand",
+];
+
+// 「それだけでは何の施設か分からない」汎用type。
+// カテゴリ未設定の会社・オフィスは types がこれだけになりがちなので、
+// 全typeが汎用のものは目的地候補から外す
+const genericTypes = ["point_of_interest", "establishment", "premise", "geocode", "plus_code"];
 
 
 /**
@@ -125,12 +140,18 @@ function normalizePlace(place) {
 
 function normalizePlacesResponse(data) {
   return (data.results ?? [])
-    // ホテルや駐車場など、サイクリングの目的地として弱いものを先に外す
+    // ホテル・駐車場・会社など、サイクリングの目的地として弱いものを先に外す
     .filter((place) => {
       const hasHiddenCategory = place.types &&
         place.types.some((type) => hidecategory.includes(type));
 
       return !hasHiddenCategory;
+    })
+    // typesが汎用type(point_of_interest等)だけの施設は、カテゴリ未設定の会社・オフィスの
+    // 可能性が高いので外す(typesが無いものも同様に外す)
+    .filter((place) => {
+      const types = Array.isArray(place.types) ? place.types : [];
+      return types.some((type) => !genericTypes.includes(type));
     })
     .map(normalizePlace)
     // 画面表示に最低限必要な値がないものはここで落とす

@@ -3,6 +3,7 @@
 // そのスポットのデータが詳細画面に正しく渡って表示されるかを確認する。
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -36,6 +37,19 @@ void main() {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
+
+    // テスト環境には位置情報プラグインの実体がないので、
+    // 「位置情報サービス無効」を即答するモックにする(ルート確認画面のフォールバック確認用)
+    const geolocatorChannel = MethodChannel('flutter.baseflow.com/geolocator');
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      geolocatorChannel,
+      (call) async {
+        if (call.method == 'isLocationServiceEnabled') return false;
+        return null;
+      },
+    );
+    addTearDown(() => tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(geolocatorChannel, null));
 
     // /api/suggest が返す places 1件分と同じ形のテストデータ
     final place = <String, dynamic>{
@@ -98,5 +112,18 @@ void main() {
     expect(find.text('8.8'), findsOneWidget); // 距離(km)
     expect(find.text('0'), findsOneWidget); // 所要時間の「時間」
     expect(find.text('30'), findsOneWidget); // 所要時間の「分」
+
+    // さらに「ルートを見る」でルート確認画面へ。
+    // テスト環境では位置情報が取れない=ルート取得は失敗するので、
+    // 概算値へのフォールバックが効いて画面が壊れないことを確認する
+    await tester.tap(find.text('ルートを見る'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700)); // 画面切り替え待ち
+    await tester.pumpAndSettle(); // ルート取得(失敗)の完了待ち
+
+    expect(find.text('テストカフェ'), findsOneWidget); // 目的地名が引き継がれている
+    expect(find.textContaining('8.8km'), findsOneWidget); // 概算の距離にフォールバック
+    expect(find.textContaining('取得できませんでした'), findsOneWidget); // エラー文言が出る
+    expect(find.text('案内開始'), findsOneWidget); // 開始ボタンがある
   });
 }
