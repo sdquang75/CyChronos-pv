@@ -1,10 +1,8 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/network/place_photo.dart';
+import '../../../core/widgets/app_bottom_navigation.dart';
 
 class DestinationListScreen extends StatelessWidget {
   final List<dynamic> places;
@@ -35,7 +33,7 @@ class DestinationListScreen extends StatelessWidget {
       body: Stack(
         children: [
           Positioned.fill(
-            bottom: 88.92,
+            bottom: AppBottomNavigation.barHeight,
             child: SafeArea(
               bottom: false,
               child: Column(
@@ -107,12 +105,15 @@ class DestinationListScreen extends StatelessWidget {
             ),
           ),
 
+          // 共通の画面下部メニューバー(HOME・HISTORY・SETTINGS)
           const Positioned(
             left: 0,
             right: 0,
             bottom: 0,
-            height: 88.92,
-            child: _BottomNavigation(),
+            height: AppBottomNavigation.barHeight,
+            child: AppBottomNavigation(
+              current: AppTab.home,
+            ),
           ),
         ],
       ),
@@ -344,9 +345,6 @@ class _DestinationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String name =
-        destination['name']?.toString() ?? '名称不明';
-
     final dynamic rawDuration =
         destination['durationMinutes'];
 
@@ -359,6 +357,29 @@ class _DestinationCard extends StatelessWidget {
     final String durationText = durationMinutes != null
         ? '約$durationMinutes分'
         : '所要時間不明';
+
+    // 「詳細を見る」に限らず、カードのどこをタップしても詳細画面へ移動する
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _openDetail(context),
+      child: _buildCard(context, durationText),
+    );
+  }
+
+  // 選択した目的地データをGoRouterのextraで詳細画面側へ渡す
+  void _openDetail(BuildContext context) {
+    context.push(
+      '/detil',
+      extra: destination,
+    );
+  }
+
+  Widget _buildCard(
+    BuildContext context,
+    String durationText,
+  ) {
+    final String name =
+        destination['name']?.toString() ?? '名称不明';
 
     return Container(
       width: double.infinity,
@@ -476,14 +497,7 @@ class _DestinationCard extends StatelessWidget {
                     Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        onTap: () {
-                          // 選択した目的地データを
-                          // GoRouterのextraで詳細画面側へ渡す
-                          context.push(
-                            '/detil',
-                            extra: destination,
-                          );
-                        },
+                        onTap: () => _openDetail(context),
                         borderRadius: BorderRadius.circular(
                           9999,
                         ),
@@ -669,200 +683,3 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-class _BottomNavigation extends StatelessWidget {
-  const _BottomNavigation();
-
-  void _showComingSoon(
-    BuildContext context,
-    String screenName,
-  ) {
-    ScaffoldMessenger.of(context).clearSnackBars();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '$screenNameへの移動は後で実装します',
-          style: const TextStyle(
-            fontFamily: 'HankenGrotesk',
-            fontFamilyFallback: ['NotoSansJP'],
-          ),
-        ),
-        backgroundColor: const Color(0xFF2A0088),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(
-          sigmaX: 20,
-          sigmaY: 20,
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8F9FE).withValues(
-              alpha: 0.8,
-            ),
-            border: Border(
-              top: BorderSide(
-                color: const Color(0xFFC9C4D5).withValues(
-                  alpha: 0.3,
-                ),
-                width: 1,
-              ),
-            ),
-          ),
-          padding: const EdgeInsets.only(
-            top: 12,
-            bottom: 20,
-          ),
-          child: Row(
-            mainAxisAlignment:
-                MainAxisAlignment.spaceAround,
-            children: [
-              _BottomNavItem(
-                label: 'HOME',
-                svgData: _kHomeTabSvg,
-                isSelected: true,
-                onTap: () {
-                  context.go('/home');
-                },
-              ),
-              _BottomNavItem(
-                label: 'HISTORY',
-                svgData: _kHistoryTabSvg,
-                onTap: () {
-                  _showComingSoon(
-                    context,
-                    '履歴画面',
-                  );
-                },
-              ),
-              _BottomNavItem(
-                label: 'SETTINGS',
-                icon: Icons.settings_outlined,
-                onTap: () {
-                  _showComingSoon(
-                    context,
-                    '設定画面',
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BottomNavItem extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-  final String? svgData;
-  final IconData? icon;
-  final bool isSelected;
-
-  const _BottomNavItem({
-    required this.label,
-    required this.onTap,
-    this.svgData,
-    this.icon,
-    this.isSelected = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final Color color = isSelected
-        ? const Color(0xFF19005C)
-        : const Color(0xFF484553);
-
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: SizedBox(
-        width: 70,
-        // 枠に収まらないときだけ自動で縮小し、はみ出しを防ぐ
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 28,
-                height: 24,
-                child: icon != null
-                    ? Icon(
-                        icon,
-                        color: color,
-                        size: 25,
-                      )
-                    : SvgPicture.string(
-                        svgData!,
-                        colorFilter: ColorFilter.mode(
-                          color,
-                          BlendMode.srcIn,
-                        ),
-                      ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontFamily: 'JetBrainsMono',
-                  fontWeight: isSelected
-                      ? FontWeight.w700
-                      : FontWeight.w500,
-                  fontSize: 11,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-const _kHomeTabSvg = '''
-<svg viewBox="0 0 24 24" fill="none"
-    xmlns="http://www.w3.org/2000/svg">
-  <path
-    d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"
-    stroke="currentColor"
-    stroke-width="2"
-    stroke-linecap="round"
-    stroke-linejoin="round"/>
-  <path
-    d="M9 22V12h6v10"
-    stroke="currentColor"
-    stroke-width="2"
-    stroke-linecap="round"
-    stroke-linejoin="round"/>
-</svg>
-''';
-
-const _kHistoryTabSvg = '''
-<svg viewBox="0 0 24 24" fill="none"
-    xmlns="http://www.w3.org/2000/svg">
-  <circle
-    cx="12"
-    cy="12"
-    r="10"
-    stroke="currentColor"
-    stroke-width="2"/>
-  <path
-    d="M12 6V12L16 14"
-    stroke="currentColor"
-    stroke-width="2"
-    stroke-linecap="round"
-    stroke-linejoin="round"/>
-</svg>
-''';

@@ -1,10 +1,8 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../../auth/domain/auth_state.dart';
-import '../../auth/presentation/providers/auth_provider.dart';
+import '../../../core/widgets/app_bottom_navigation.dart';
 import '../domain/recommendation_state.dart';
 import 'providers/recommendation_provider.dart';
 import 'package:go_router/go_router.dart';
@@ -24,10 +22,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final TextEditingController _hoursController = TextEditingController(text: '0');
   final TextEditingController _minutesController = TextEditingController(text: '45');
   final Set<String> _selectedGenres = {'Cafe'}; // default Cafe selected
-  int _currentTab = 0; // 0: HOME, 1: HISTORY, 2: PROFILE
-
-  // Cruising Speed setting (configured in Profile tab)
-  double _speedKmh = 18.0;
 
   String _selectedPlacesType() {
     if (_selectedGenres.isEmpty) {
@@ -37,6 +31,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final selected = _selectedGenres.first;
 
     const typeMap = {
+      // 「すべて」はジャンルを絞らず幅広く検索する
+      // (Google Placesのほぼ全スポットが持つtype)
+      'All': 'point_of_interest',
       'Cafe': 'cafe',
       'Nature': 'park',
       'Food': 'restaurant',
@@ -45,7 +42,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       'Viewpoint': 'tourist_attraction',
       'Shop': 'store',
       'Landmark': 'tourist_attraction',
-      'Hill': 'park',
       'Park': 'park',
     };
 
@@ -122,37 +118,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       backgroundColor: const Color(0xFFF8F9FE),
       body: Stack(
         children: [
-          // Main Dynamic Body based on Selected Tab
+          // Main Body
           Positioned.fill(
             child: SafeArea(
               bottom: false,
-              child: IndexedStack(
-                index: _currentTab,
-                children: [
-                  _buildHomeTab(),
-                  _buildHistoryTab(),
-                  _buildProfileTab(),
-                ],
-              ),
+              child: _buildHomeTab(),
             ),
           ),
 
-          // Floating CTA (Only visible on Home Tab)
-          if (_currentTab == 0)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 88.92 + 16,
-              child: _buildFloatingCTA(),
-            ),
-
-          // Custom Bottom Navigation Bar
+          // Floating CTA
           Positioned(
             left: 0,
             right: 0,
+            bottom: AppBottomNavigation.barHeight + 16,
+            child: _buildFloatingCTA(),
+          ),
+
+          // 共通の画面下部メニューバー(HOME・HISTORY・SETTINGS)
+          const Positioned(
+            left: 0,
+            right: 0,
             bottom: 0,
-            height: 88.92,
-            child: _buildBottomNavBar(),
+            height: AppBottomNavigation.barHeight,
+            child: AppBottomNavigation(
+              current: AppTab.home,
+            ),
           ),
         ],
       ),
@@ -206,236 +196,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           _buildDurationSection(),
           const SizedBox(height: 36),
           _buildGenreSection(),
-        ],
-      ),
-    );
-  }
-
-  // TAB 1: HISTORY ACTIVITIES SCREEN (MOCKUP)
-  Widget _buildHistoryTab() {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 120),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildTabHeader(title: 'アクティビティ履歴', subtitle: 'これまでの走行記録'),
-          const SizedBox(height: 24),
-          // History items
-          _buildHistoryItem(
-            title: '週末のモーニングライド',
-            date: '2026/05/24',
-            distance: '22.4 km',
-            time: '1:12:05',
-            calories: '420 kcal',
-          ),
-          const SizedBox(height: 16),
-          _buildHistoryItem(
-            title: '鎌倉寺院巡りサイクリング',
-            date: '2026/05/17',
-            distance: '15.8 km',
-            time: '0:58:30',
-            calories: '310 kcal',
-          ),
-          const SizedBox(height: 16),
-          _buildHistoryItem(
-            title: '荒川サイクリングロード往復',
-            date: '2026/05/10',
-            distance: '45.0 km',
-            time: '2:15:18',
-            calories: '890 kcal',
-          ),
-        ],
-      ),
-    );
-  }
-
-  // TAB 2: USER PROFILE SCREEN WITH LOGOUT BUTTON
-  Widget _buildProfileTab() {
-    final authState = ref.watch(authProvider);
-    final user = authState is AuthAuthenticated ? authState.user : null;
-
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 120),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildTabHeader(title: 'プロフィール', subtitle: 'ユーザーアカウント設定'),
-          const SizedBox(height: 32),
-
-          // User Card
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFFC9C4D5).withValues(alpha: 0.3)),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF2E0094).withValues(alpha: 0.03),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // Avatar: Google photo or fallback SVG
-                CircleAvatar(
-                  radius: 48,
-                  backgroundColor: const Color(0xFFF1EBFF),
-                  backgroundImage: (user?.photoUrl != null)
-                      ? NetworkImage(user!.photoUrl!)
-                      : null,
-                  child: (user?.photoUrl == null)
-                      ? SvgPicture.string(
-                          _kProfileTabSvg,
-                          width: 44,
-                          height: 44,
-                          colorFilter: const ColorFilter.mode(
-                            Color(0xFF19005C),
-                            BlendMode.srcIn,
-                          ),
-                        )
-                      : null,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  user?.name.isNotEmpty == true ? user!.name : 'CyChronos ライダー',
-                  style: const TextStyle(
-                    fontFamily: 'HankenGrotesk',
-                    fontFamilyFallback: ['NotoSansJP'],
-                    fontWeight: FontWeight.w700,
-                    fontSize: 22,
-                    color: Color(0xFF19005C),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  user?.email ?? '',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 14,
-                    color: const Color(0xFF484553).withValues(alpha: 0.8),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Statistics Grid
-          const Text(
-            'STATISTICS',
-            style: TextStyle(
-              fontFamily: 'JetBrainsMono',
-              fontWeight: FontWeight.w500,
-              fontSize: 13,
-              letterSpacing: 0.7,
-              color: Color(0xFF484553),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  label: '総走行距離',
-                  value: '83.2 km',
-                  icon: Icons.directions_bike_rounded,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildStatCard(
-                  label: '総走行時間',
-                  value: '4.5 hrs',
-                  icon: Icons.timer_rounded,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
-
-          // Cruising Speed Setting
-          const Text(
-            'SETTINGS',
-            style: TextStyle(
-              fontFamily: 'JetBrainsMono',
-              fontWeight: FontWeight.w500,
-              fontSize: 13,
-              letterSpacing: 0.7,
-              color: Color(0xFF484553),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFC9C4D5).withValues(alpha: 0.3)),
-            ),
-            child: _buildSliderRow(
-              label: '巡航速度',
-              valueText: '${_speedKmh.toStringAsFixed(1)} km/h',
-              value: _speedKmh,
-              min: 10.0,
-              max: 30.0,
-              divisions: 20,
-              onChanged: (val) {
-                setState(() {
-                  _speedKmh = val;
-                });
-              },
-            ),
-          ),
-          const SizedBox(height: 40),
-
-          // Logout Button
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => ref.read(authProvider.notifier).signOut(),
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEA4335).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: const Color(0xFFEA4335).withValues(alpha: 0.3),
-                    width: 1.5,
-                  ),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.logout_rounded,
-                      color: Color(0xFFEA4335),
-                      size: 20,
-                    ),
-                    SizedBox(width: 10),
-                    Text(
-                      'ログアウト',
-                      style: TextStyle(
-                        fontFamily: 'HankenGrotesk',
-                        fontFamilyFallback: ['NotoSansJP'],
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                        color: Color(0xFFEA4335),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -496,36 +256,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             fontSize: 16,
             color: Color(0xFF484553),
             height: 1.5,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // General Header for Sub-Tabs
-  Widget _buildTabHeader({required String title, required String subtitle}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontFamily: 'HankenGrotesk',
-            fontFamilyFallback: ['NotoSansJP'],
-            fontWeight: FontWeight.w700,
-            fontSize: 28,
-            color: Color(0xFF19005C),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          subtitle,
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontFamilyFallback: ['NotoSansJP'],
-            fontWeight: FontWeight.w400,
-            fontSize: 14,
-            color: Color(0xFF484553),
           ),
         ),
       ],
@@ -625,6 +355,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // Genre Selector (Expanded list of interests)
   Widget _buildGenreSection() {
     final genres = [
+      {'id': 'All', 'label': 'すべて', 'svg': _kAllSvg},
       {'id': 'Cafe', 'label': 'カフェ', 'svg': _kCafeSvg},
       {'id': 'Nature', 'label': '自然', 'svg': _kNatureSvg},
       {'id': 'Food', 'label': 'グルメ', 'svg': _kFoodSvg},
@@ -633,7 +364,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       {'id': 'Viewpoint', 'label': '絶景', 'svg': _kViewpointSvg},
       {'id': 'Shop', 'label': 'ショッピング', 'svg': _kShopSvg},
       {'id': 'Landmark', 'label': 'ランドマーク', 'svg': _kLandmarkSvg},
-      {'id': 'Hill', 'label': 'ヒルクライム', 'svg': _kHillSvg},
       {'id': 'Park', 'label': '公園', 'svg': _kParkSvg},
     ];
 
@@ -709,64 +439,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             );
           }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSliderRow({
-    required String label,
-    required String valueText,
-    required double value,
-    required double min,
-    required double max,
-    required int divisions,
-    required ValueChanged<double> onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontFamily: 'HankenGrotesk',
-                fontFamilyFallback: ['NotoSansJP'],
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-                color: Color(0xFF191C1F),
-              ),
-            ),
-            Text(
-              valueText,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                color: Color(0xFF19005C),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            activeTrackColor: const Color(0xFF2A0088),
-            inactiveTrackColor: const Color(0xFFE7E8ED),
-            thumbColor: const Color(0xFF19005C),
-            overlayColor: const Color(0xFF2A0088).withValues(alpha: 0.1),
-            trackHeight: 6,
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-          ),
-          child: Slider(
-            value: value,
-            min: min,
-            max: max,
-            divisions: divisions,
-            onChanged: onChanged,
-          ),
         ),
       ],
     );
@@ -855,197 +527,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  // Custom Bottom Navigation Bar
-  Widget _buildBottomNavBar() {
-    final tabs = [
-      {'label': 'HOME', 'svg': _kHomeTabSvg},
-      {'label': 'HISTORY', 'svg': _kHistoryTabSvg},
-      {'label': 'PROFILE', 'svg': _kProfileTabSvg},
-    ];
-
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8F9FE).withValues(alpha: 0.8),
-            border: Border(
-              top: BorderSide(
-                color: const Color(0xFFC9C4D5).withValues(alpha: 0.3),
-                width: 1,
-              ),
-            ),
-          ),
-          padding: const EdgeInsets.only(top: 12, bottom: 20),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(tabs.length, (index) {
-              final tab = tabs[index];
-              final isSelected = _currentTab == index;
-              final color = isSelected ? const Color(0xFF19005C) : const Color(0xFF484553);
-
-              return GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  setState(() {
-                    _currentTab = index;
-                  });
-                },
-                child: SizedBox(
-                  width: 70,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        height: 24,
-                        width: 28,
-                        child: SvgPicture.string(
-                          tab['svg']!,
-                          colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        tab['label']!,
-                        style: TextStyle(
-                          fontFamily: 'JetBrainsMono',
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                          fontSize: 11,
-                          color: color,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // MOCKUP SUB-WIDGETS FOR TABS
-
-  Widget _buildHistoryItem({
-    required String title,
-    required String date,
-    required String distance,
-    required String time,
-    required String calories,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFC9C4D5).withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontFamily: 'HankenGrotesk',
-                  fontFamilyFallback: ['NotoSansJP'],
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                  color: Color(0xFF19005C),
-                ),
-              ),
-              Text(
-                date,
-                style: TextStyle(
-                  fontFamily: 'JetBrainsMono',
-                  fontSize: 12,
-                  color: const Color(0xFF484553).withValues(alpha: 0.6),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildHistoryStat('距離', distance),
-              _buildHistoryStat('時間', time),
-              _buildHistoryStat('消費カロリー', calories),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHistoryStat(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'HankenGrotesk',
-            fontFamilyFallback: ['NotoSansJP'],
-            fontSize: 12,
-            color: const Color(0xFF484553).withValues(alpha: 0.6),
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: const TextStyle(
-            fontFamily: 'JetBrainsMono',
-            fontWeight: FontWeight.w700,
-            fontSize: 15,
-            color: Color(0xFF191C1F),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatCard({required String label, required String value, required IconData icon}) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFC9C4D5).withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: const Color(0xFF2A0088), size: 24),
-          const SizedBox(height: 16),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'HankenGrotesk',
-              fontFamilyFallback: ['NotoSansJP'],
-              fontSize: 12,
-              color: const Color(0xFF484553).withValues(alpha: 0.8),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontFamily: 'JetBrainsMono',
-              fontWeight: FontWeight.w800,
-              fontSize: 20,
-              color: Color(0xFF19005C),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // Custom SVGs (Inline)
@@ -1097,9 +578,11 @@ const _kLandmarkSvg = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.
   <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
 </svg>''';
 
-const _kHillSvg = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M4 22L12 8L16 15L20 10L23 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M2 22H22" stroke="currentColor" stroke-width="2"/>
+const _kAllSvg = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/>
+  <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/>
+  <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/>
+  <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/>
 </svg>''';
 
 const _kParkSvg = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1114,17 +597,3 @@ const _kArrowRightSvg = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://ww
   <path d="M19 12L12 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>''';
 
-const _kHomeTabSvg = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M9 22V12h6v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>''';
-
-const _kHistoryTabSvg = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-  <path d="M12 6V12L16 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>''';
-
-const _kProfileTabSvg = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-  <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/>
-</svg>''';
