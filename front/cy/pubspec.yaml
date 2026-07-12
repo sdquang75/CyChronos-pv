@@ -43,6 +43,9 @@ dependencies:
   # HTTP & networking
   dio: ^5.8.0+1
 
+  # Device detection (emulator vs physical device)
+  device_info_plus: ^11.3.0
+
   # Location
   geolocator: ^13.0.2
 
@@ -58,6 +61,10 @@ dependencies:
   # Fonts & icons
   google_fonts: ^6.2.1
   flutter_svg: ^2.3.0
+
+  # Map rendering (route preview)
+  flutter_map: ^8.3.1
+  latlong2: ^0.10.1
 
   # Firebase (uncomment when ready to integrate)
   # cloud_firestore: ^5.6.5
