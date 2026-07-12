@@ -204,35 +204,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // ================= UI ELEMENT BUILDERS =================
 
   // Header for Home Screen (Without Logout icon)
+  // Header for Home Screen
   Widget _buildHeroHeader() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'CyChronos',
-              style: TextStyle(
-                fontFamily: 'HankenGrotesk',
-                fontFamilyFallback: ['NotoSansJP'],
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF19005C),
-                letterSpacing: -0.4,
-              ),
-            ),
-            Text(
-              'RIDE PLANNER',
-              style: TextStyle(
-                fontFamily: 'JetBrainsMono',
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF19005C).withValues(alpha: 0.6),
-                letterSpacing: 1.5,
-              ),
-            ),
-          ],
+        Center(
+          child: Image.asset(
+            'assets/logo_long.png',
+            width: 200,
+            fit: BoxFit.contain,
+          ),
         ),
         const SizedBox(height: 32),
         const Text(
