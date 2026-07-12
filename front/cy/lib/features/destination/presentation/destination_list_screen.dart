@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cy/core/network/place_photo.dart';
 import 'package:cy/core/theme/app_colors.dart';
 import 'package:cy/core/widgets/app_top_bar.dart';
 import 'package:cy/core/widgets/staggered_entrance.dart';
@@ -9,6 +10,7 @@ import 'package:cy/features/home/domain/recommendation_state.dart';
 import 'package:cy/features/home/presentation/providers/recommendation_provider.dart';
 import 'package:cy/features/route_confirm/route_confirm.dart';
 import 'package:cy/features/route_confirm/widgets/route_card_pieces.dart';
+import '../domain/place_genre.dart';
 import 'destination_detail_screen.dart';
 
 // Destination search & results screen, built directly from the Figma
@@ -158,17 +160,25 @@ class _DestinationListScreenState
     return apiDestinations.isNotEmpty ? apiDestinations : _destinations;
   }
 
+  // Real /api/suggest results carry a raw English Google Places type in
+  // 'genre' (e.g. "cafe"), while the mock list and the genre chips use
+  // Japanese labels — translate before comparing so the chips actually
+  // narrow real results instead of silently matching nothing.
+  bool _matchesGenre(Map<String, String> destination) {
+    if (_selectedGenre == 'すべて') return true;
+    final rawGenre = destination['genre'] ?? '';
+    if (rawGenre.contains(_selectedGenre)) return true;
+    return placeGenreLabel(rawGenre).contains(_selectedGenre);
+  }
+
   List<Map<String, String>> get _filteredDestinations {
     final query = _query.trim();
     return _sourceDestinations.where((destination) {
-      final matchesGenre =
-          _selectedGenre == 'すべて' ||
-          destination['genre']!.contains(_selectedGenre);
       final matchesQuery =
           query.isEmpty ||
           destination['title']!.contains(query) ||
           destination['genre']!.contains(query);
-      return matchesGenre && matchesQuery;
+      return _matchesGenre(destination) && matchesQuery;
     }).toList();
   }
 
@@ -599,11 +609,10 @@ class _DestinationRouteCard extends StatelessWidget {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      destination['image']!,
-                      width: 64,
-                      height: 64,
-                      fit: BoxFit.cover,
+                    child: _DestinationThumbnail(
+                      photoReference: destination['photoReference'],
+                      fallbackAsset: destination['image']!,
+                      size: 64,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -707,6 +716,37 @@ class _DestinationRouteCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// Thumbnail shown on each destination card: a real spot photo via the
+// backend's /api/maps/photo proxy when a photoReference is available,
+// falling back to the mock/placeholder asset otherwise or on load failure.
+class _DestinationThumbnail extends StatelessWidget {
+  const _DestinationThumbnail({
+    required this.photoReference,
+    required this.fallbackAsset,
+    required this.size,
+  });
+
+  final String? photoReference;
+  final String fallbackAsset;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final photoUrl = placePhotoUrl(photoReference, maxwidth: 200);
+    if (photoUrl == null) {
+      return Image.asset(fallbackAsset, width: size, height: size, fit: BoxFit.cover);
+    }
+    return Image.network(
+      photoUrl,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) =>
+          Image.asset(fallbackAsset, width: size, height: size, fit: BoxFit.cover),
     );
   }
 }

@@ -5,20 +5,7 @@ import 'package:cy/core/widgets/app_screen_frame.dart';
 import 'package:cy/core/widgets/app_top_bar.dart';
 import 'package:cy/features/route_confirm/route_confirm.dart';
 import 'package:cy/features/route_confirm/widgets/route_card_pieces.dart';
-
-// Google Placesの英語ジャンル(type) → 画面表示用の日本語ラベルの変換表
-const _genreLabels = {
-  'cafe': 'カフェ',
-  'restaurant': 'レストラン',
-  'food': 'グルメ',
-  'park': '公園',
-  'museum': '美術館・博物館',
-  'tourist_attraction': '観光名所',
-  'place_of_worship': '寺社・教会',
-  'store': 'ショップ',
-  'point_of_interest': '観光スポット',
-  'establishment': '施設',
-};
+import '../domain/place_genre.dart';
 
 // Destination detail screen — shown from a "詳細を見る" tap on the
 // destination list's expanded card. Pushed on the Explore tab's own nested
@@ -41,7 +28,7 @@ class DestinationDetailScreen extends StatelessWidget {
   String get _genreLabel {
     final genre = destination['genre'] ?? '';
     if (genre.isEmpty) return 'ジャンル';
-    return _genreLabels[genre] ?? genre;
+    return placeGenreLabel(genre);
   }
 
   double? get _rating => double.tryParse(destination['rating'] ?? '');
