@@ -82,14 +82,21 @@ class _SocialLoginButtonState extends State<SocialLoginButton> {
                         : widget.icon,
                   ),
                   const SizedBox(width: 16),
-                  Text(
-                    widget.label,
-                    style: const TextStyle(
-                      fontFamily: 'HankenGrotesk',
-                      fontFamilyFallback: ['NotoSansJP'],
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF191C1F),
+                  // ラベルがボタン幅に収まらない場合だけ縮小して1行に収める
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        widget.label,
+                        maxLines: 1,
+                        style: const TextStyle(
+                          fontFamily: 'HankenGrotesk',
+                          fontFamilyFallback: ['NotoSansJP'],
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF191C1F),
+                        ),
+                      ),
                     ),
                   ),
                 ],
