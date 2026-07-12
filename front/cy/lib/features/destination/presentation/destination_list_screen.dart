@@ -123,10 +123,18 @@ class _DestinationListScreenState
   String _selectedGenre = 'すべて';
   int _searchGeneration = 0;
   int? _expandedIndex;
-  final Map<int, GlobalKey> _cardKeys = {};
 
-  GlobalKey _cardKeyFor(int index) =>
-      _cardKeys.putIfAbsent(index, () => GlobalKey());
+  // Keyed on the "start" button itself (not the card) — AnimatedSize's
+  // *reported* size still animates from collapsed to expanded, so the card's
+  // own RenderBox doesn't have its final height yet on the frame right after
+  // toggling. The button, top-aligned inside AnimatedSize's child, is laid
+  // out at its true final position on that very frame, so measuring it
+  // (rather than the card) gives an accurate target without waiting for the
+  // reveal animation to finish.
+  final Map<int, GlobalKey> _startButtonKeys = {};
+
+  GlobalKey _startButtonKeyFor(int index) =>
+      _startButtonKeys.putIfAbsent(index, () => GlobalKey());
 
   @override
   void initState() {
@@ -209,19 +217,23 @@ class _DestinationListScreenState
     setState(() => _expandedIndex = expanding ? index : null);
     if (!expanding) return;
 
-    // Fire the scroll in the same tap, running alongside the card's
-    // AnimatedSize reveal instead of waiting for it to finish. Aligning to
-    // the top (0.0) pulls the card up as far as it needs to go right away,
-    // clearing room below for it to grow into so the "start" button ends
-    // up in view once both animations settle.
-    final cardContext = _cardKeys[index]?.currentContext;
-    if (cardContext == null) return;
-    Scrollable.ensureVisible(
-      cardContext,
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeOutCubic,
-      alignment: 0.0,
-    );
+    // One frame after the toggle, the "start" button already exists at its
+    // true final position (see _startButtonKeys' doc comment) — no need to
+    // wait for the reveal animation to finish. ensureVisible only scrolls
+    // the minimum needed to bring it into view (nothing at all if it
+    // already fits), aligned to the bottom edge, so this stays a small,
+    // subtle nudge instead of yanking the whole card up to the top.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final buttonContext = _startButtonKeys[index]?.currentContext;
+      if (buttonContext == null) return;
+      Scrollable.ensureVisible(
+        buttonContext,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+        alignment: 1.0,
+      );
+    });
   }
 
   void _openDetails(Map<String, String> destination) {
@@ -323,15 +335,13 @@ class _DestinationListScreenState
                           delay: Duration(milliseconds: 45 * index),
                           child: Padding(
                             padding: const EdgeInsets.only(bottom: 14),
-                            child: KeyedSubtree(
-                              key: _cardKeyFor(index),
-                              child: _DestinationRouteCard(
-                                destination: destination,
-                                isExpanded: _expandedIndex == index,
-                                onToggle: () => _onCardToggled(index),
-                                onStart: () => _startRoute(destination),
-                                onDetails: () => _openDetails(destination),
-                              ),
+                            child: _DestinationRouteCard(
+                              destination: destination,
+                              isExpanded: _expandedIndex == index,
+                              startButtonKey: _startButtonKeyFor(index),
+                              onToggle: () => _onCardToggled(index),
+                              onStart: () => _startRoute(destination),
+                              onDetails: () => _openDetails(destination),
                             ),
                           ),
                         );
@@ -472,6 +482,7 @@ class _DestinationRouteCard extends StatelessWidget {
   const _DestinationRouteCard({
     required this.destination,
     required this.isExpanded,
+    required this.startButtonKey,
     required this.onToggle,
     required this.onStart,
     required this.onDetails,
@@ -479,6 +490,10 @@ class _DestinationRouteCard extends StatelessWidget {
 
   final Map<String, String> destination;
   final bool isExpanded;
+  // Lets the parent screen measure the button's true position the frame
+  // it appears (see _DestinationListScreenState._startButtonKeys), to
+  // auto-scroll it into view without waiting for the reveal to finish.
+  final Key startButtonKey;
   final VoidCallback onToggle;
   final VoidCallback onStart;
   final VoidCallback onDetails;
@@ -627,7 +642,7 @@ class _DestinationRouteCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        RouteStartButton(onTap: onStart),
+                        RouteStartButton(key: startButtonKey, onTap: onStart),
                       ],
                     )
                   : const SizedBox(width: double.infinity),
