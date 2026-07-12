@@ -160,15 +160,28 @@ class _DestinationListScreenState
     return apiDestinations.isNotEmpty ? apiDestinations : _destinations;
   }
 
-  // Real /api/suggest results carry a raw English Google Places type in
-  // 'genre' (e.g. "cafe"), while the mock list and the genre chips use
-  // Japanese labels — translate before comparing so the chips actually
-  // narrow real results instead of silently matching nothing.
+  // Genre chips are built from whatever tags the current result set
+  // actually has, so they always match real data instead of a fixed guess
+  // that may not exist among the results (or may hide real genres).
+  List<String> get _availableGenres {
+    final tags = <String>{};
+    for (final destination in _sourceDestinations) {
+      tags.addAll(destinationTags(destination));
+    }
+    final sorted = tags.toList()..sort();
+    return ['すべて', ...sorted];
+  }
+
+  // Falls back to "すべて" if the previously-selected chip no longer exists
+  // in the current result set (e.g. after a new search), rather than
+  // silently filtering to zero results with no chip visibly selected.
+  String get _effectiveSelectedGenre =>
+      _availableGenres.contains(_selectedGenre) ? _selectedGenre : 'すべて';
+
   bool _matchesGenre(Map<String, String> destination) {
-    if (_selectedGenre == 'すべて') return true;
-    final rawGenre = destination['genre'] ?? '';
-    if (rawGenre.contains(_selectedGenre)) return true;
-    return placeGenreLabel(rawGenre).contains(_selectedGenre);
+    final selected = _effectiveSelectedGenre;
+    if (selected == 'すべて') return true;
+    return destinationTags(destination).contains(selected);
   }
 
   List<Map<String, String>> get _filteredDestinations {
@@ -177,7 +190,7 @@ class _DestinationListScreenState
       final matchesQuery =
           query.isEmpty ||
           destination['title']!.contains(query) ||
-          destination['genre']!.contains(query);
+          destinationTags(destination).any((tag) => tag.contains(query));
       return _matchesGenre(destination) && matchesQuery;
     }).toList();
   }
@@ -231,16 +244,20 @@ class _DestinationListScreenState
     HapticFeedback.mediumImpact();
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => RouteConfirmScreen(
-          placeId: destination['id'],
-          destinationName: destination['title'] ?? 'ABC park',
-          distanceText: destination['distance'] ?? '12.4 km',
-          durationText: destination['duration'] ?? '45 min',
-          elevationText: destination['elevation'] ?? '42 m',
-          thumbnailAsset: destination['image'] ?? 'assets/kitty.jpeg',
-          destLat: double.tryParse(destination['lat'] ?? ''),
-          destLng: double.tryParse(destination['lng'] ?? ''),
-        ),
+        builder: (_) {
+          final tags = destinationTags(destination);
+          return RouteConfirmScreen(
+            placeId: destination['id'],
+            destinationName: destination['title'] ?? 'ABC park',
+            waypointLabels: tags.isNotEmpty ? tags : const ['A', 'B', 'C'],
+            distanceText: destination['distance'] ?? '12.4 km',
+            durationText: destination['duration'] ?? '45 min',
+            elevationText: destination['elevation'] ?? '42 m',
+            thumbnailAsset: destination['image'] ?? 'assets/kitty.jpeg',
+            destLat: double.tryParse(destination['lat'] ?? ''),
+            destLng: double.tryParse(destination['lng'] ?? ''),
+          );
+        },
       ),
     );
   }
@@ -283,13 +300,13 @@ class _DestinationListScreenState
                     height: 34,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
-                      itemCount: _genres.length,
+                      itemCount: _availableGenres.length,
                       separatorBuilder: (_, __) => const SizedBox(width: 8),
                       itemBuilder: (context, index) {
-                        final genre = _genres[index];
+                        final genre = _availableGenres[index];
                         return _GenreChip(
                           label: genre,
-                          selected: genre == _selectedGenre,
+                          selected: genre == _effectiveSelectedGenre,
                           onTap: () => _onGenreSelected(genre),
                         );
                       },
@@ -334,8 +351,6 @@ class _DestinationListScreenState
     );
   }
 }
-
-const _genres = ['すべて', '自然', 'カフェ', '観光', '公園'];
 
 class _SearchBar extends StatelessWidget {
   const _SearchBar({
@@ -621,13 +636,12 @@ class _DestinationRouteCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Wrap(
-                          spacing: 2,
-                          children: [
-                            WaypointBadge(label: 'A'),
-                            WaypointBadge(label: 'B'),
-                            WaypointBadge(label: 'C'),
-                          ],
+                        Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: destinationTags(destination)
+                              .map((tag) => WaypointBadge(label: tag))
+                              .toList(),
                         ),
                         const SizedBox(height: 4),
                         Text(

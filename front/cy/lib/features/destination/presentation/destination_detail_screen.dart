@@ -36,11 +36,13 @@ class DestinationDetailScreen extends StatelessWidget {
   String? get _photoUrl => placePhotoUrl(destination['photoReference']);
 
   void _openRoute(BuildContext context) {
+    final tags = destinationTags(destination);
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => RouteConfirmScreen(
           placeId: destination['id'],
           destinationName: destination['title'] ?? 'ABC park',
+          waypointLabels: tags.isNotEmpty ? tags : const ['A', 'B', 'C'],
           distanceText: destination['distance'] ?? '12.4 km',
           durationText: destination['duration'] ?? '45 min',
           elevationText: destination['elevation'] ?? '42 m',
