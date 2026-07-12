@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cy/core/theme/app_colors.dart';
+import '../../../history/presentation/providers/history_provider.dart';
 import 'home_tab_header.dart';
 
-// TAB: HISTORY ACTIVITIES SCREEN (MOCKUP)
-class HistoryTabView extends StatelessWidget {
+// TAB: HISTORY ACTIVITIES SCREEN(/api/trips から取得した実データを表示)
+class HistoryTabView extends ConsumerWidget {
   const HistoryTabView({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tripsAsync = ref.watch(tripHistoryProvider);
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 120),
@@ -16,32 +20,81 @@ class HistoryTabView extends StatelessWidget {
         children: [
           const HomeTabHeader(title: 'アクティビティ履歴', subtitle: 'これまでの走行記録'),
           const SizedBox(height: 24),
-          const _HistoryItem(
-            title: '週末のモーニングライド',
-            date: '2026/05/24',
-            distance: '22.4 km',
-            time: '1:12:05',
-            calories: '420 kcal',
-          ),
-          const SizedBox(height: 16),
-          const _HistoryItem(
-            title: '鎌倉寺院巡りサイクリング',
-            date: '2026/05/17',
-            distance: '15.8 km',
-            time: '0:58:30',
-            calories: '310 kcal',
-          ),
-          const SizedBox(height: 16),
-          const _HistoryItem(
-            title: '荒川サイクリングロード往復',
-            date: '2026/05/10',
-            distance: '45.0 km',
-            time: '2:15:18',
-            calories: '890 kcal',
+          tripsAsync.when(
+            data: (trips) {
+              if (trips.isEmpty) {
+                return Text(
+                  'まだ走行記録がありません',
+                  style: TextStyle(
+                    fontFamily: 'HankenGrotesk',
+                    fontFamilyFallback: const ['NotoSansJP'],
+                    fontSize: 14,
+                    color: AppColors.textSecondary.withValues(alpha: 0.6),
+                  ),
+                );
+              }
+              return Column(
+                children: [
+                  for (final trip in trips) ...[
+                    _HistoryItem(
+                      title: (trip['destination_name'] as String?)?.isNotEmpty == true
+                          ? trip['destination_name'] as String
+                          : 'サイクリング',
+                      date: _formatDate(trip['start_time']),
+                      distance: _formatDistance(trip['total_distance_m']),
+                      time: _formatDuration(trip['duration_sec']),
+                      speed: _formatSpeed(trip['average_speed_kmh']),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ],
+              );
+            },
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (error, stackTrace) => Text(
+              '走行記録の取得に失敗しました',
+              style: TextStyle(
+                fontFamily: 'HankenGrotesk',
+                fontFamilyFallback: const ['NotoSansJP'],
+                fontSize: 14,
+                color: AppColors.textSecondary.withValues(alpha: 0.6),
+              ),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  static String _formatDate(Object? startTime) {
+    final parsed = DateTime.tryParse(startTime?.toString() ?? '');
+    if (parsed == null) return '-';
+    return '${parsed.year}/${parsed.month.toString().padLeft(2, '0')}/${parsed.day.toString().padLeft(2, '0')}';
+  }
+
+  static String _formatDistance(Object? meters) {
+    final value = num.tryParse(meters?.toString() ?? '');
+    if (value == null) return '-';
+    return '${(value / 1000).toStringAsFixed(1)} km';
+  }
+
+  static String _formatDuration(Object? seconds) {
+    final value = num.tryParse(seconds?.toString() ?? '');
+    if (value == null) return '-';
+    final total = value.round();
+    final hours = total ~/ 3600;
+    final minutes = (total % 3600) ~/ 60;
+    final secs = total % 60;
+    return '$hours:${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+  }
+
+  static String _formatSpeed(Object? kmh) {
+    final value = num.tryParse(kmh?.toString() ?? '');
+    if (value == null) return '-';
+    return '${value.toStringAsFixed(1)} km/h';
   }
 }
 
@@ -51,14 +104,14 @@ class _HistoryItem extends StatelessWidget {
     required this.date,
     required this.distance,
     required this.time,
-    required this.calories,
+    required this.speed,
   });
 
   final String title;
   final String date;
   final String distance;
   final String time;
-  final String calories;
+  final String speed;
 
   @override
   Widget build(BuildContext context) {
@@ -104,7 +157,7 @@ class _HistoryItem extends StatelessWidget {
             children: [
               _HistoryStat(label: '距離', value: distance),
               _HistoryStat(label: '時間', value: time),
-              _HistoryStat(label: '消費カロリー', value: calories),
+              _HistoryStat(label: '平均速度', value: speed),
             ],
           ),
         ],
