@@ -1,12 +1,28 @@
 //スポットだすやつにょー
 
-const BASE_URL = "https://maps.googleapis.com"; // Google Maps APIのベースURL   
-const hidecategory = ["lodging", "hotel", "parking", "gas_station", "atm", "bank", "hospital", "doctor", "pharmacy", "school", "primary_school", "secondary_school", "preschool", "university", "police", "fire_station", "post_office", "local_government_office"]
+const BASE_URL = "https://maps.googleapis.com"; // Google Maps APIのベースURL
+const hidecategory = [
+  // 宿泊・生活インフラ系(サイクリングの目的地として弱い)
+  "lodging", "hotel", "parking", "gas_station", "atm", "bank", "hospital", "doctor", "pharmacy",
+  "school", "primary_school", "secondary_school", "preschool", "university", "police",
+  "fire_station", "post_office", "local_government_office",
+  // 会社・事業所系(観光目的地ではないので除外)
+  "insurance_agency", "real_estate_agency", "lawyer", "accounting", "finance",
+  "general_contractor", "electrician", "plumber", "roofing_contractor", "painter",
+  "moving_company", "storage", "car_dealer", "car_repair", "car_rental", "car_wash",
+  "locksmith", "laundry", "funeral_home", "cemetery", "courthouse", "embassy", "city_hall",
+  "travel_agency", "dentist", "veterinary_care", "physiotherapist", "taxi_stand",
+];
 
 // 会社の支社・本社などは、Google側にtype(corporate_office等)が無く名前でしか
 // 判別できないので、名前に含まれていたら外す(狙ったチェーン店の「支店」等は
 // 対象外にしたいので、営業所/支店ではなくこの3語だけに絞る)
 const hideNameKeywords = ["支社", "本社", "会社"]
+
+// 「それだけでは何の施設か分からない」汎用type。
+// カテゴリ未設定の会社・オフィスは types がこれだけになりがちなので、
+// 全typeが汎用のものは目的地候補から外す
+const genericTypes = ["point_of_interest", "establishment", "premise", "geocode", "plus_code"];
 
 
 /**
@@ -47,6 +63,33 @@ async function getNearbyPlaces(lng, lat, radius, type) {
   }
 
   return { ...data, results };
+}
+
+/**
+ * スポットの写真を1枚取得する(返ってくるのはJSONではなく画像データそのもの)
+ * @param {string} photoReference Nearby Search の photos[0].photo_reference の値
+ * @param {number} maxWidth 画像の最大幅(px)
+ */
+async function getPlacePhoto(photoReference, maxWidth) {
+  // Google Places のAPIキーを読み込む
+  const token = process.env.GOOGLE_PLACES_API_KEY;
+
+  // urlを組み立てる。Googleに渡すクエリ名は photo_reference(スネークケース)
+  const url = new URL(`${BASE_URL}/maps/api/place/photo`);
+  url.searchParams.set("photo_reference", photoReference);
+  url.searchParams.set("maxwidth", maxWidth);
+  url.searchParams.set("key", token);
+
+  // 302リダイレクトはfetchが自動で追ってくれるので、そのまま画像本体が返ってくる
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Google Maps API error: ${response.status} ${response.statusText}`);
+  }
+
+  // 画像の種類(image/jpeg等)と中身のバイト列を、ルーターがそのまま送れる形にして返す
+  const contentType = response.headers.get("content-type") ?? "image/jpeg";
+  const buffer = Buffer.from(await response.arrayBuffer());
+  return { contentType, buffer };
 }
 
 // Google に問い合わせ。HTTP自体が失敗ならthrow
@@ -96,6 +139,7 @@ function normalizePlace(place) {
     lng: location.lng,
     address: place.vicinity ?? place.formatted_address ?? "",
     rating: typeof place.rating === "number" ? place.rating : null,
+    photoReference: Array.isArray(place.photos) && place.photos.length > 0 ? place.photos[0].photo_reference : null,
     genre: Array.isArray(place.types) && place.types.length > 0 ? place.types[0] : null,
   };
 }
@@ -112,7 +156,7 @@ function normalizePlacesResponse(data) {
       const isRealPlace =
         types.includes("point_of_interest") || types.includes("establishment");
 
-      // ホテルや駐車場、学校など、サイクリングの目的地として弱いものを外す
+      // ホテルや駐車場、学校、士業・事業所系など、サイクリングの目的地として弱いものを外す
       const hasHiddenCategory = types.some((type) => hidecategory.includes(type));
 
       // 会社の支社・本社などオフィス系を名前で外す
@@ -120,7 +164,11 @@ function normalizePlacesResponse(data) {
         place.name?.includes(keyword)
       );
 
-      return isRealPlace && !hasHiddenCategory && !hasHiddenNameKeyword;
+      // typesが汎用type(point_of_interest等)だけの施設は、カテゴリ未設定の会社・オフィスの
+      // 可能性が高いので外す
+      const onlyGenericTypes = types.length > 0 && types.every((type) => genericTypes.includes(type));
+
+      return isRealPlace && !hasHiddenCategory && !hasHiddenNameKeyword && !onlyGenericTypes;
     })
     .map(normalizePlace)
     // 画面表示に最低限必要な値がないものはここで落とす
@@ -181,4 +229,4 @@ function filterWithinMinutes(places, minutes){
   });
 }
 
-module.exports = { getNearbyPlaces, normalizePlace, normalizePlacesResponse, shufflePlaces, pickSuggestions, attachDurations, filterWithinMinutes };
+module.exports = { getNearbyPlaces, getPlacePhoto, normalizePlace, normalizePlacesResponse, shufflePlaces, pickSuggestions, attachDurations, filterWithinMinutes };
