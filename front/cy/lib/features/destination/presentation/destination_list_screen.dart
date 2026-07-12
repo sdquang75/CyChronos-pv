@@ -363,15 +363,24 @@ class _DestinationListScreenState
                   : results.isEmpty
                   ? const _NoResults()
                   : ListView.builder(
-                      physics: const BouncingScrollPhysics(),
+                      // Bouncing gives the native elastic rubber-band pull
+                      // past either end; the "end of results" footer below
+                      // makes that overscroll mean something concrete at
+                      // the bottom instead of just an empty stretch.
+                      physics: const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      ),
                       padding: const EdgeInsets.fromLTRB(
                         20,
                         0,
                         20,
                         _resultsBottomPadding,
                       ),
-                      itemCount: results.length,
+                      itemCount: results.length + 1,
                       itemBuilder: (context, index) {
+                        if (index == results.length) {
+                          return const _EndOfResultsFooter();
+                        }
                         final destination = results[index];
                         return StaggeredEntrance(
                           key: ValueKey(
@@ -513,6 +522,43 @@ class _NoResults extends StatelessWidget {
           fontWeight: FontWeight.w600,
           fontSize: 14,
           color: AppColors.textMuted,
+        ),
+      ),
+    );
+  }
+}
+
+// Sits after the last card so reaching it (or pulling past it, via
+// BouncingScrollPhysics' rubber-band overscroll) reads as a deliberate
+// "you've reached the end", not just an empty gap under the last result.
+class _EndOfResultsFooter extends StatelessWidget {
+  const _EndOfResultsFooter();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Center(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.check_circle_outline_rounded,
+              size: 15,
+              color: AppColors.textMuted.withValues(alpha: 0.6),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'ここまでが検索結果です',
+              style: TextStyle(
+                fontFamily: 'HankenGrotesk',
+                fontFamilyFallback: const ['NotoSansJP'],
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
+                color: AppColors.textMuted.withValues(alpha: 0.6),
+              ),
+            ),
+          ],
         ),
       ),
     );
