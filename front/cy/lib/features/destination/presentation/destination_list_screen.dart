@@ -366,7 +366,8 @@ class _DestinationCard extends StatelessWidget {
               ),
             ),
             child: Image.asset(
-              'assets/logo.jpg',
+              // logo.jpg は存在しない(pubspec未登録)ため、実在する logo.png に修正
+              'assets/logo.png',
               fit: BoxFit.cover,
             ),
           ),
@@ -757,39 +758,43 @@ class _BottomNavItem extends StatelessWidget {
       onTap: onTap,
       child: SizedBox(
         width: 70,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 28,
-              height: 24,
-              child: icon != null
-                  ? Icon(
-                      icon,
-                      color: color,
-                      size: 25,
-                    )
-                  : SvgPicture.string(
-                      svgData!,
-                      colorFilter: ColorFilter.mode(
-                        color,
-                        BlendMode.srcIn,
+        // 枠に収まらないときだけ自動で縮小し、はみ出しを防ぐ
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 28,
+                height: 24,
+                child: icon != null
+                    ? Icon(
+                        icon,
+                        color: color,
+                        size: 25,
+                      )
+                    : SvgPicture.string(
+                        svgData!,
+                        colorFilter: ColorFilter.mode(
+                          color,
+                          BlendMode.srcIn,
+                        ),
                       ),
-                    ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'JetBrainsMono',
-                fontWeight: isSelected
-                    ? FontWeight.w700
-                    : FontWeight.w500,
-                fontSize: 11,
-                color: color,
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'JetBrainsMono',
+                  fontWeight: isSelected
+                      ? FontWeight.w700
+                      : FontWeight.w500,
+                  fontSize: 11,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

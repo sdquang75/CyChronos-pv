@@ -80,4 +80,31 @@ router.get("/places", async (req, res) => {
     res.status(502).json({ error: "Google Maps APIの呼び出しに失敗しました" });
   }
 });
+
+router.get("/photo", async (req, res) => {
+  // photoReferenceをクエリから取得
+  const photoReference = req.query.photoReference;
+
+  // 未指定・空文字は400で返す(文字列は !x で null/undefined/空文字をまとめて弾ける)
+  if (!photoReference) {
+    return res.status(400).json({ error: "photoReferenceは必須です" });
+  }
+
+  // maxwidth(クエリ名は全部小文字)は省略可。数値でなければ800、Google上限の1600でクランプ
+  const parsedWidth = parseInt(req.query.maxwidth, 10);
+  const maxWidth = Number.isFinite(parsedWidth) ? Math.min(Math.max(parsedWidth, 1), 1600) : 800;
+
+  try {
+    const photoResponse = await places.getPlacePhoto(photoReference, maxWidth);
+    res.set("Content-Type", photoResponse.contentType);
+    res.send(photoResponse.buffer);
+  }
+  catch (error) {
+    // 失敗の原因をサーバーログに残す
+    console.error(error);
+    res.status(502).json({ error: "Google Maps APIの呼び出しに失敗しました" });
+  }
+});
+
+
 module.exports = router;
