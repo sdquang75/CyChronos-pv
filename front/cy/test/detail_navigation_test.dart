@@ -70,16 +70,20 @@ void main() {
     );
 
     // スプラッシュを飛ばして一覧画面へ(ホーム画面が検索後にやるのと同じ渡し方)
-    router.go('/destination', extra: [place]);
+    router.go('/destination', extra: {
+      'places': [place],
+      'minutes': 90, // ホームで入力した空き時間(1時間30分)
+    });
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 700)); // 画面切り替え待ち
 
     // スプラッシュの最低表示タイマー(3.5秒)を消化しておく(テスト終了時のタイマー残りエラー防止)
     await tester.pump(const Duration(seconds: 4));
 
-    // 一覧にスポット名と所要時間が出ている
+    // 一覧にスポット名・所要時間・空き時間が出ている
     expect(find.text('テストカフェ'), findsOneWidget);
     expect(find.text('約30分'), findsOneWidget);
+    expect(find.text('1時間30分'), findsOneWidget); // 渡した空き時間がヘッダーに出る
 
     // 「詳細を見る」を押して詳細画面へ
     await tester.tap(find.text('詳細を見る'));

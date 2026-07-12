@@ -4,13 +4,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/network/place_photo.dart';
+
 class DestinationListScreen extends StatelessWidget {
   final List<dynamic> places;
+  final int? minutes; // 検索に使った空き時間(分)。ヘッダーの表示用
 
   const DestinationListScreen({
     super.key,
     required this.places,
+    this.minutes,
   });
+
+  // 空き時間を「X時間YY分」の形にする(受け取れなかったときは「--」)
+  String _freeTimeText() {
+    final total = minutes;
+    if (total == null) return '--';
+    final h = total ~/ 60;
+    final m = (total % 60).toString().padLeft(2, '0');
+    return '$h時間$m分';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -198,16 +211,17 @@ class DestinationListScreen extends StatelessWidget {
               width: 1,
             ),
           ),
-          child: const Row(
+          // 空き時間の値が動的になったので Row 全体の const は外す
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
+              const Icon(
                 Icons.schedule_rounded,
                 size: 18,
                 color: Color(0xFF19005C),
               ),
-              SizedBox(width: 8),
-              Text(
+              const SizedBox(width: 8),
+              const Text(
                 '空き時間',
                 style: TextStyle(
                   fontFamily: 'HankenGrotesk',
@@ -217,10 +231,10 @@ class DestinationListScreen extends StatelessWidget {
                   color: Color(0xFF484553),
                 ),
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
-                '1時間00分',
-                style: TextStyle(
+                _freeTimeText(), // ホーム画面で入力した空き時間を表示
+                style: const TextStyle(
                   fontFamily: 'JetBrainsMono',
                   fontWeight: FontWeight.w700,
                   fontSize: 13,
@@ -308,6 +322,26 @@ class _DestinationCard extends StatelessWidget {
     required this.destination,
   });
 
+  // カードのサムネイル。写真があればバック経由の実写真、なければロゴを出す
+  Widget _buildThumbnail() {
+    // サムネイルは小さいので幅200pxで十分(通信量とGoogle課金の節約)
+    final photoUrl = placePhotoUrl(
+      destination['photoReference']?.toString(),
+      maxwidth: 200,
+    );
+
+    if (photoUrl == null) {
+      return Image.asset('assets/logo.png', fit: BoxFit.cover);
+    }
+    return Image.network(
+      photoUrl,
+      fit: BoxFit.cover,
+      // 通信失敗でも画面を壊さずロゴに切り替える
+      errorBuilder: (context, error, stackTrace) =>
+          Image.asset('assets/logo.png', fit: BoxFit.cover),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final String name =
@@ -365,11 +399,7 @@ class _DestinationCard extends StatelessWidget {
                 ),
               ),
             ),
-            child: Image.asset(
-              // logo.jpg は存在しない(pubspec未登録)ため、実在する logo.png に修正
-              'assets/logo.png',
-              fit: BoxFit.cover,
-            ),
+            child: _buildThumbnail(), // スポットの実写真(なければロゴ)
           ),
 
           const SizedBox(width: 14),

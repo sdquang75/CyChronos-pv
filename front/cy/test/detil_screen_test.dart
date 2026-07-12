@@ -45,7 +45,6 @@ void main() {
     expect(find.text('ジャンル'), findsOneWidget); // ジャンルなしは仮ラベル
     expect(find.text('評価なし'), findsOneWidget); // 評価なし表示
     expect(find.text('--'), findsNWidgets(3)); // 距離・時間・分の3箇所が「--」
-    expect(find.text('場所の紹介テキスト'), findsOneWidget); // 紹介文なしは仮テキスト
 
     // 写真URLが無いときは仮画像(アセット)が使われている
     final image = tester.widget<Image>(find.byType(Image).last);

@@ -24,7 +24,6 @@ class DetilScreen extends StatelessWidget {
   final int? durationSec; // 現在地からの所要時間(秒)。不明なら null
   final int? distanceMeter; // 現在地からの距離(m)。不明なら null
   final double? rating; // Googleの星評価(例: 4.2)。評価なしは null
-  final String description; // 場所紹介のテキストを指定
 
 
   const DetilScreen(
@@ -37,7 +36,6 @@ class DetilScreen extends StatelessWidget {
       this.durationSec, // 所要時間を受け取る(省略可)
       this.distanceMeter, // 距離を受け取る(省略可)
       this.rating, // 評価を受け取る(省略可)
-      this.description = '', // 場所紹介のテキストを受け取る(省略可)
     });
 
   // 英語ジャンルを日本語にして返す(変換表に無いものは英語のまま表示)
@@ -195,7 +193,7 @@ class DetilScreen extends StatelessWidget {
             ),
             Container(
               width: double.infinity, // 横幅を画面の半分に設定
-              height: 400,
+              height: 220, // 場所紹介の削除に合わせて 400 から詰めた
               margin: EdgeInsets.all(5),
               decoration: BoxDecoration(
                 color: const Color.fromARGB(255, 255, 255, 255),          // 背景色
@@ -401,29 +399,7 @@ class DetilScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Container(
-                    width: double.infinity, // 横幅を画面の半分に設定
-                    height: 160,
-                    padding: EdgeInsets.only(left: 16), // 上部の余白を追加
-                    margin: EdgeInsets.all(1),
-                    decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 255, 255, 255),          // 背景色
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '場所紹介',
-                          style: TextStyle(fontSize: 25, color: Colors.black), // 文字サイズと色
-                        ),
-                        SizedBox(height: 8), // 上下の余白を追加
-                        Text(
-                          description.isNotEmpty ? description : '場所の紹介テキスト', // 場所紹介のテキストを表示
-                          style: TextStyle(fontSize: 15, color: Colors.black), // 文字サイズと色
-                        ),  
-                      ],
-                    ),
-                  ),
+                  // 「場所紹介」はAPIから取得できるデータが無いため削除した(2026-07-12)
                 ],
               ),
             ),
