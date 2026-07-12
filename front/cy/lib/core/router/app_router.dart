@@ -10,6 +10,7 @@ import '../../features/destination/presentation/destination_list_screen.dart';
 import '../../features/detil/detil.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/route_confirm/route_confirm.dart';
+import '../network/api_client.dart';
 
 
 // Bridges Riverpod state changes → GoRouter refresh
@@ -87,25 +88,54 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/detil',
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const DetilScreen( 
-            name: '観光地名',
-            address: '住所000-0000',
-            genre: 'ジャンル',
-            imagePath: 'testimage.png',
-            durationSec: 3600, // 例: 1時間
-            distanceMeter: 1500, // 例: 1.5km
-            description: '00県00市00町00番地にある観光スポットです。美しい景色や歴史的な建造物が楽しめます。',
-          ),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 600),
-        ),
+        pageBuilder: (context, state) {
+          // 一覧画面から渡された目的地1件分(/api/suggest の places の1要素)を受け取る
+          final destination = state.extra is Map
+              ? Map<String, dynamic>.from(state.extra as Map)
+              : <String, dynamic>{};
+
+          // 数値はAPIの都合で int でも double でも来るので num で受けてから変換する
+          final durationSec = destination['durationSec'] as num?;
+          final distanceM = destination['distanceM'] as num?;
+          final rating = destination['rating'] as num?;
+
+          // 写真は photoReference をバックの写真プロキシ(/api/maps/photo)のURLに変換して渡す。
+          // バック未実装・写真なしのスポットは null になり、詳細画面側で仮画像が表示される
+          final photoReference = destination['photoReference']?.toString();
+          final imageUrl = (photoReference == null || photoReference.isEmpty)
+              ? null
+              : Uri.parse(ApiClient.instance.options.baseUrl)
+                  .replace(
+                    path: '/api/maps/photo',
+                    queryParameters: {
+                      'photoReference': photoReference,
+                      'maxwidth': '800',
+                    },
+                  )
+                  .toString();
+
+          return CustomTransitionPage(
+            key: state.pageKey,
+            // 受け取ったデータを詳細画面へ渡す(欠けている項目は詳細画面側で「--」等を表示)
+            child: DetilScreen(
+              name: destination['name']?.toString() ?? '',
+              address: destination['address']?.toString() ?? '',
+              genre: destination['genre']?.toString() ?? '',
+              imageUrl: imageUrl,
+              durationSec: durationSec?.round(), // 所要時間(秒)
+              distanceMeter: distanceM?.round(), // 距離(m)
+              rating: rating?.toDouble(), // 評価(例: 4.2)
+              // 紹介文はまだAPIに無いので渡さない(画面側が仮テキストを表示する)
+            ),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 600),
+          );
+        },
       ),
       GoRoute(
         path: '/destination',
