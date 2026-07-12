@@ -120,12 +120,13 @@ class _DestinationListScreenState
     },
   ];
 
-  final TextEditingController _searchController = TextEditingController();
   String _selectedGenre = 'すべて';
-  String _query = '';
-  bool _isSearching = false;
   int _searchGeneration = 0;
   int? _expandedIndex;
+  final Map<int, GlobalKey> _cardKeys = {};
+
+  GlobalKey _cardKeyFor(int index) =>
+      _cardKeys.putIfAbsent(index, () => GlobalKey());
 
   @override
   void initState() {
@@ -162,8 +163,12 @@ class _DestinationListScreenState
 
   // Genre chips are built from whatever tags the current result set
   // actually has, so they always match real data instead of a fixed guess
-  // that may not exist among the results (or may hide real genres).
+  // that may not exist among the results (or may hide real genres). Empty
+  // while the first request is in flight, since _sourceDestinations would
+  // otherwise fall back to the mock list's genres and flash chips that
+  // don't match the real results about to replace them.
   List<String> get _availableGenres {
+    if (_isLoadingRecommendations) return const [];
     final tags = <String>{};
     for (final destination in _sourceDestinations) {
       tags.addAll(destinationTags(destination));
@@ -185,35 +190,7 @@ class _DestinationListScreenState
   }
 
   List<Map<String, String>> get _filteredDestinations {
-    final query = _query.trim();
-    return _sourceDestinations.where((destination) {
-      final matchesQuery =
-          query.isEmpty ||
-          destination['title']!.contains(query) ||
-          destinationTags(destination).any((tag) => tag.contains(query));
-      return _matchesGenre(destination) && matchesQuery;
-    }).toList();
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _runSearch() async {
-    FocusScope.of(context).unfocus();
-    HapticFeedback.mediumImpact();
-    setState(() {
-      _isSearching = true;
-      _expandedIndex = null;
-    });
-    await Future.delayed(const Duration(milliseconds: 320));
-    if (!mounted) return;
-    setState(() {
-      _isSearching = false;
-      _searchGeneration++;
-    });
+    return _sourceDestinations.where(_matchesGenre).toList();
   }
 
   void _onGenreSelected(String genre) {
@@ -228,7 +205,26 @@ class _DestinationListScreenState
 
   void _onCardToggled(int index) {
     HapticFeedback.selectionClick();
-    setState(() => _expandedIndex = _expandedIndex == index ? null : index);
+    final expanding = _expandedIndex != index;
+    setState(() => _expandedIndex = expanding ? index : null);
+    if (!expanding) return;
+
+    // Wait for the card's AnimatedSize reveal to finish growing before
+    // measuring where to scroll to — otherwise ensureVisible sees the
+    // still-collapsed height and stops short of the "start" button.
+    Future.delayed(const Duration(milliseconds: 330), () {
+      if (!mounted) return;
+      final cardContext = _cardKeys[index]?.currentContext;
+      if (cardContext == null) return;
+      // cardContext is fetched fresh above (after the mounted check), not
+      // carried across the gap, so this is safe despite the async delay.
+      Scrollable.ensureVisible(
+        cardContext, // ignore: use_build_context_synchronously
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+        alignment: 0.5,
+      );
+    });
   }
 
   void _openDetails(Map<String, String> destination) {
@@ -285,44 +281,41 @@ class _DestinationListScreenState
         child: Column(
           children: [
             const AppTopBar(title: 'おすすめスポット'),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-              child: Column(
-                children: [
-                  _SearchBar(
-                    controller: _searchController,
-                    isSearching: _isSearching,
-                    onChanged: (value) => setState(() => _query = value),
-                    onSubmit: _runSearch,
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 34,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _availableGenres.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final genre = _availableGenres[index];
-                        return _GenreChip(
-                          label: genre,
-                          selected: genre == _effectiveSelectedGenre,
-                          onTap: () => _onGenreSelected(genre),
-                        );
-                      },
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              transitionBuilder: (child, animation) =>
+                  FadeTransition(opacity: animation, child: child),
+              child: _isLoadingRecommendations
+                  ? const SizedBox(height: 20, width: double.infinity)
+                  : Padding(
+                      key: const ValueKey('genre-chips'),
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                      child: SizedBox(
+                        height: 34,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _availableGenres.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          itemBuilder: (context, index) {
+                            final genre = _availableGenres[index];
+                            return _GenreChip(
+                              label: genre,
+                              selected: genre == _effectiveSelectedGenre,
+                              onTap: () => _onGenreSelected(genre),
+                            );
+                          },
+                        ),
+                      ),
                     ),
-                  ),
-                ],
-              ),
             ),
             Expanded(
-              child: _isSearching || _isLoadingRecommendations
+              child: _isLoadingRecommendations
                   ? const _SearchingIndicator()
                   : results.isEmpty
                   ? const _NoResults()
                   : ListView.builder(
                       physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 120),
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
                       itemCount: results.length,
                       itemBuilder: (context, index) {
                         final destination = results[index];
@@ -333,12 +326,15 @@ class _DestinationListScreenState
                           delay: Duration(milliseconds: 45 * index),
                           child: Padding(
                             padding: const EdgeInsets.only(bottom: 14),
-                            child: _DestinationRouteCard(
-                              destination: destination,
-                              isExpanded: _expandedIndex == index,
-                              onToggle: () => _onCardToggled(index),
-                              onStart: () => _startRoute(destination),
-                              onDetails: () => _openDetails(destination),
+                            child: KeyedSubtree(
+                              key: _cardKeyFor(index),
+                              child: _DestinationRouteCard(
+                                destination: destination,
+                                isExpanded: _expandedIndex == index,
+                                onToggle: () => _onCardToggled(index),
+                                onStart: () => _startRoute(destination),
+                                onDetails: () => _openDetails(destination),
+                              ),
                             ),
                           ),
                         );
@@ -347,94 +343,6 @@ class _DestinationListScreenState
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _SearchBar extends StatelessWidget {
-  const _SearchBar({
-    required this.controller,
-    required this.isSearching,
-    required this.onChanged,
-    required this.onSubmit,
-  });
-
-  final TextEditingController controller;
-  final bool isSearching;
-  final ValueChanged<String> onChanged;
-  final Future<void> Function() onSubmit;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.only(left: 16, right: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AppColors.borderLight),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.search_rounded, size: 20, color: AppColors.textMuted),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              onChanged: onChanged,
-              onSubmitted: (_) => onSubmit(),
-              textInputAction: TextInputAction.search,
-              style: const TextStyle(
-                fontFamily: 'HankenGrotesk',
-                fontFamilyFallback: ['NotoSansJP'],
-                fontSize: 15,
-                color: AppColors.textPrimary,
-              ),
-              decoration: const InputDecoration(
-                isCollapsed: true,
-                border: InputBorder.none,
-                hintText: 'スポットを検索',
-                hintStyle: TextStyle(
-                  fontFamily: 'HankenGrotesk',
-                  fontFamilyFallback: ['NotoSansJP'],
-                  fontSize: 15,
-                  color: AppColors.textMuted,
-                ),
-              ),
-            ),
-          ),
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(9999),
-              onTap: isSearching ? null : onSubmit,
-              child: Container(
-                width: 40,
-                height: 40,
-                alignment: Alignment.center,
-                decoration: const BoxDecoration(
-                  color: AppColors.greenPrimary,
-                  shape: BoxShape.circle,
-                ),
-                child: isSearching
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(
-                        Icons.arrow_forward_rounded,
-                        size: 18,
-                        color: Colors.white,
-                      ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
