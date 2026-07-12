@@ -218,6 +218,8 @@ class _DestinationListScreenState
           durationText: destination['duration'] ?? '45 min',
           elevationText: destination['elevation'] ?? '42 m',
           thumbnailAsset: destination['image'] ?? 'assets/kitty.jpeg',
+          destLat: double.tryParse(destination['lat'] ?? ''),
+          destLng: double.tryParse(destination['lng'] ?? ''),
         ),
       ),
     );
@@ -473,6 +475,8 @@ List<Map<String, String>> _parseApiDestinations(dynamic data) {
       'image':
           (item['image'] ?? item['thumbnailAsset'] ?? 'assets/kitty.jpeg')
               .toString(),
+      'lat': (item['lat'] ?? '').toString(),
+      'lng': (item['lng'] ?? '').toString(),
     });
   }
   return parsed;
