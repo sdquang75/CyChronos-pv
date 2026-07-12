@@ -209,22 +209,19 @@ class _DestinationListScreenState
     setState(() => _expandedIndex = expanding ? index : null);
     if (!expanding) return;
 
-    // Wait for the card's AnimatedSize reveal to finish growing before
-    // measuring where to scroll to — otherwise ensureVisible sees the
-    // still-collapsed height and stops short of the "start" button.
-    Future.delayed(const Duration(milliseconds: 330), () {
-      if (!mounted) return;
-      final cardContext = _cardKeys[index]?.currentContext;
-      if (cardContext == null) return;
-      // cardContext is fetched fresh above (after the mounted check), not
-      // carried across the gap, so this is safe despite the async delay.
-      Scrollable.ensureVisible(
-        cardContext, // ignore: use_build_context_synchronously
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOutCubic,
-        alignment: 0.5,
-      );
-    });
+    // Fire the scroll in the same tap, running alongside the card's
+    // AnimatedSize reveal instead of waiting for it to finish. Aligning to
+    // the top (0.0) pulls the card up as far as it needs to go right away,
+    // clearing room below for it to grow into so the "start" button ends
+    // up in view once both animations settle.
+    final cardContext = _cardKeys[index]?.currentContext;
+    if (cardContext == null) return;
+    Scrollable.ensureVisible(
+      cardContext,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+      alignment: 0.0,
+    );
   }
 
   void _openDetails(Map<String, String> destination) {
