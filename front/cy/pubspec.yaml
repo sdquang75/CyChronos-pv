@@ -60,6 +60,8 @@ dependencies:
   # Fonts & icons
   google_fonts: ^6.2.1
   flutter_svg: ^2.3.0
+  flutter_map: ^8.3.1
+  latlong2: ^0.10.1
 
   # Firebase (uncomment when ready to integrate)
   # cloud_firestore: ^5.6.5

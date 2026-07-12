@@ -26,6 +26,7 @@ class DetilScreen extends StatelessWidget {
   final int? durationSec; // 現在地からの所要時間(秒)。不明なら null
   final int? distanceMeter; // 現在地からの距離(m)。不明なら null
   final double? rating; // Googleの星評価(例: 4.2)。評価なしは null
+  final Map<String, dynamic> destination; // 目的地1件分の元データ(ルート確認画面へそのまま引き継ぐ)
 
 
   const DetilScreen(
@@ -38,6 +39,7 @@ class DetilScreen extends StatelessWidget {
       this.durationSec, // 所要時間を受け取る(省略可)
       this.distanceMeter, // 距離を受け取る(省略可)
       this.rating, // 評価を受け取る(省略可)
+      this.destination = const {}, // 元データを受け取る(省略可)
     });
 
   // 英語ジャンルを日本語にして返す(変換表に無いものは英語のまま表示)
@@ -423,11 +425,8 @@ class DetilScreen extends StatelessWidget {
                 children: [
                   ElevatedButton(
                     onPressed: () {
-                      // ボタンが押されたときの処理
-                      GoRouter.of(context).go('/route_confirm', extra: {
-                        'durationSec': durationSec,
-                        'distanceMeter': distanceMeter,
-                      }); // ルート確認画面に遷移
+                      // 目的地データを丸ごと渡してルート確認画面へ(pushなので「戻る」でここに帰れる)
+                      context.push('/route_confirm', extra: destination);
                     },
                     style: ElevatedButton.styleFrom(
                       minimumSize: Size( 250, 55), // 幅を50に設定

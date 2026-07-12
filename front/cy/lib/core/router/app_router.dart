@@ -198,9 +198,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               address: destination['address']?.toString() ?? '',
               genre: destination['genre']?.toString() ?? '',
               imageUrl: imageUrl,
-              durationSec: durationSec?.round(),
-              distanceMeter: distanceM?.round(),
-              rating: rating?.toDouble(),
+              durationSec: durationSec?.round(), // 所要時間(秒)
+              distanceMeter: distanceM?.round(), // 距離(m)
+              rating: rating?.toDouble(), // 評価(例: 4.2)
+              destination: destination, // ルート確認画面へ引き継ぐ用の元データ
             ),
             transitionsBuilder: (
               context,
@@ -255,22 +256,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/route_confirm',
         pageBuilder: (context, state) {
-          // 1. ルート確認画面に渡すデータを取得
-          final extraMap =
-              state.extra as Map<String, dynamic>? ?? {};
-
-          final durationSec =
-              extraMap['durationSec'] as int? ?? 0;
-
-          final distanceMeter =
-              extraMap['distanceMeter'] as int? ?? 0;
+          // 詳細画面から渡された目的地1件分のデータを受け取る
+          final destination = state.extra is Map
+              ? Map<String, dynamic>.from(state.extra as Map)
+              : <String, dynamic>{};
 
           return CustomTransitionPage(
             key: state.pageKey,
-            // 2. ルート確認画面にデータを渡す
+            // ルート確認画面に目的地データを渡す(現在地とルートは画面側でAPIから取得する)
             child: RouteConfirmScreen(
-              durationSec: durationSec,
-              distanceMeter: distanceMeter,
+              destination: destination,
             ),
             transitionsBuilder: (
               context,

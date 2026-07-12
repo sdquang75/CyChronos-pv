@@ -82,17 +82,15 @@ router.get("/places", async (req, res) => {
 });
 
 router.get("/photo", async (req, res) => {
-  // photoReferenceをクエリから取得
+  // photoReferenceとmaxWidthをクエリから取得
   const photoReference = req.query.photoReference;
-
-  // 未指定・空文字は400で返す(文字列は !x で null/undefined/空文字をまとめて弾ける)
-  if (!photoReference) {
+  const maxWidth = parseInt(req.query.maxwidth, 10);  
+  
+  //photoReferenceが指定されていない場合は400で返す
+  if(req.query.photoReference==null || req.query.photoReference==undefined){
     return res.status(400).json({ error: "photoReferenceは必須です" });
   }
 
-  // maxwidth(クエリ名は全部小文字)は省略可。数値でなければ800、Google上限の1600でクランプ
-  const parsedWidth = parseInt(req.query.maxwidth, 10);
-  const maxWidth = Number.isFinite(parsedWidth) ? Math.min(Math.max(parsedWidth, 1), 1600) : 800;
 
   try {
     const photoResponse = await places.getPlacePhoto(photoReference, maxWidth);

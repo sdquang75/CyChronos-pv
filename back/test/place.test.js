@@ -87,3 +87,46 @@ test("durationSec が無い place は素通りする(Matrix失敗時のフォー
   const result = filterWithinMinutes(makePlaces(3), 30); // attachDurations を通していない
   assert.strictEqual(result.length, 3);
 });
+
+// --- normalizePlacesResponse(会社・事業所の除外) ---
+
+const { normalizePlacesResponse } = require("../src/services/place");
+
+// テスト用のGoogle Nearby Searchレスポンス1件分を作る
+function makeGooglePlace(name, types) {
+  return {
+    place_id: `id-${name}`,
+    name,
+    geometry: { location: { lat: 35.0, lng: 139.0 } },
+    vicinity: "テスト住所",
+    types,
+  };
+}
+
+test("typesが汎用typeだけの施設(会社・オフィス)は除外される", () => {
+  const data = { results: [
+    makeGooglePlace("株式会社テスト", ["point_of_interest", "establishment"]),
+    makeGooglePlace("いいカフェ", ["cafe", "point_of_interest", "establishment"]),
+  ]};
+  const result = normalizePlacesResponse(data);
+  assert.deepStrictEqual(result.map((p) => p.name), ["いいカフェ"]);
+});
+
+test("事業所系type(不動産屋・保険代理店など)は除外される", () => {
+  const data = { results: [
+    makeGooglePlace("テスト不動産", ["real_estate_agency", "point_of_interest", "establishment"]),
+    makeGooglePlace("テスト保険", ["insurance_agency", "point_of_interest", "establishment"]),
+    makeGooglePlace("いい公園", ["park", "point_of_interest", "establishment"]),
+  ]};
+  const result = normalizePlacesResponse(data);
+  assert.deepStrictEqual(result.map((p) => p.name), ["いい公園"]);
+});
+
+test("typesが無い施設も除外される(何の施設か判断できないため)", () => {
+  const data = { results: [
+    { place_id: "id-x", name: "types無し", geometry: { location: { lat: 35, lng: 139 } } },
+    makeGooglePlace("いい神社", ["place_of_worship", "point_of_interest"]),
+  ]};
+  const result = normalizePlacesResponse(data);
+  assert.deepStrictEqual(result.map((p) => p.name), ["いい神社"]);
+});
