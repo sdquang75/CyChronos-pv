@@ -9,6 +9,7 @@ import 'package:cy/features/home/domain/recommendation_state.dart';
 import 'package:cy/features/home/presentation/providers/recommendation_provider.dart';
 import 'package:cy/features/route_confirm/route_confirm.dart';
 import 'package:cy/features/route_confirm/widgets/route_card_pieces.dart';
+import 'destination_detail_screen.dart';
 
 // Destination search & results screen, built directly from the Figma
 // "Confirm Route" frame's Bottom Action Card: each result is that exact
@@ -207,6 +208,15 @@ class _DestinationListScreenState
     setState(() => _expandedIndex = _expandedIndex == index ? null : index);
   }
 
+  void _openDetails(Map<String, String> destination) {
+    HapticFeedback.selectionClick();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DestinationDetailScreen(destination: destination),
+      ),
+    );
+  }
+
   void _startRoute(Map<String, String> destination) {
     HapticFeedback.mediumImpact();
     Navigator.of(context).push(
@@ -301,6 +311,7 @@ class _DestinationListScreenState
                               isExpanded: _expandedIndex == index,
                               onToggle: () => _onCardToggled(index),
                               onStart: () => _startRoute(destination),
+                              onDetails: () => _openDetails(destination),
                             ),
                           ),
                         );
@@ -477,6 +488,9 @@ List<Map<String, String>> _parseApiDestinations(dynamic data) {
               .toString(),
       'lat': (item['lat'] ?? '').toString(),
       'lng': (item['lng'] ?? '').toString(),
+      'address': (item['address'] ?? '').toString(),
+      'rating': (item['rating'] ?? '').toString(),
+      'photoReference': (item['photoReference'] ?? '').toString(),
     });
   }
   return parsed;
@@ -530,12 +544,14 @@ class _DestinationRouteCard extends StatelessWidget {
     required this.isExpanded,
     required this.onToggle,
     required this.onStart,
+    required this.onDetails,
   });
 
   final Map<String, String> destination;
   final bool isExpanded;
   final VoidCallback onToggle;
   final VoidCallback onStart;
+  final VoidCallback onDetails;
 
   @override
   Widget build(BuildContext context) {
@@ -664,7 +680,25 @@ class _DestinationRouteCard extends StatelessWidget {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: onDetails,
+                            icon: const Icon(Icons.info_outline_rounded, size: 16),
+                            label: const Text('詳細を見る'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.greenPrimary,
+                              textStyle: const TextStyle(
+                                fontFamily: 'HankenGrotesk',
+                                fontFamilyFallback: ['NotoSansJP'],
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
                         RouteStartButton(onTap: onStart),
                       ],
                     )
