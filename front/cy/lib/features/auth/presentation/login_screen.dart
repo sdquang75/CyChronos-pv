@@ -281,22 +281,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             height: 56 / 48,
           ),
         ),
-        const SizedBox(height: 12),
-        const SizedBox(
-          width: 320,
-          child: Text(
-            '走行パフォーマンスを追跡し、あらゆる道を征服しましょう。',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontFamilyFallback: ['NotoSansJP'],
-              fontSize: 18,
-              fontWeight: FontWeight.w400,
-              color: Color(0xFF484553),
-              height: 28 / 18,
-            ),
-          ),
-        ),
       ],
     );
   }

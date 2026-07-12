@@ -8,6 +8,7 @@ import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/destination/presentation/destination_list_screen.dart';
 import '../../features/detil/detil.dart';
+import '../../features/history/presentation/history_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/route_confirm/route_confirm.dart';
 import '../../features/settings/presentation/contact_screen.dart';
@@ -100,6 +101,27 @@ final routerProvider = Provider<GoRouter>((ref) {
             );
           },
           transitionDuration: const Duration(milliseconds: 600),
+        ),
+      ),
+
+      // 走行履歴画面
+      GoRoute(
+        path: '/history',
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const HistoryScreen(),
+          transitionsBuilder: (
+            context,
+            animation,
+            secondaryAnimation,
+            child,
+          ) {
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 500),
         ),
       ),
 
