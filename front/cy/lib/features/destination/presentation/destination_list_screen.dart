@@ -211,6 +211,14 @@ class _DestinationListScreenState
     });
   }
 
+  // The floating HomeBottomNavBar is a sibling overlay positioned on top of
+  // this screen by HomeScreen's Stack, not part of this ListView's own
+  // layout — so Scrollable.ensureVisible has no idea it covers roughly the
+  // last ~120px of the viewport and will happily call the button "visible"
+  // while it's still hidden underneath. Reserve that much clearance
+  // ourselves when deciding how far to scroll.
+  static const double _bottomNavClearance = 140;
+
   void _onCardToggled(int index) {
     HapticFeedback.selectionClick();
     final expanding = _expandedIndex != index;
@@ -219,21 +227,41 @@ class _DestinationListScreenState
 
     // One frame after the toggle, the "start" button already exists at its
     // true final position (see _startButtonKeys' doc comment) — no need to
-    // wait for the reveal animation to finish. ensureVisible only scrolls
-    // the minimum needed to bring it into view (nothing at all if it
-    // already fits), aligned to the bottom edge, so this stays a small,
-    // subtle nudge instead of yanking the whole card up to the top.
+    // wait for the reveal animation to finish.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final buttonContext = _startButtonKeys[index]?.currentContext;
-      if (buttonContext == null) return;
-      Scrollable.ensureVisible(
-        buttonContext,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOutCubic,
-        alignment: 1.0,
-      );
+      _scrollStartButtonAboveNavBar(index);
     });
+  }
+
+  void _scrollStartButtonAboveNavBar(int index) {
+    final buttonContext = _startButtonKeys[index]?.currentContext;
+    if (buttonContext == null) return;
+    final buttonBox = buttonContext.findRenderObject() as RenderBox?;
+    final scrollable = Scrollable.maybeOf(buttonContext);
+    final scrollableBox =
+        scrollable?.context.findRenderObject() as RenderBox?;
+    if (buttonBox == null || scrollable == null || scrollableBox == null) {
+      return;
+    }
+
+    // Button's bottom edge, measured relative to the scroll viewport.
+    final buttonBottom = buttonBox
+            .localToGlobal(Offset.zero, ancestor: scrollableBox)
+            .dy +
+        buttonBox.size.height;
+    final visibleBottom =
+        scrollable.position.viewportDimension - _bottomNavClearance;
+
+    if (buttonBottom <= visibleBottom) return; // already clear of the nav bar
+
+    final target = (scrollable.position.pixels + (buttonBottom - visibleBottom))
+        .clamp(0.0, scrollable.position.maxScrollExtent);
+    scrollable.position.animateTo(
+      target,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   void _openDetails(Map<String, String> destination) {
