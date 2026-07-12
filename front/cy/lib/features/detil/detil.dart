@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/widgets/app_bottom_navigation.dart';
+
 // Google Placesの英語ジャンル(type) → 画面表示用の日本語ラベルの変換表
 const Map<String, String> _genreLabels = {
   'cafe': 'カフェ',
@@ -89,11 +91,20 @@ class DetilScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // 戻る操作は左上の戻るマークのみ
+      // (一覧からpushで来たときはAppBarが自動で戻るボタンを表示する)
       appBar: AppBar(
         title: const Image(
           image: AssetImage('assets/logo_long.png'),
           height: 40, // 高度制限
           fit: BoxFit.contain,
+        ),
+      ),
+      // 他画面と共通の画面下部メニューバー(HOME・HISTORY・SETTINGS)
+      bottomNavigationBar: const SizedBox(
+        height: AppBottomNavigation.barHeight,
+        child: AppBottomNavigation(
+          current: AppTab.home,
         ),
       ),
       body: SingleChildScrollView( // 縦に長い画面なので、小さい端末でもスクロールして全部見られるようにする

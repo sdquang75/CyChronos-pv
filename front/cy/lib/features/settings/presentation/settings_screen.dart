@@ -1,10 +1,10 @@
-import 'dart:ui';
 //settings_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/widgets/app_bottom_navigation.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
 
@@ -322,10 +322,6 @@ class _SettingsScreenState
     );
   }
 
-  void _showHistoryMessage() {
-    _showMessage('履歴画面は現在準備中です');
-  }
-
   @override
   Widget build(BuildContext context) {
     final AuthState authState = ref.watch(authProvider);
@@ -365,7 +361,7 @@ class _SettingsScreenState
       body: Stack(
         children: [
           Positioned.fill(
-            bottom: 88.92,
+            bottom: AppBottomNavigation.barHeight,
             child: SafeArea(
               bottom: false,
               child: SingleChildScrollView(
@@ -497,12 +493,15 @@ class _SettingsScreenState
             ),
           ),
 
+          // 共通の画面下部メニューバー(HOME・HISTORY・SETTINGS)
           const Positioned(
             left: 0,
             right: 0,
             bottom: 0,
-            height: 88.92,
-            child: _BottomNavigation(),
+            height: AppBottomNavigation.barHeight,
+            child: AppBottomNavigation(
+              current: AppTab.settings,
+            ),
           ),
         ],
       ),
@@ -1055,139 +1054,3 @@ class _SettingsMenuRow extends StatelessWidget {
   }
 }
 
-class _BottomNavigation extends StatelessWidget {
-  const _BottomNavigation();
-
-  void _showHistoryMessage(BuildContext context) {
-    ScaffoldMessenger.of(context).clearSnackBars();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text(
-          '履歴画面は現在準備中です',
-          style: TextStyle(
-            fontFamily: 'HankenGrotesk',
-            fontFamilyFallback: ['NotoSansJP'],
-          ),
-        ),
-        backgroundColor: const Color(0xFF2A0088),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(
-          sigmaX: 20,
-          sigmaY: 20,
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            color: SettingsScreen.backgroundColor
-                .withValues(alpha: 0.82),
-            border: Border(
-              top: BorderSide(
-                color: SettingsScreen.borderColor
-                    .withValues(alpha: 0.3),
-                width: 1,
-              ),
-            ),
-          ),
-          padding: const EdgeInsets.only(
-            top: 12,
-            bottom: 20,
-          ),
-          child: Row(
-            mainAxisAlignment:
-                MainAxisAlignment.spaceAround,
-            children: [
-              _BottomNavItem(
-                icon: Icons.home_outlined,
-                selectedIcon: Icons.home_rounded,
-                label: 'HOME',
-                onTap: () {
-                  context.go('/home');
-                },
-              ),
-              _BottomNavItem(
-                icon: Icons.history_rounded,
-                selectedIcon: Icons.history_rounded,
-                label: 'HISTORY',
-                onTap: () {
-                  _showHistoryMessage(context);
-                },
-              ),
-              const _BottomNavItem(
-                icon: Icons.settings_outlined,
-                selectedIcon: Icons.settings_rounded,
-                label: 'SETTINGS',
-                isSelected: true,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BottomNavItem extends StatelessWidget {
-  const _BottomNavItem({
-    required this.icon,
-    required this.selectedIcon,
-    required this.label,
-    this.onTap,
-    this.isSelected = false,
-  });
-
-  final IconData icon;
-  final IconData selectedIcon;
-  final String label;
-  final VoidCallback? onTap;
-  final bool isSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color color = isSelected
-        ? SettingsScreen.primaryColor
-        : SettingsScreen.secondaryColor;
-
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: SizedBox(
-        width: 78,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isSelected ? selectedIcon : icon,
-              color: color,
-              size: 27,
-            ),
-
-            const SizedBox(height: 4),
-
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'JetBrainsMono',
-                fontSize: 11,
-                fontWeight: isSelected
-                    ? FontWeight.w700
-                    : FontWeight.w500,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
