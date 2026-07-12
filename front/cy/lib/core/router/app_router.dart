@@ -8,6 +8,8 @@ import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/settings/presentation/contact_screen.dart';
+import '../../features/settings/presentation/settings_screen.dart';
 
 // Bridges Riverpod state changes → GoRouter refresh
 class _AuthListenable extends ChangeNotifier {
@@ -30,7 +32,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/home';
       }
 
-      if (authState is AuthUnauthenticated && location == '/home') {
+      const protectedRoutes = {'/home', '/settings', '/contact'};
+      if (authState is AuthUnauthenticated && protectedRoutes.contains(location)) {
         return '/login';
       }
 
@@ -68,6 +71,28 @@ final routerProvider = Provider<GoRouter>((ref) {
             return FadeTransition(opacity: animation, child: child);
           },
           transitionDuration: const Duration(milliseconds: 600),
+        ),
+      ),
+      GoRoute(
+        path: '/settings',
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const SettingsScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 400),
+        ),
+      ),
+      GoRoute(
+        path: '/contact',
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const ContactScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 400),
         ),
       ),
     ],

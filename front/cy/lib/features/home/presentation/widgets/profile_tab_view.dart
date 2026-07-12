@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:cy/core/theme/app_colors.dart';
 import '../../../auth/domain/auth_state.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -115,6 +116,48 @@ class ProfileTabView extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 40),
+
+          // Settings Button
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => context.push('/settings'),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppColors.terracottaBorder.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.settings_rounded,
+                      color: AppColors.terracottaDeep,
+                      size: 20,
+                    ),
+                    SizedBox(width: 10),
+                    Text(
+                      '設定',
+                      style: TextStyle(
+                        fontFamily: 'HankenGrotesk',
+                        fontFamilyFallback: ['NotoSansJP'],
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: AppColors.terracottaDeep,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
 
           // Logout Button
           Material(
