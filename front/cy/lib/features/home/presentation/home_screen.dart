@@ -71,7 +71,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         message = 'おすすめスポットを検索しています...';
       case RecommendationLoaded(data: final data):
         final places = data['places'] as List<dynamic>? ?? [];
-        context.push('/destination', extra: places);
+        // 検索に使った空き時間(分)も一覧画面に渡す(一覧ヘッダーの「空き時間」表示に使う)
+        final hours = int.tryParse(_hoursController.text) ?? 0;
+        final minutes = int.tryParse(_minutesController.text) ?? 0;
+        context.push('/destination', extra: {
+          'places': places,
+          'minutes': hours * 60 + minutes,
+        });
         message = 'おすすめスポットを取得しました。';
       case RecommendationLocationServiceDisabled():
         message = '位置情報サービスが無効です。端末の設定をご確認ください。';

@@ -10,7 +10,7 @@ import '../../features/destination/presentation/destination_list_screen.dart';
 import '../../features/detil/detil.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/route_confirm/route_confirm.dart';
-import '../network/api_client.dart';
+import '../network/place_photo.dart';
 
 
 // Bridges Riverpod state changes → GoRouter refresh
@@ -99,20 +99,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           final distanceM = destination['distanceM'] as num?;
           final rating = destination['rating'] as num?;
 
-          // 写真は photoReference をバックの写真プロキシ(/api/maps/photo)のURLに変換して渡す。
-          // バック未実装・写真なしのスポットは null になり、詳細画面側で仮画像が表示される
-          final photoReference = destination['photoReference']?.toString();
-          final imageUrl = (photoReference == null || photoReference.isEmpty)
-              ? null
-              : Uri.parse(ApiClient.instance.options.baseUrl)
-                  .replace(
-                    path: '/api/maps/photo',
-                    queryParameters: {
-                      'photoReference': photoReference,
-                      'maxwidth': '800',
-                    },
-                  )
-                  .toString();
+          // 写真は photoReference をバックの写真プロキシのURLに変換して渡す。
+          // 写真なしのスポットは null になり、詳細画面側で仮画像が表示される
+          final imageUrl = placePhotoUrl(
+            destination['photoReference']?.toString(),
+          );
 
           return CustomTransitionPage(
             key: state.pageKey,
@@ -125,7 +116,6 @@ final routerProvider = Provider<GoRouter>((ref) {
               durationSec: durationSec?.round(), // 所要時間(秒)
               distanceMeter: distanceM?.round(), // 距離(m)
               rating: rating?.toDouble(), // 評価(例: 4.2)
-              // 紹介文はまだAPIに無いので渡さない(画面側が仮テキストを表示する)
             ),
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
               return FadeTransition(
@@ -140,11 +130,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/destination',
         pageBuilder: (context, state) {
-          final places = state.extra as List<dynamic>? ?? [];
+          // ホーム画面から候補一覧と検索に使った空き時間(分)を受け取る
+          final extraMap = state.extra is Map
+              ? Map<String, dynamic>.from(state.extra as Map)
+              : <String, dynamic>{};
+          final places = extraMap['places'] as List<dynamic>? ?? [];
+          final minutes = extraMap['minutes'] as int?;
 
           return CustomTransitionPage(
             key: state.pageKey,
-            child: DestinationListScreen(places: places),
+            child: DestinationListScreen(places: places, minutes: minutes),
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
               return FadeTransition(
                 opacity: animation,
