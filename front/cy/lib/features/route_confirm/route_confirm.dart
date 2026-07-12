@@ -231,7 +231,7 @@ class _MapPreview extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Container(
-        height: 202,
+        height: 280,
         width: double.infinity,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
