@@ -219,6 +219,18 @@ class _DestinationListScreenState
   // ourselves when deciding how far to scroll.
   static const double _bottomNavClearance = 140;
 
+  // Rough height of the metrics row + "詳細を見る" link + start button that
+  // AnimatedSize reveals on expand. The list's bottom padding must already
+  // reserve at least this much (see _resultsBottomPadding below) — if the
+  // *last* card is the one expanding, AnimatedSize's reported size only
+  // grows gradually over its 320ms animation, so maxScrollExtent hasn't
+  // caught up yet when we compute the scroll target a frame after the tap;
+  // without slack already baked into the static padding, there'd be
+  // nowhere for that last card to scroll to.
+  static const double _cardRevealHeight = 190;
+  static const double _resultsBottomPadding =
+      _cardRevealHeight + _bottomNavClearance + 20;
+
   void _onCardToggled(int index) {
     HapticFeedback.selectionClick();
     final expanding = _expandedIndex != index;
@@ -352,7 +364,12 @@ class _DestinationListScreenState
                   ? const _NoResults()
                   : ListView.builder(
                       physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+                      padding: const EdgeInsets.fromLTRB(
+                        20,
+                        0,
+                        20,
+                        _resultsBottomPadding,
+                      ),
                       itemCount: results.length,
                       itemBuilder: (context, index) {
                         final destination = results[index];
