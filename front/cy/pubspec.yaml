@@ -43,6 +43,9 @@ dependencies:
   # HTTP & networking
   dio: ^5.8.0+1
 
+  # Device detection (emulator vs physical device)
+  device_info_plus: ^11.3.0
+
   # Location
   geolocator: ^13.0.2
 
