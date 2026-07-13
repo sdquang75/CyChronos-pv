@@ -25,7 +25,7 @@ class DestinationListScreen extends ConsumerStatefulWidget {
   });
 
   // Search radius (spare time to travel) and Google Places type, threaded in
-  // from the Home tab's customize card via ExploreFlow.
+  // from the Ride tab's customize card via RideFlow.
   final int minutes;
   final String type;
 

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cy/core/theme/app_colors.dart';
-import 'home_tab_header.dart';
+import 'home_app_title.dart';
+import 'weather_header_card.dart';
 
-// TAB: ROUTE SEARCH/EXPLORE SCREEN (MOCKUP)
+// TAB: EXPLORE SCREEN (MOCKUP) — placeholder occupying the Explore tab slot
+// while its real content (a passive discovery feed, TBD) is still undecided.
+// The route-search cards below are leftover sample content, not real data.
+// The app logo and weather card stay here rather than moving to Ride.
 class RouteTabView extends StatelessWidget {
   const RouteTabView({super.key});
 
@@ -14,7 +18,9 @@ class RouteTabView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const HomeTabHeader(title: 'ルート探索', subtitle: '最適なサイクリングパス'),
+          const HomeAppTitle(),
+          const SizedBox(height: 20),
+          const WeatherHeaderCard(),
           const SizedBox(height: 24),
           const _RouteCard(
             title: '海沿いカフェ巡りコース',

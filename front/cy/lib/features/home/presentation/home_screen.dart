@@ -4,10 +4,10 @@ import 'package:cy/core/theme/app_colors.dart';
 import 'package:cy/core/widgets/app_screen_frame.dart';
 import 'providers/recommendation_provider.dart';
 import 'providers/weather_provider.dart';
-import 'widgets/explore_flow.dart';
 import 'widgets/history_tab_view.dart';
 import 'widgets/home_bottom_nav_bar.dart';
 import 'widgets/profile_tab_view.dart';
+import 'widgets/ride_flow.dart';
 import 'widgets/route_tab_view.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -19,13 +19,13 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   // Interactive States
-  int _currentTab = 0; // 0: HOME, 1: ROUTE, 2: HISTORY, 3: PROFILE
+  int _currentTab = 0; // 0: EXPLORE, 1: RIDE, 2: STATS, 3: SETTINGS
 
   @override
   void initState() {
     super.initState();
     // Prime the location permission popup as soon as the Home screen opens,
-    // then fetch the current weather for the Home tab's weather card.
+    // then fetch the current weather for the Ride tab's weather card.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await ref.read(locationServiceProvider).ensurePermissionRequested();
       ref.read(weatherProvider.notifier).fetchForCurrentLocation();
@@ -49,11 +49,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: IndexedStack(
                 index: _currentTab,
                 children: const [
+                  // Placeholder pending a real Explore concept (passive
+                  // discovery feed, TBD) — the search flow that used to
+                  // live here moved to the Ride tab below.
+                  RouteTabView(),
                   // Owns its own nested Navigator, so pushing the
                   // destination list / route confirm screens from here
                   // keeps that stack alive when switching to another tab.
-                  ExploreFlow(),
-                  RouteTabView(),
+                  RideFlow(),
                   HistoryTabView(),
                   ProfileTabView(),
                 ],
@@ -62,7 +65,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
 
           // Bottom Navigation Bar. Always pinned above the scrollable
-          // content (the CTA button now scrolls with the Home tab's list).
+          // content (the CTA button now scrolls with the Ride tab's list).
           Positioned(
             left: 0,
             right: 0,

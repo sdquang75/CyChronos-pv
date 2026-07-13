@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:cy/core/theme/app_colors.dart';
 import 'advanced_config_card.dart';
 import 'floating_cta_button.dart';
-import 'home_app_title.dart';
-import 'weather_header_card.dart';
+import 'home_tab_header.dart';
 
-// TAB: HOME PLANNER SCREEN — top title, weather summary and the customize
-// (stay duration / spare time / genre) card. Owns its own scroll position
+// RIDE TAB: planner screen — title header and the customize (stay duration /
+// spare time / genre) card. Owns its own scroll position
 // and customize-card selections so they survive being hidden behind the
-// ExploreFlow's nested Navigator (e.g. when the destination list is pushed
+// RideFlow's nested Navigator (e.g. when the destination list is pushed
 // on top, or another bottom-nav tab is selected).
 // ジャンルID(AdvancedConfigCardの選択肢) → Google Places の type
 const _genreTypes = {
@@ -85,10 +84,8 @@ class _HomeTabViewState extends State<HomeTabView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const HomeAppTitle(),
-            const SizedBox(height: 20),
-            const WeatherHeaderCard(),
-            const SizedBox(height: 12),
+            const HomeTabHeader(title: 'ライド', subtitle: '自分でルートを検索'),
+            const SizedBox(height: 24),
             AdvancedConfigCard(
               stayDurationMinutes: _stayDurationMinutes,
               onStayDurationChanged: (id) => setState(

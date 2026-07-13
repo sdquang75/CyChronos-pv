@@ -37,7 +37,7 @@ const _genreOptions = [
   DropdownOption(id: 'Park', label: '公園'),
 ];
 
-// "カスタマイズ" card: stay duration / spare time / genre dropdowns used to
+// "検索条件" card: stay duration / spare time / genre dropdowns used to
 // tailor the destination search.
 class AdvancedConfigCard extends StatelessWidget {
   const AdvancedConfigCard({
@@ -83,7 +83,7 @@ class AdvancedConfigCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               const Text(
-                'カスタマイズ',
+                '検索条件',
                 style: TextStyle(
                   fontFamily: 'HankenGrotesk',
                   fontFamilyFallback: ['NotoSansJP'],
@@ -96,7 +96,7 @@ class AdvancedConfigCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const Text(
-            '速度・休憩時間の設定',
+            '滞在時間・余裕時間・ジャンルを設定',
             style: TextStyle(
               fontFamily: 'HankenGrotesk',
               fontFamilyFallback: ['NotoSansJP'],

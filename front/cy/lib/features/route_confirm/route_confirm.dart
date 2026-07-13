@@ -13,8 +13,8 @@ import 'package:cy/features/route_confirm/data/route_repository.dart';
 import 'package:cy/features/route_confirm/widgets/route_card_pieces.dart';
 
 // "Confirm Route" screen — shown after a destination is picked from
-// DestinationListScreen, both pushed on the Explore tab's own nested
-// Navigator (see ExploreFlow), so this sits on top of the shared
+// DestinationListScreen, both pushed on the Ride tab's own nested
+// Navigator (see RideFlow), so this sits on top of the shared
 // AppScreenFrame/HomeBottomNavBar that HomeScreen already provides.
 class RouteConfirmScreen extends ConsumerStatefulWidget {
   const RouteConfirmScreen({
