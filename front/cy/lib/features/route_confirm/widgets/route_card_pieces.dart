@@ -52,7 +52,7 @@ class RouteMetric extends StatelessWidget {
             fontWeight: FontWeight.w500,
             fontSize: 12,
             letterSpacing: 0.6,
-            color: AppColors.textOliveMuted,
+            color: AppColors.textMuted,
           ),
         ),
         const SizedBox(height: 4),

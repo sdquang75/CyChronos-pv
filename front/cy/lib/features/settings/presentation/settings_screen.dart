@@ -98,7 +98,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             fontFamilyFallback: ['NotoSansJP'],
             fontSize: 21,
             fontWeight: FontWeight.w700,
-            color: AppColors.terracottaDeep,
+            color: AppColors.greenDeep,
           ),
         ),
         content: const Text(
@@ -122,7 +122,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.textSecondary,
                     side: BorderSide(
-                      color: AppColors.terracottaBorder.withValues(alpha: 0.65),
+                      color: AppColors.greenBorder.withValues(alpha: 0.65),
                     ),
                     minimumSize: const Size.fromHeight(48),
                     shape: RoundedRectangleBorder(
@@ -323,14 +323,14 @@ class _AccountCard extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 34,
-            backgroundColor: AppColors.terracottaChipBg,
+            backgroundColor: AppColors.greenChipBg,
             backgroundImage: hasPhoto ? NetworkImage(photoUrl!) : null,
             child: hasPhoto
                 ? null
                 : const Icon(
                     Icons.person_rounded,
                     size: 36,
-                    color: AppColors.terracottaDeep,
+                    color: AppColors.greenDeep,
                   ),
           ),
           const SizedBox(width: 16),
@@ -347,7 +347,7 @@ class _AccountCard extends StatelessWidget {
                     fontFamilyFallback: ['NotoSansJP'],
                     fontSize: 19,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.terracottaDeep,
+                    color: AppColors.greenDeep,
                   ),
                 ),
                 if (userEmail.isNotEmpty) ...[
@@ -400,13 +400,13 @@ class _SpeedCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.terracottaChipBg,
+                  color: AppColors.greenChipBg,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Icon(
                   Icons.speed_rounded,
                   size: 24,
-                  color: AppColors.terracottaDeep,
+                  color: AppColors.greenDeep,
                 ),
               ),
               const SizedBox(width: 14),
@@ -421,7 +421,7 @@ class _SpeedCard extends StatelessWidget {
                         fontFamilyFallback: ['NotoSansJP'],
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.terracottaDeep,
+                        color: AppColors.greenDeep,
                       ),
                     ),
                     SizedBox(height: 3),
@@ -451,10 +451,10 @@ class _SpeedCard extends StatelessWidget {
                   vertical: 7,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.terracottaChipBg,
+                  color: AppColors.greenChipBg,
                   borderRadius: BorderRadius.circular(9999),
                   border: Border.all(
-                    color: AppColors.terracottaDeep.withValues(alpha: 0.15),
+                    color: AppColors.greenDeep.withValues(alpha: 0.15),
                   ),
                 ),
                 child: Text(
@@ -464,7 +464,7 @@ class _SpeedCard extends StatelessWidget {
                     fontFamilyFallback: ['NotoSansJP'],
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.terracottaDeep,
+                    color: AppColors.greenDeep,
                   ),
                 ),
               ),
@@ -474,7 +474,7 @@ class _SpeedCard extends StatelessWidget {
                   fontFamily: 'JetBrainsMono',
                   fontSize: 21,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.terracottaDeep,
+                  color: AppColors.greenDeep,
                 ),
               ),
             ],
@@ -484,8 +484,8 @@ class _SpeedCard extends StatelessWidget {
             min: 10.0,
             max: 30.0,
             divisions: 40,
-            activeColor: AppColors.terracottaDeep,
-            inactiveColor: AppColors.terracottaBorder.withValues(alpha: 0.55),
+            activeColor: AppColors.greenDeep,
+            inactiveColor: AppColors.greenBorder.withValues(alpha: 0.55),
             onChanged: onChanged,
           ),
           const Padding(
@@ -519,9 +519,9 @@ class _SpeedCard extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: isSaving ? null : onSave,
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.terracottaDeep,
+                backgroundColor: AppColors.greenDeep,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: AppColors.terracottaDeep.withValues(
+                disabledBackgroundColor: AppColors.greenDeep.withValues(
                   alpha: 0.55,
                 ),
                 shape: RoundedRectangleBorder(
@@ -594,11 +594,11 @@ class _SettingsCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: AppColors.terracottaBorder.withValues(alpha: 0.35),
+          color: AppColors.greenBorder.withValues(alpha: 0.35),
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.terracottaCardShadow.withValues(alpha: 0.04),
+            color: AppColors.greenShadow.withValues(alpha: 0.04),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -615,8 +615,8 @@ class _SettingsMenuRow extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
-    this.iconColor = AppColors.terracottaDeep,
-    this.titleColor = AppColors.terracottaDeep,
+    this.iconColor = AppColors.greenDeep,
+    this.titleColor = AppColors.greenDeep,
     this.trailing,
   });
 

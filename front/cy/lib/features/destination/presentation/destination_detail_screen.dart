@@ -22,8 +22,9 @@ class DestinationDetailScreen extends StatelessWidget {
   String get _name =>
       destination['title']?.isNotEmpty == true ? destination['title']! : '観光地名';
 
-  String get _address =>
-      destination['address']?.isNotEmpty == true ? destination['address']! : '住所不明';
+  String get _address => destination['address']?.isNotEmpty == true
+      ? destination['address']!
+      : '住所不明';
 
   String get _genreLabel {
     final genre = destination['genre'] ?? '';
@@ -83,7 +84,10 @@ class DestinationDetailScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _Photo(photoUrl: _photoUrl, thumbnailAsset: destination['image']),
+                      _Photo(
+                        photoUrl: _photoUrl,
+                        thumbnailAsset: destination['image'],
+                      ),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                         child: Column(
@@ -105,10 +109,15 @@ class DestinationDetailScreen extends StatelessWidget {
                             Row(
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(9999),
-                                    border: Border.all(color: AppColors.borderLight),
+                                    border: Border.all(
+                                      color: AppColors.borderLight,
+                                    ),
                                   ),
                                   child: Text(
                                     _genreLabel,
@@ -121,10 +130,16 @@ class DestinationDetailScreen extends StatelessWidget {
                                   ),
                                 ),
                                 const SizedBox(width: 10),
-                                const Icon(Icons.star_rounded, size: 18, color: Color(0xFFFFB300)),
+                                const Icon(
+                                  Icons.star_rounded,
+                                  size: 18,
+                                  color: Color(0xFFFFB300),
+                                ),
                                 const SizedBox(width: 2),
                                 Text(
-                                  _rating != null ? _rating!.toStringAsFixed(1) : '評価なし',
+                                  _rating != null
+                                      ? _rating!.toStringAsFixed(1)
+                                      : '評価なし',
                                   style: const TextStyle(
                                     fontFamily: 'HankenGrotesk',
                                     fontFamilyFallback: ['NotoSansJP'],
@@ -138,7 +153,11 @@ class DestinationDetailScreen extends StatelessWidget {
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(Icons.location_on_outlined, size: 18, color: AppColors.textMuted),
+                                const Icon(
+                                  Icons.location_on_outlined,
+                                  size: 18,
+                                  color: AppColors.textMuted,
+                                ),
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
@@ -157,14 +176,20 @@ class DestinationDetailScreen extends StatelessWidget {
                             const SizedBox(height: 24),
                             Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 16,
+                                horizontal: 12,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                border: Border.all(color: AppColors.borderLight),
+                                border: Border.all(
+                                  color: AppColors.borderLight,
+                                ),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
                                 children: [
                                   RouteMetric(
                                     label: 'DISTANCE',
@@ -215,7 +240,7 @@ class _Photo extends StatelessWidget {
         child: Container(
           height: 220,
           width: double.infinity,
-          color: AppColors.terracottaChipBg,
+          color: AppColors.greenChipBg,
           child: _buildImage(),
         ),
       ),
@@ -240,7 +265,9 @@ class _Photo extends StatelessWidget {
 
   Widget _fallbackImage() {
     return Image.asset(
-      thumbnailAsset?.isNotEmpty == true ? thumbnailAsset! : 'assets/kitty.jpeg',
+      thumbnailAsset?.isNotEmpty == true
+          ? thumbnailAsset!
+          : 'assets/kitty.jpeg',
       fit: BoxFit.cover,
     );
   }

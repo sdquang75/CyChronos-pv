@@ -5,7 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cy/core/theme/app_colors.dart';
 import '../../../auth/domain/auth_state.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../../settings/presentation/settings_screen.dart' show averageSpeedPrefKey;
+import '../../../settings/presentation/settings_screen.dart'
+    show averageSpeedPrefKey;
 import 'home_tab_header.dart';
 
 // TAB: SETTINGS (アカウント情報 + 各種設定を直接表示。以前は「設定」ボタンから
@@ -72,7 +73,10 @@ class _ProfileTabViewState extends ConsumerState<ProfileTabView> {
       SnackBar(
         content: Text(
           message,
-          style: const TextStyle(fontFamily: 'HankenGrotesk', fontFamilyFallback: ['NotoSansJP']),
+          style: const TextStyle(
+            fontFamily: 'HankenGrotesk',
+            fontFamilyFallback: ['NotoSansJP'],
+          ),
         ),
         backgroundColor: isError ? AppColors.danger : AppColors.greenPrimary,
         behavior: SnackBarBehavior.floating,
@@ -103,11 +107,11 @@ class _ProfileTabViewState extends ConsumerState<ProfileTabView> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: AppColors.terracottaBorder.withValues(alpha: 0.3),
+                color: AppColors.greenBorder.withValues(alpha: 0.3),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.terracottaShadow.withValues(alpha: 0.03),
+                  color: AppColors.greenShadow.withValues(alpha: 0.03),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -118,7 +122,7 @@ class _ProfileTabViewState extends ConsumerState<ProfileTabView> {
                 // Avatar: Google photo or fallback SVG
                 CircleAvatar(
                   radius: 48,
-                  backgroundColor: AppColors.terracottaChipBg,
+                  backgroundColor: AppColors.greenChipBg,
                   backgroundImage: (user?.photoUrl != null)
                       ? NetworkImage(user!.photoUrl!)
                       : null,
@@ -126,7 +130,7 @@ class _ProfileTabViewState extends ConsumerState<ProfileTabView> {
                       ? const Icon(
                           Icons.person_rounded,
                           size: 44,
-                          color: AppColors.terracottaDeep,
+                          color: AppColors.greenDeep,
                         )
                       : null,
                 ),
@@ -138,7 +142,7 @@ class _ProfileTabViewState extends ConsumerState<ProfileTabView> {
                     fontFamilyFallback: ['NotoSansJP'],
                     fontWeight: FontWeight.w700,
                     fontSize: 22,
-                    color: AppColors.terracottaDeep,
+                    color: AppColors.greenDeep,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -169,7 +173,8 @@ class _ProfileTabViewState extends ConsumerState<ProfileTabView> {
                   speedKmh: _averageSpeedKmh,
                   speedLevel: _speedLevel,
                   isSaving: _isSavingSpeed,
-                  onChanged: (value) => setState(() => _averageSpeedKmh = value),
+                  onChanged: (value) =>
+                      setState(() => _averageSpeedKmh = value),
                   onSave: _saveAverageSpeed,
                 ),
           const SizedBox(height: 28),
@@ -270,10 +275,10 @@ class _SettingsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.terracottaBorder.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.greenBorder.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.terracottaShadow.withValues(alpha: 0.03),
+            color: AppColors.greenShadow.withValues(alpha: 0.03),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -311,10 +316,14 @@ class _SpeedCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.terracottaChipBg,
+                  color: AppColors.greenChipBg,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.speed_rounded, size: 24, color: AppColors.terracottaDeep),
+                child: const Icon(
+                  Icons.speed_rounded,
+                  size: 24,
+                  color: AppColors.greenDeep,
+                ),
               ),
               const SizedBox(width: 14),
               const Expanded(
@@ -328,7 +337,7 @@ class _SpeedCard extends StatelessWidget {
                         fontFamilyFallback: ['NotoSansJP'],
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.terracottaDeep,
+                        color: AppColors.greenDeep,
                       ),
                     ),
                     SizedBox(height: 3),
@@ -353,11 +362,16 @@ class _SpeedCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
-                  color: AppColors.terracottaChipBg,
+                  color: AppColors.greenChipBg,
                   borderRadius: BorderRadius.circular(9999),
-                  border: Border.all(color: AppColors.terracottaDeep.withValues(alpha: 0.15)),
+                  border: Border.all(
+                    color: AppColors.greenDeep.withValues(alpha: 0.15),
+                  ),
                 ),
                 child: Text(
                   speedLevel,
@@ -366,7 +380,7 @@ class _SpeedCard extends StatelessWidget {
                     fontFamilyFallback: ['NotoSansJP'],
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.terracottaDeep,
+                    color: AppColors.greenDeep,
                   ),
                 ),
               ),
@@ -376,7 +390,7 @@ class _SpeedCard extends StatelessWidget {
                   fontFamily: 'JetBrainsMono',
                   fontSize: 21,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.terracottaDeep,
+                  color: AppColors.greenDeep,
                 ),
               ),
             ],
@@ -386,8 +400,8 @@ class _SpeedCard extends StatelessWidget {
             min: 10.0,
             max: 30.0,
             divisions: 40,
-            activeColor: AppColors.terracottaDeep,
-            inactiveColor: AppColors.terracottaBorder.withValues(alpha: 0.55),
+            activeColor: AppColors.greenDeep,
+            inactiveColor: AppColors.greenBorder.withValues(alpha: 0.55),
             onChanged: onChanged,
           ),
           const Padding(
@@ -397,11 +411,19 @@ class _SpeedCard extends StatelessWidget {
               children: [
                 Text(
                   '10 km/h',
-                  style: TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11, color: AppColors.textSecondary),
+                  style: TextStyle(
+                    fontFamily: 'JetBrainsMono',
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 Text(
                   '30 km/h',
-                  style: TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11, color: AppColors.textSecondary),
+                  style: TextStyle(
+                    fontFamily: 'JetBrainsMono',
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -413,16 +435,23 @@ class _SpeedCard extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: isSaving ? null : onSave,
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.terracottaDeep,
+                backgroundColor: AppColors.greenDeep,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: AppColors.terracottaDeep.withValues(alpha: 0.55),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                disabledBackgroundColor: AppColors.greenDeep.withValues(
+                  alpha: 0.55,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
               icon: isSaving
                   ? const SizedBox(
                       width: 19,
                       height: 19,
-                      child: CircularProgressIndicator(strokeWidth: 2.3, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.3,
+                        color: Colors.white,
+                      ),
                     )
                   : const Icon(Icons.check_rounded, size: 20),
               label: Text(
@@ -469,10 +498,10 @@ class _SettingsMenuRow extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.terracottaDeep.withValues(alpha: 0.08),
+                  color: AppColors.greenDeep.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(icon, color: AppColors.terracottaDeep, size: 23),
+                child: Icon(icon, color: AppColors.greenDeep, size: 23),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -486,7 +515,7 @@ class _SettingsMenuRow extends StatelessWidget {
                         fontFamilyFallback: ['NotoSansJP'],
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.terracottaDeep,
+                        color: AppColors.greenDeep,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -504,7 +533,11 @@ class _SettingsMenuRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              const Icon(Icons.chevron_right_rounded, color: AppColors.terracottaDeep, size: 26),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.greenDeep,
+                size: 26,
+              ),
             ],
           ),
         ),

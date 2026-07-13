@@ -39,15 +39,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         curve: const Interval(0.0, 1000 / 1300, curve: Curves.easeOut),
       ),
     );
-    _headerSlideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.15),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _entryCtrl,
-        curve: const Interval(0.0, 1000 / 1300, curve: Curves.easeOut),
-      ),
-    );
+    _headerSlideAnim =
+        Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _entryCtrl,
+            curve: const Interval(0.0, 1000 / 1300, curve: Curves.easeOut),
+          ),
+        );
 
     _cardFadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -55,15 +53,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         curve: const Interval(300 / 1300, 1.0, curve: Curves.easeOut),
       ),
     );
-    _cardSlideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.2),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _entryCtrl,
-        curve: const Interval(300 / 1300, 1.0, curve: Curves.easeOut),
-      ),
-    );
+    _cardSlideAnim =
+        Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _entryCtrl,
+            curve: const Interval(300 / 1300, 1.0, curve: Curves.easeOut),
+          ),
+        );
 
     _entryCtrl.forward();
   }
@@ -86,7 +82,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               'ログインに失敗しました。もう一度お試しください。',
               style: TextStyle(fontFamily: 'Inter'),
             ),
-            backgroundColor: AppColors.terracottaDeep,
+            backgroundColor: AppColors.greenDeep,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -159,7 +155,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       fontFamily: 'HankenGrotesk',
                       fontFamilyFallback: const ['NotoSansJP'],
                       fontSize: 12,
-                      color: AppColors.terracottaShadow.withValues(alpha: 0.6),
+                      color: AppColors.greenShadow.withValues(alpha: 0.6),
                       fontWeight: FontWeight.w500,
                       letterSpacing: 1.2,
                     ),
@@ -199,7 +195,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             border: Border.all(color: AppColors.borderMedium),
             boxShadow: [
               BoxShadow(
-                color: AppColors.terracottaCardShadow.withValues(alpha: 0.07),
+                color: AppColors.greenShadow.withValues(alpha: 0.07),
                 blurRadius: 32,
                 offset: const Offset(0, 8),
               ),
@@ -216,7 +212,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   fontFamilyFallback: ['NotoSansJP'],
                   fontSize: 30,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.greenSocial,
+                  color: AppColors.greenAccent,
                   letterSpacing: -0.75,
                   height: 36 / 30,
                 ),
@@ -233,7 +229,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       fontFamilyFallback: ['NotoSansJP'],
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.textSlate,
+                      color: AppColors.textSecondary,
                       height: 22.75 / 14,
                     ),
                   ),
@@ -244,32 +240,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 icon: SvgPicture.string(_kGoogleSvg),
                 label: 'Googleでログイン',
                 isLoading: isLoading,
-                onPressed:
-                    isLoading
-                        ? null
-                        : () =>
-                            ref.read(authProvider.notifier).signInWithGoogle(),
+                onPressed: isLoading
+                    ? null
+                    : () => ref.read(authProvider.notifier).signInWithGoogle(),
               ),
               const SizedBox(height: 16),
               SocialLoginButton(
                 icon: SvgPicture.string(_kLineSvg),
                 label: 'LINEでログイン',
                 isLoading: isLoading,
-                onPressed:
-                    isLoading
-                        ? null
-                        : () => ref.read(authProvider.notifier).signInWithLine(),
+                onPressed: isLoading
+                    ? null
+                    : () => ref.read(authProvider.notifier).signInWithLine(),
               ),
               const SizedBox(height: 16),
               SocialLoginButton(
                 icon: SvgPicture.string(_kFacebookSvg),
                 label: 'Facebookでログイン',
                 isLoading: isLoading,
-                onPressed:
-                    isLoading
-                        ? null
-                        : () =>
-                            ref.read(authProvider.notifier).signInWithFacebook(),
+                onPressed: isLoading
+                    ? null
+                    : () =>
+                          ref.read(authProvider.notifier).signInWithFacebook(),
               ),
               const SizedBox(height: 40),
               Row(
@@ -283,9 +275,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                         fontFamily: 'Inter',
                         fontFamilyFallback: const ['NotoSansJP'],
                         fontSize: 12,
-                        color: AppColors.textSlateMuted.withValues(
-                          alpha: 0.8,
-                        ),
+                        color: AppColors.textMuted.withValues(alpha: 0.8),
                       ),
                     ),
                   ),
@@ -298,9 +288,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                         fontFamily: 'Inter',
                         fontFamilyFallback: const ['NotoSansJP'],
                         fontSize: 12,
-                        color: AppColors.textSlateMuted.withValues(
-                          alpha: 0.8,
-                        ),
+                        color: AppColors.textMuted.withValues(alpha: 0.8),
                       ),
                     ),
                   ),

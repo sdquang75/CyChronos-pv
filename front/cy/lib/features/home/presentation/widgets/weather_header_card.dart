@@ -59,12 +59,12 @@ class WeatherHeaderCard extends ConsumerWidget {
                         height: 28,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
-                          color: AppColors.greenIcon,
+                          color: AppColors.greenPrimary,
                         ),
                       )
                     : Icon(
                         condition.icon,
-                        color: AppColors.greenIcon,
+                        color: AppColors.greenPrimary,
                         size: 44,
                       ),
               ),
@@ -84,7 +84,7 @@ class WeatherHeaderCard extends ConsumerWidget {
                           fontWeight: FontWeight.w600,
                           fontSize: 48,
                           letterSpacing: -0.96,
-                          color: AppColors.greenIcon,
+                          color: AppColors.greenPrimary,
                         ),
                       ),
                     ),
@@ -176,7 +176,7 @@ class _WeatherStat extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 15, color: AppColors.greenIcon),
+              Icon(icon, size: 15, color: AppColors.greenPrimary),
               const SizedBox(width: 4),
               Text.rich(
                 TextSpan(

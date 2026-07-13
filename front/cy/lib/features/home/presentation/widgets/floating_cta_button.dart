@@ -31,7 +31,7 @@ class FloatingCtaButton extends StatelessWidget {
                   borderRadius: BorderRadius.circular(9999),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.terracottaShadow.withValues(alpha: 0.2),
+                      color: AppColors.greenShadow.withValues(alpha: 0.2),
                       blurRadius: 30,
                       offset: const Offset(0, 10),
                     ),

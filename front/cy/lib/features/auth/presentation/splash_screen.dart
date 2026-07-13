@@ -28,13 +28,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       duration: const Duration(milliseconds: 1500),
     );
 
-    _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animCtrl, curve: Curves.easeIn),
-    );
+    _fadeAnim = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeIn));
 
-    _scaleAnim = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutBack),
-    );
+    _scaleAnim = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutBack));
 
     _animCtrl.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) => _initAuth());
@@ -76,10 +78,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   gradient: RadialGradient(
                     center: Alignment.topLeft,
                     radius: 1.414,
-                    colors: [
-                      AppColors.terracottaHazeA,
-                      Color(0x00E6DEFF),
-                    ],
+                    colors: [AppColors.greenHaze, Color(0x00E6DEFF)],
                     stops: [0.0, 0.5],
                   ),
                 ),
@@ -91,10 +90,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   gradient: RadialGradient(
                     center: Alignment.topRight,
                     radius: 1.414,
-                    colors: [
-                      AppColors.terracottaHazeC,
-                      Color(0x00FCF6FF),
-                    ],
+                    colors: [AppColors.greenHaze, Color(0x00FCF6FF)],
                     stops: [0.0, 0.5],
                   ),
                 ),
@@ -106,10 +102,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   gradient: RadialGradient(
                     center: Alignment.bottomRight,
                     radius: 1.414,
-                    colors: [
-                      AppColors.terracottaHazeB,
-                      Color(0x00E8DEFF),
-                    ],
+                    colors: [AppColors.greenHaze, Color(0x00E8DEFF)],
                     stops: [0.0, 0.5],
                   ),
                 ),
@@ -121,10 +114,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   gradient: RadialGradient(
                     center: Alignment.bottomLeft,
                     radius: 1.414,
-                    colors: [
-                      AppColors.bgCool,
-                      Color(0x00F8F9FE),
-                    ],
+                    colors: [AppColors.bgCool, Color(0x00F8F9FE)],
                     stops: [0.0, 0.5],
                   ),
                 ),
@@ -153,7 +143,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                           fontFamilyFallback: ['NotoSansJP'],
                           fontSize: 48,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.terracottaDeep,
+                          color: AppColors.greenDeep,
                           letterSpacing: -0.96,
                         ),
                       ),
@@ -164,7 +154,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         child: CircularProgressIndicator(
                           strokeWidth: 3,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            AppColors.terracottaGlow,
+                            AppColors.greenAccent,
                           ),
                         ),
                       ),

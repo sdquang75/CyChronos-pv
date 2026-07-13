@@ -34,8 +34,7 @@ class DestinationListScreen extends ConsumerStatefulWidget {
       _DestinationListScreenState();
 }
 
-class _DestinationListScreenState
-    extends ConsumerState<DestinationListScreen> {
+class _DestinationListScreenState extends ConsumerState<DestinationListScreen> {
   static const List<Map<String, String>> _destinations = [
     {
       'title': '五月山公園',
@@ -132,10 +131,9 @@ class _DestinationListScreenState
     // the list can switch from the mock placeholder to live data without
     // requiring the user to press search first.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(recommendationProvider.notifier).fetchForCurrentLocation(
-            minutes: widget.minutes,
-            type: widget.type,
-          );
+      ref
+          .read(recommendationProvider.notifier)
+          .fetchForCurrentLocation(minutes: widget.minutes, type: widget.type);
     });
   }
 
@@ -240,16 +238,14 @@ class _DestinationListScreenState
     if (buttonContext == null) return;
     final buttonBox = buttonContext.findRenderObject() as RenderBox?;
     final scrollable = Scrollable.maybeOf(buttonContext);
-    final scrollableBox =
-        scrollable?.context.findRenderObject() as RenderBox?;
+    final scrollableBox = scrollable?.context.findRenderObject() as RenderBox?;
     if (buttonBox == null || scrollable == null || scrollableBox == null) {
       return;
     }
 
     // Button's bottom edge, measured relative to the scroll viewport.
-    final buttonBottom = buttonBox
-            .localToGlobal(Offset.zero, ancestor: scrollableBox)
-            .dy +
+    final buttonBottom =
+        buttonBox.localToGlobal(Offset.zero, ancestor: scrollableBox).dy +
         buttonBox.size.height;
     final visibleBottom =
         scrollable.position.viewportDimension - _bottomNavClearance;
@@ -441,9 +437,8 @@ List<Map<String, String>> _parseApiDestinations(dynamic data) {
       'distance': distanceKm == null
           ? (item['distance'] ?? item['distanceText'] ?? '').toString()
           : '$distanceKm km',
-      'image':
-          (item['image'] ?? item['thumbnailAsset'] ?? 'assets/kitty.jpeg')
-              .toString(),
+      'image': (item['image'] ?? item['thumbnailAsset'] ?? 'assets/kitty.jpeg')
+          .toString(),
       'lat': (item['lat'] ?? '').toString(),
       'lng': (item['lng'] ?? '').toString(),
       'address': (item['address'] ?? '').toString(),
@@ -612,9 +607,9 @@ class _DestinationRouteCard extends StatelessWidget {
                         Wrap(
                           spacing: 4,
                           runSpacing: 4,
-                          children: destinationTags(destination)
-                              .map((tag) => WaypointBadge(label: tag))
-                              .toList(),
+                          children: destinationTags(
+                            destination,
+                          ).map((tag) => WaypointBadge(label: tag)).toList(),
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -707,15 +702,24 @@ class _DestinationThumbnail extends StatelessWidget {
   Widget build(BuildContext context) {
     final photoUrl = placePhotoUrl(photoReference, maxwidth: 200);
     if (photoUrl == null) {
-      return Image.asset(fallbackAsset, width: size, height: size, fit: BoxFit.cover);
+      return Image.asset(
+        fallbackAsset,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+      );
     }
     return Image.network(
       photoUrl,
       width: size,
       height: size,
       fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) =>
-          Image.asset(fallbackAsset, width: size, height: size, fit: BoxFit.cover),
+      errorBuilder: (context, error, stackTrace) => Image.asset(
+        fallbackAsset,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+      ),
     );
   }
 }

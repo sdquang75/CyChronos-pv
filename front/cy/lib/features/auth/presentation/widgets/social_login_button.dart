@@ -31,17 +31,18 @@ class _SocialLoginButtonState extends State<SocialLoginButton> {
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
         child: GestureDetector(
-          onTapDown:
-              widget.isLoading ? null : (_) => setState(() => _pressed = true),
-          onTapUp:
-              widget.isLoading
-                  ? null
-                  : (_) {
-                    setState(() => _pressed = false);
-                    widget.onPressed?.call();
-                  },
-          onTapCancel:
-              widget.isLoading ? null : () => setState(() => _pressed = false),
+          onTapDown: widget.isLoading
+              ? null
+              : (_) => setState(() => _pressed = true),
+          onTapUp: widget.isLoading
+              ? null
+              : (_) {
+                  setState(() => _pressed = false);
+                  widget.onPressed?.call();
+                },
+          onTapCancel: widget.isLoading
+              ? null
+              : () => setState(() => _pressed = false),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
@@ -52,10 +53,9 @@ class _SocialLoginButtonState extends State<SocialLoginButton> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color:
-                    _hovered
-                        ? AppColors.greenSocial
-                        : AppColors.borderMedium.withValues(alpha: 0.75),
+                color: _hovered
+                    ? AppColors.greenAccent
+                    : AppColors.borderMedium.withValues(alpha: 0.75),
               ),
               boxShadow: [
                 BoxShadow(
@@ -74,15 +74,14 @@ class _SocialLoginButtonState extends State<SocialLoginButton> {
                 SizedBox(
                   width: 24,
                   height: 24,
-                  child:
-                      widget.isLoading
-                          ? const CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              AppColors.greenSocial,
-                            ),
-                          )
-                          : widget.icon,
+                  child: widget.isLoading
+                      ? const CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.greenAccent,
+                          ),
+                        )
+                      : widget.icon,
                 ),
                 Expanded(
                   child: Center(
@@ -93,7 +92,7 @@ class _SocialLoginButtonState extends State<SocialLoginButton> {
                         fontFamilyFallback: ['NotoSansJP'],
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textSlateDark,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ),

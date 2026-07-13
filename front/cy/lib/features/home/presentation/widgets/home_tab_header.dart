@@ -20,7 +20,7 @@ class HomeTabHeader extends StatelessWidget {
             fontFamilyFallback: ['NotoSansJP'],
             fontWeight: FontWeight.w700,
             fontSize: 28,
-            color: AppColors.terracottaDeep,
+            color: AppColors.greenDeep,
           ),
         ),
         const SizedBox(height: 6),

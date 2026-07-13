@@ -79,13 +79,13 @@ class _ContactScreenState extends State<ContactScreen> {
           width: 64,
           height: 64,
           decoration: const BoxDecoration(
-            color: AppColors.terracottaChipBg,
+            color: AppColors.greenChipBg,
             shape: BoxShape.circle,
           ),
           child: const Icon(
             Icons.check_rounded,
             size: 34,
-            color: AppColors.terracottaDeep,
+            color: AppColors.greenDeep,
           ),
         ),
         title: const Text(
@@ -96,7 +96,7 @@ class _ContactScreenState extends State<ContactScreen> {
             fontFamilyFallback: ['NotoSansJP'],
             fontSize: 21,
             fontWeight: FontWeight.w700,
-            color: AppColors.terracottaDeep,
+            color: AppColors.greenDeep,
           ),
         ),
         content: const Text(
@@ -119,7 +119,7 @@ class _ContactScreenState extends State<ContactScreen> {
             child: FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.terracottaDeep,
+                backgroundColor: AppColors.greenDeep,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -181,9 +181,9 @@ class _ContactScreenState extends State<ContactScreen> {
                         child: ElevatedButton.icon(
                           onPressed: _isSending ? null : _submitContact,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.terracottaDeep,
+                            backgroundColor: AppColors.greenDeep,
                             foregroundColor: Colors.white,
-                            disabledBackgroundColor: AppColors.terracottaDeep
+                            disabledBackgroundColor: AppColors.greenDeep
                                 .withValues(alpha: 0.55),
                             disabledForegroundColor: Colors.white,
                             elevation: 0,
@@ -233,11 +233,11 @@ class _ContactScreenState extends State<ContactScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: AppColors.terracottaBorder.withValues(alpha: 0.35),
+          color: AppColors.greenBorder.withValues(alpha: 0.35),
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.terracottaCardShadow.withValues(alpha: 0.04),
+            color: AppColors.greenShadow.withValues(alpha: 0.04),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -301,11 +301,9 @@ class _ContactScreenState extends State<ContactScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.terracottaChipBg,
+        color: AppColors.greenChipBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.terracottaDeep.withValues(alpha: 0.12),
-        ),
+        border: Border.all(color: AppColors.greenDeep.withValues(alpha: 0.12)),
       ),
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -313,7 +311,7 @@ class _ContactScreenState extends State<ContactScreen> {
           Icon(
             Icons.info_outline_rounded,
             size: 20,
-            color: AppColors.terracottaDeep,
+            color: AppColors.greenDeep,
           ),
           SizedBox(width: 10),
           Expanded(
@@ -344,7 +342,7 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 19, color: AppColors.terracottaDeep),
+        Icon(icon, size: 19, color: AppColors.greenDeep),
         const SizedBox(width: 8),
         Text(
           text,
@@ -353,7 +351,7 @@ class _FieldLabel extends StatelessWidget {
             fontFamilyFallback: ['NotoSansJP'],
             fontSize: 15,
             fontWeight: FontWeight.w700,
-            color: AppColors.terracottaDeep,
+            color: AppColors.greenDeep,
           ),
         ),
       ],
@@ -394,7 +392,7 @@ class _ContactTextField extends StatelessWidget {
         fontFamily: 'Inter',
         fontFamilyFallback: ['NotoSansJP'],
         fontSize: 15,
-        color: AppColors.terracottaDeep,
+        color: AppColors.greenDeep,
         height: 1.5,
       ),
       decoration: InputDecoration(
@@ -414,15 +412,12 @@ class _ContactTextField extends StatelessWidget {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(
-            color: AppColors.terracottaBorder.withValues(alpha: 0.45),
+            color: AppColors.greenBorder.withValues(alpha: 0.45),
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(
-            color: AppColors.terracottaDeep,
-            width: 1.5,
-          ),
+          borderSide: const BorderSide(color: AppColors.greenDeep, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),

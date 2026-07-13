@@ -79,7 +79,7 @@ class DropdownField extends StatelessWidget {
                       fontFamilyFallback: ['NotoSansJP'],
                       fontWeight: FontWeight.w700,
                       fontSize: 18,
-                      color: AppColors.terracottaDeep,
+                      color: AppColors.greenDeep,
                     ),
                   ),
                 ),

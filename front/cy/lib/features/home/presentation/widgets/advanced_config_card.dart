@@ -77,7 +77,7 @@ class AdvancedConfigCard extends StatelessWidget {
                 width: 18,
                 height: 18,
                 colorFilter: const ColorFilter.mode(
-                  AppColors.terracottaDeep,
+                  AppColors.greenDeep,
                   BlendMode.srcIn,
                 ),
               ),
@@ -89,7 +89,7 @@ class AdvancedConfigCard extends StatelessWidget {
                   fontFamilyFallback: ['NotoSansJP'],
                   fontWeight: FontWeight.w500,
                   fontSize: 24,
-                  color: AppColors.terracottaDeep,
+                  color: AppColors.greenDeep,
                 ),
               ),
             ],

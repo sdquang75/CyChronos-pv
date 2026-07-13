@@ -60,9 +60,7 @@ class _RouteCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.terracottaBorder.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: AppColors.greenBorder.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,7 +72,7 @@ class _RouteCard extends StatelessWidget {
               fontFamilyFallback: ['NotoSansJP'],
               fontWeight: FontWeight.w700,
               fontSize: 18,
-              color: AppColors.terracottaDeep,
+              color: AppColors.greenDeep,
             ),
           ),
           const SizedBox(height: 12),
@@ -97,7 +95,7 @@ class _RouteCard extends StatelessWidget {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.terracottaChipBg,
+                  color: AppColors.greenChipBg,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -106,7 +104,7 @@ class _RouteCard extends StatelessWidget {
                     fontFamily: 'HankenGrotesk',
                     fontFamilyFallback: ['NotoSansJP'],
                     fontSize: 12,
-                    color: AppColors.terracottaDeep,
+                    color: AppColors.greenDeep,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

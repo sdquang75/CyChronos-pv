@@ -50,8 +50,7 @@ class RouteConfirmScreen extends ConsumerStatefulWidget {
   final double? destLng;
 
   @override
-  ConsumerState<RouteConfirmScreen> createState() =>
-      _RouteConfirmScreenState();
+  ConsumerState<RouteConfirmScreen> createState() => _RouteConfirmScreenState();
 }
 
 class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
@@ -115,8 +114,9 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     setState(() => _busy = true);
 
     final authState = ref.read(authProvider);
-    final userId =
-        authState is AuthAuthenticated ? authState.user.userId : null;
+    final userId = authState is AuthAuthenticated
+        ? authState.user.userId
+        : null;
 
     ScaffoldMessenger.of(context).clearSnackBars();
     try {
@@ -217,18 +217,30 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                             const SizedBox(height: 24),
                             Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 16,
+                                horizontal: 12,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                border: Border.all(color: AppColors.borderLight),
+                                border: Border.all(
+                                  color: AppColors.borderLight,
+                                ),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
                                 children: [
-                                  RouteMetric(label: 'DISTANCE', value: _distanceText),
+                                  RouteMetric(
+                                    label: 'DISTANCE',
+                                    value: _distanceText,
+                                  ),
                                   const MetricDivider(),
-                                  RouteMetric(label: 'TIME', value: _durationText),
+                                  RouteMetric(
+                                    label: 'TIME',
+                                    value: _durationText,
+                                  ),
                                 ],
                               ),
                             ),
@@ -273,7 +285,7 @@ class _MapPreview extends StatelessWidget {
         child: Container(
           height: 220,
           width: double.infinity,
-          color: AppColors.terracottaChipBg,
+          color: AppColors.greenChipBg,
           child: _buildContent(),
         ),
       ),

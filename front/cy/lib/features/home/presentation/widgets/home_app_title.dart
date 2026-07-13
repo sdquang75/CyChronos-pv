@@ -15,7 +15,7 @@ class HomeAppTitle extends StatelessWidget {
         fontWeight: FontWeight.w600,
         fontSize: 36,
         letterSpacing: -0.9,
-        color: AppColors.greenIcon,
+        color: AppColors.greenPrimary,
         height: 1.22,
       ),
     );

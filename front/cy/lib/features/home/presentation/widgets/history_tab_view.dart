@@ -71,7 +71,9 @@ class HistoryTabView extends ConsumerWidget {
                 children: [
                   for (final trip in trips) ...[
                     _HistoryItem(
-                      title: (trip['destination_name'] as String?)?.isNotEmpty == true
+                      title:
+                          (trip['destination_name'] as String?)?.isNotEmpty ==
+                              true
                           ? trip['destination_name'] as String
                           : 'サイクリング',
                       date: _formatDate(trip['start_time']),
@@ -155,9 +157,7 @@ class _HistoryItem extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.terracottaBorder.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: AppColors.greenBorder.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,7 +172,7 @@ class _HistoryItem extends StatelessWidget {
                   fontFamilyFallback: ['NotoSansJP'],
                   fontWeight: FontWeight.w700,
                   fontSize: 16,
-                  color: AppColors.terracottaDeep,
+                  color: AppColors.greenDeep,
                 ),
               ),
               Text(
@@ -218,14 +218,12 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.terracottaBorder.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: AppColors.greenBorder.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: AppColors.terracottaAccent, size: 24),
+          Icon(icon, color: AppColors.greenAccent, size: 24),
           const SizedBox(height: 16),
           Text(
             label,
@@ -243,7 +241,7 @@ class _StatCard extends StatelessWidget {
               fontFamily: 'JetBrainsMono',
               fontWeight: FontWeight.w800,
               fontSize: 20,
-              color: AppColors.terracottaDeep,
+              color: AppColors.greenDeep,
             ),
           ),
         ],
@@ -279,7 +277,7 @@ class _HistoryStat extends StatelessWidget {
             fontFamily: 'JetBrainsMono',
             fontWeight: FontWeight.w700,
             fontSize: 15,
-            color: AppColors.terracottaDeep,
+            color: AppColors.greenDeep,
           ),
         ),
       ],
