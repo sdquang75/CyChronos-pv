@@ -8,7 +8,6 @@ import 'package:cy/core/widgets/staggered_entrance.dart';
 import 'package:cy/core/widgets/tap_scale.dart';
 import 'package:cy/features/home/domain/recommendation_state.dart';
 import 'package:cy/features/home/presentation/providers/recommendation_provider.dart';
-import 'package:cy/features/route_confirm/route_confirm.dart';
 import 'package:cy/features/route_confirm/widgets/route_card_pieces.dart';
 import '../domain/place_genre.dart';
 import 'destination_detail_screen.dart';
@@ -285,28 +284,6 @@ class _DestinationListScreenState
     );
   }
 
-  void _startRoute(Map<String, String> destination) {
-    HapticFeedback.mediumImpact();
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) {
-          final tags = destinationTags(destination);
-          return RouteConfirmScreen(
-            placeId: destination['id'],
-            destinationName: destination['title'] ?? 'ABC park',
-            waypointLabels: tags.isNotEmpty ? tags : const ['A', 'B', 'C'],
-            distanceText: destination['distance'] ?? '12.4 km',
-            durationText: destination['duration'] ?? '45 min',
-            elevationText: destination['elevation'] ?? '42 m',
-            thumbnailAsset: destination['image'] ?? 'assets/kitty.jpeg',
-            destLat: double.tryParse(destination['lat'] ?? ''),
-            destLng: double.tryParse(destination['lng'] ?? ''),
-          );
-        },
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final results = _filteredDestinations;
@@ -394,7 +371,6 @@ class _DestinationListScreenState
                               isExpanded: _expandedIndex == index,
                               startButtonKey: _startButtonKeyFor(index),
                               onToggle: () => _onCardToggled(index),
-                              onStart: () => _startRoute(destination),
                               onDetails: () => _openDetails(destination),
                             ),
                           ),
@@ -575,7 +551,6 @@ class _DestinationRouteCard extends StatelessWidget {
     required this.isExpanded,
     required this.startButtonKey,
     required this.onToggle,
-    required this.onStart,
     required this.onDetails,
   });
 
@@ -586,7 +561,6 @@ class _DestinationRouteCard extends StatelessWidget {
   // auto-scroll it into view without waiting for the reveal to finish.
   final Key startButtonKey;
   final VoidCallback onToggle;
-  final VoidCallback onStart;
   final VoidCallback onDetails;
 
   @override
@@ -714,26 +688,13 @@ class _DestinationRouteCard extends StatelessWidget {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton.icon(
-                            onPressed: onDetails,
-                            icon: const Icon(Icons.info_outline_rounded, size: 16),
-                            label: const Text('詳細を見る'),
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppColors.greenPrimary,
-                              textStyle: const TextStyle(
-                                fontFamily: 'HankenGrotesk',
-                                fontFamilyFallback: ['NotoSansJP'],
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
+                        const SizedBox(height: 20),
+                        RouteStartButton(
+                          key: startButtonKey,
+                          label: '詳細を見る',
+                          icon: null,
+                          onTap: onDetails,
                         ),
-                        const SizedBox(height: 8),
-                        RouteStartButton(key: startButtonKey, onTap: onStart),
                       ],
                     )
                   : const SizedBox(width: double.infinity),

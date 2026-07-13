@@ -147,7 +147,7 @@ flutter:
 
 flutter_native_splash:
   color: "#F8F9FE"
-  image: assets/kittytr.png
+  image: assets/logo.png
   android: true
   ios: true
   web: true
@@ -155,8 +155,8 @@ flutter_native_splash:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/kittytr.png"
+  image_path: "assets/logo.png"
   min_sdk_android: 21
   web:
     generate: true
-    image_path: "assets/kittytr.png"
+    image_path: "assets/logo.png"

@@ -80,6 +80,25 @@ class MetricDivider extends StatelessWidget {
   }
 }
 
+// Pins the primary action button (RouteStartButton) outside the scrollable
+// content at a fixed bottom padding, so it lands at the same screen
+// position on both Spot Details and Confirm Route regardless of how much
+// text is above it — same tap spot on either screen. Bottom padding clears
+// HomeBottomNavBar's floating pill, which overlays these pushed screens.
+class PinnedRouteActionButton extends StatelessWidget {
+  const PinnedRouteActionButton({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 130),
+      child: child,
+    );
+  }
+}
+
 // "Actions → Button" from Figma: solid green pill/rect with a leading icon.
 class RouteStartButton extends StatelessWidget {
   const RouteStartButton({
@@ -92,7 +111,7 @@ class RouteStartButton extends StatelessWidget {
 
   final VoidCallback onTap;
   final String label;
-  final IconData icon;
+  final IconData? icon;
   final double height;
 
   @override
@@ -119,8 +138,10 @@ class RouteStartButton extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 18, color: Colors.white),
-              const SizedBox(width: 8),
+              if (icon != null) ...[
+                Icon(icon, size: 18, color: Colors.white),
+                const SizedBox(width: 8),
+              ],
               Text(
                 label,
                 style: const TextStyle(

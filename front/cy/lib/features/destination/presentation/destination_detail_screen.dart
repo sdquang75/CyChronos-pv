@@ -80,7 +80,7 @@ class DestinationDetailScreen extends StatelessWidget {
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.only(bottom: 32),
+                  padding: const EdgeInsets.only(bottom: 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -184,17 +184,18 @@ class DestinationDetailScreen extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 24),
-                            RouteStartButton(
-                              label: 'ルートを見る',
-                              icon: Icons.directions_bike_rounded,
-                              onTap: () => _openRoute(context),
-                            ),
                           ],
                         ),
                       ),
                     ],
                   ),
+                ),
+              ),
+              PinnedRouteActionButton(
+                child: RouteStartButton(
+                  label: 'ルートを見る',
+                  icon: Icons.directions_bike_rounded,
+                  onTap: () => _openRoute(context),
                 ),
               ),
             ],

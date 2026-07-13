@@ -138,13 +138,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Image.asset(
-                        'assets/kittytr.png',
-                        width: 120,
-                        height: 120,
-                        fit: BoxFit.contain,
-                      ),
-                      const SizedBox(height: 24),
+                      // Temporarily hidden (not deleted) — kittytr.png placeholder.
+                      // Image.asset(
+                      //   'assets/kittytr.png',
+                      //   width: 120,
+                      //   height: 120,
+                      //   fit: BoxFit.contain,
+                      // ),
+                      // const SizedBox(height: 24),
                       Text(
                         'CyChronos',
                         style: const TextStyle(

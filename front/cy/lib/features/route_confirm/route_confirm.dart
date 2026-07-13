@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // LatLngだけ取り込む(このパッケージのPathクラスがFlutter標準のPathと名前衝突するため)
 import 'package:latlong2/latlong.dart' show LatLng;
 import 'package:cy/core/theme/app_colors.dart';
+import 'package:cy/core/widgets/app_screen_frame.dart';
 import 'package:cy/core/widgets/app_top_bar.dart';
 import 'package:cy/features/auth/domain/auth_state.dart';
 import 'package:cy/features/auth/presentation/providers/auth_provider.dart';
@@ -157,55 +158,96 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      height: double.infinity,
-      decoration: BoxDecoration(
-        color: AppColors.bgWarm,
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            AppColors.greenGradient.withValues(alpha: 0.2),
-            AppColors.greenGradient.withValues(alpha: 0),
-          ],
+    return AppScreenFrame(
+      child: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          color: AppColors.bgWarm,
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.greenGradient.withValues(alpha: 0.2),
+              AppColors.greenGradient.withValues(alpha: 0),
+            ],
+          ),
         ),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const AppTopBar(title: 'Confirm Route'),
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.only(bottom: 110),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _MapPreview(
-                      thumbnailAsset: widget.thumbnailAsset,
-                      loading: _loadingRoute,
-                      route: _route,
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                      child: _RouteSummaryCard(
-                        destinationName: widget.destinationName,
-                        waypointLabels: widget.waypointLabels,
-                        distanceText: _distanceText,
-                        durationText: _durationText,
-                        elevationText: widget.elevationText,
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const AppTopBar(title: 'Confirm Route'),
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _MapPreview(
                         thumbnailAsset: widget.thumbnailAsset,
-                        onStart: _busy ? null : _handleStart,
+                        loading: _loadingRoute,
+                        route: _route,
                       ),
-                    ),
-                  ],
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.destinationName,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: 'HankenGrotesk',
+                                fontFamilyFallback: ['NotoSansJP'],
+                                fontWeight: FontWeight.w700,
+                                fontSize: 24,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 4,
+                              runSpacing: 4,
+                              children: widget.waypointLabels
+                                  .map((label) => WaypointBadge(label: label))
+                                  .toList(),
+                            ),
+                            const SizedBox(height: 24),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                border: Border.all(color: AppColors.borderLight),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  RouteMetric(label: 'DISTANCE', value: _distanceText),
+                                  const MetricDivider(),
+                                  RouteMetric(label: 'TIME', value: _durationText),
+                                  const MetricDivider(),
+                                  RouteMetric(label: 'ELEVATION', value: widget.elevationText),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+              PinnedRouteActionButton(
+                child: RouteStartButton(onTap: _busy ? () {} : _handleStart),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -230,15 +272,14 @@ class _MapPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(20),
-      child: Container(
-        height: 280,
-        width: double.infinity,
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          border: Border.all(color: AppColors.borderLight),
-          borderRadius: BorderRadius.circular(12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          height: 220,
+          width: double.infinity,
+          color: AppColors.terracottaChipBg,
+          child: _buildContent(),
         ),
-        child: _buildContent(),
       ),
     );
   }
@@ -319,116 +360,6 @@ class _RouteMap extends StatelessWidget {
           source: Text('OpenStreetMap contributors'),
         ),
       ],
-    );
-  }
-}
-
-// "Bottom Action Card" — destination summary, distance/time/elevation
-// metrics, and the primary "start" button.
-class _RouteSummaryCard extends StatelessWidget {
-  const _RouteSummaryCard({
-    required this.destinationName,
-    required this.waypointLabels,
-    required this.distanceText,
-    required this.durationText,
-    required this.elevationText,
-    required this.thumbnailAsset,
-    required this.onStart,
-  });
-
-  final String destinationName;
-  final List<String> waypointLabels;
-  final String distanceText;
-  final String durationText;
-  final String elevationText;
-  final String thumbnailAsset;
-  final VoidCallback? onStart;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AppColors.borderLight),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.textPrimary.withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.only(bottom: 16),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppColors.dividerLight)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    thumbnailAsset,
-                    width: 64,
-                    height: 64,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Wrap(
-                        spacing: 2,
-                        children: waypointLabels
-                            .map((label) => WaypointBadge(label: label))
-                            .toList(),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        destinationName,
-                        style: const TextStyle(
-                          fontFamily: 'HankenGrotesk',
-                          fontFamilyFallback: ['NotoSansJP'],
-                          fontWeight: FontWeight.w600,
-                          fontSize: 18,
-                          color: AppColors.textPrimary,
-                          height: 24 / 18,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                RouteMetric(label: 'DISTANCE', value: distanceText),
-                const MetricDivider(),
-                RouteMetric(label: 'TIME', value: durationText),
-                const MetricDivider(),
-                RouteMetric(label: 'ELEVATION', value: elevationText),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          RouteStartButton(onTap: onStart ?? () {}),
-        ],
-      ),
     );
   }
 }

@@ -2,10 +2,13 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <!-- usesCleartextTraffic: Android 9以降は https以外の通信が標準でブロックされる。
+         開発中のバックエンド(http://PCのIP:3000)に繋ぐため許可する。本番でhttps化したら外すこと -->
     <application
-        android:label="Cyreform"
+        android:label="CyChronos"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
