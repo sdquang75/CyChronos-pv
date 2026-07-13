@@ -30,7 +30,10 @@ class AppTopBar extends StatelessWidget {
       child: Row(
         children: [
           Material(
-            color: Colors.transparent,
+            // Filled circle instead of a bare icon, so the button reads as
+            // tappable at a glance (iOS/Android both give back buttons a
+            // clear hit-target affordance, not just a floating glyph).
+            color: AppColors.greenChipBg,
             shape: const CircleBorder(),
             child: InkWell(
               customBorder: const CircleBorder(),
@@ -49,17 +52,21 @@ class AppTopBar extends StatelessWidget {
                       context.go(fallbackRoute);
                     }
                   },
-              child: const Padding(
-                padding: EdgeInsets.all(5),
+              // 44x44 hit target (iOS HIG minimum / Android's comfortable
+              // touch size) — the old 26x26 icon-only button was too small
+              // to hit reliably.
+              child: const SizedBox(
+                width: 44,
+                height: 44,
                 child: Icon(
-                  Icons.arrow_back_rounded,
-                  size: 16,
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 18,
                   color: AppColors.greenPrimary,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 10),
           Text(
             title,
             style: const TextStyle(
