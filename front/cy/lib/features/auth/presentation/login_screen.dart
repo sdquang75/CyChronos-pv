@@ -178,7 +178,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Widget _buildHeader() {
     return Column(
       children: [
-        Image.asset('assets/kittytr.png', width: 72, fit: BoxFit.contain),
+        // 一時的に非表示（削除はしない）
+        // Image.asset('assets/kittytr.png', width: 72, fit: BoxFit.contain),
       ],
     );
   }
