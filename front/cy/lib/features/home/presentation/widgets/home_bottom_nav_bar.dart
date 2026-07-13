@@ -123,21 +123,46 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
     return Stack(
       children: [
         Positioned.fill(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(48),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(48),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      offset: const Offset(0, -4),
-                      blurRadius: 20,
+          // Shadow lives on this outer, unclipped DecoratedBox — a
+          // BoxShadow paints outside its box's own bounds, so if it were
+          // attached to the decoration inside the ClipRRect below, the
+          // clip would slice it straight off. This layer only carries the
+          // lift shadow + glass rim; the actual blur/fill is the child.
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(48),
+              // Two-layer lift shadow (contact + ambient), like the
+              // floating tab bar on iOS/Android Claude apps: a tight close
+              // shadow for definition against the content behind it, plus
+              // a softer wider one so the pill visibly floats instead of
+              // blending into the page.
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.10),
+                  offset: const Offset(0, 2),
+                  blurRadius: 8,
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  offset: const Offset(0, 10),
+                  blurRadius: 30,
+                  spreadRadius: -4,
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(48),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(48),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      width: 1,
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -203,7 +228,7 @@ class _HomeBottomNavBarState extends State<HomeBottomNavBar>
 
   Widget _buildTabItem(int index) {
     final isSelected = widget.currentIndex == index;
-    final color = isSelected ? AppColors.greenIcon : AppColors.textMuted;
+    final color = isSelected ? AppColors.greenPrimary : AppColors.textMuted;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

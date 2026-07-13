@@ -38,7 +38,7 @@ class _HomeTabViewState extends State<HomeTabView> {
   final ScrollController _scrollController = ScrollController();
 
   String _stayDurationMinutes = '30';
-  String _spareTimeMinutes = '30';
+  String _spareTimeMinutes = '120';
   String? _selectedGenreId;
 
   // 余裕時間は「往復の移動+滞在」をまかなう合計予算という前提で、滞在時間を
