@@ -84,7 +84,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             color: AppColors.danger.withValues(alpha: 0.08),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.logout_rounded, size: 30, color: AppColors.danger),
+          child: const Icon(
+            Icons.logout_rounded,
+            size: 30,
+            color: AppColors.danger,
+          ),
         ),
         title: const Text(
           'ログアウト',
@@ -117,9 +121,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onPressed: () => Navigator.of(dialogContext).pop(false),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.textSecondary,
-                    side: BorderSide(color: AppColors.terracottaBorder.withValues(alpha: 0.65)),
+                    side: BorderSide(
+                      color: AppColors.terracottaBorder.withValues(alpha: 0.65),
+                    ),
                     minimumSize: const Size.fromHeight(48),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                   child: const Text(
                     'キャンセル',
@@ -140,7 +148,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     backgroundColor: AppColors.danger,
                     foregroundColor: Colors.white,
                     minimumSize: const Size.fromHeight(48),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                   child: const Text(
                     'ログアウト',
@@ -183,7 +193,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       SnackBar(
         content: Text(
           message,
-          style: const TextStyle(fontFamily: 'HankenGrotesk', fontFamilyFallback: ['NotoSansJP']),
+          style: const TextStyle(
+            fontFamily: 'HankenGrotesk',
+            fontFamilyFallback: ['NotoSansJP'],
+          ),
         ),
         backgroundColor: isError ? AppColors.danger : AppColors.greenPrimary,
         behavior: SnackBarBehavior.floating,
@@ -196,95 +209,96 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final user = authState is AuthAuthenticated ? authState.user : null;
-    final userName = user?.name.isNotEmpty == true ? user!.name : 'CyChronos ライダー';
+    final userName = user?.name.isNotEmpty == true
+        ? user!.name
+        : 'CyChronos ライダー';
     final userEmail = user?.email ?? '';
     final photoUrl = user?.photoUrl;
     final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
 
-    return AppScreenFrame(
-      child: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: AppColors.bgCool,
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const AppTopBar(title: 'Settings', fallbackRoute: '/home'),
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _AccountCard(
-                        userName: userName,
-                        userEmail: userEmail,
-                        photoUrl: photoUrl,
-                        hasPhoto: hasPhoto,
-                      ),
-                      const SizedBox(height: 28),
-                      const _SectionTitle(text: 'RIDE SETTINGS'),
-                      const SizedBox(height: 12),
-                      _isLoadingSpeed
-                          ? const _SettingsCard(
-                              child: SizedBox(
-                                height: 120,
-                                child: Center(child: CircularProgressIndicator()),
-                              ),
-                            )
-                          : _SpeedCard(
-                              speedKmh: _averageSpeedKmh,
-                              speedLevel: _speedLevel,
-                              isSaving: _isSavingSpeed,
-                              onChanged: (value) => setState(() => _averageSpeedKmh = value),
-                              onSave: _saveAverageSpeed,
+    Widget content = Scaffold(
+      backgroundColor: AppColors.bgCool,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const AppTopBar(title: 'Settings', fallbackRoute: '/home'),
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _AccountCard(
+                      userName: userName,
+                      userEmail: userEmail,
+                      photoUrl: photoUrl,
+                      hasPhoto: hasPhoto,
+                    ),
+                    const SizedBox(height: 28),
+                    const _SectionTitle(text: 'RIDE SETTINGS'),
+                    const SizedBox(height: 12),
+                    _isLoadingSpeed
+                        ? const _SettingsCard(
+                            child: SizedBox(
+                              height: 120,
+                              child: Center(child: CircularProgressIndicator()),
                             ),
-                      const SizedBox(height: 28),
-                      const _SectionTitle(text: 'SUPPORT'),
-                      const SizedBox(height: 12),
-                      _SettingsCard(
-                        child: _SettingsMenuRow(
-                          icon: Icons.mail_outline_rounded,
-                          title: 'お問い合わせ',
-                          subtitle: 'ご意見や不具合を送信します',
-                          onTap: () => context.push('/contact'),
-                        ),
+                          )
+                        : _SpeedCard(
+                            speedKmh: _averageSpeedKmh,
+                            speedLevel: _speedLevel,
+                            isSaving: _isSavingSpeed,
+                            onChanged: (value) =>
+                                setState(() => _averageSpeedKmh = value),
+                            onSave: _saveAverageSpeed,
+                          ),
+                    const SizedBox(height: 28),
+                    const _SectionTitle(text: 'SUPPORT'),
+                    const SizedBox(height: 12),
+                    _SettingsCard(
+                      child: _SettingsMenuRow(
+                        icon: Icons.mail_outline_rounded,
+                        title: 'お問い合わせ',
+                        subtitle: 'ご意見や不具合を送信します',
+                        onTap: () => context.push('/contact'),
                       ),
-                      const SizedBox(height: 28),
-                      const _SectionTitle(text: 'ACCOUNT'),
-                      const SizedBox(height: 12),
-                      _SettingsCard(
-                        child: _SettingsMenuRow(
-                          icon: Icons.logout_rounded,
-                          iconColor: AppColors.danger,
-                          titleColor: AppColors.danger,
-                          title: 'ログアウト',
-                          subtitle: '現在のアカウントからログアウトします',
-                          trailing: _isLoggingOut
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.4,
-                                    color: AppColors.danger,
-                                  ),
-                                )
-                              : null,
-                          onTap: _isLoggingOut ? null : _showLogoutDialog,
-                        ),
+                    ),
+                    const SizedBox(height: 28),
+                    const _SectionTitle(text: 'ACCOUNT'),
+                    const SizedBox(height: 12),
+                    _SettingsCard(
+                      child: _SettingsMenuRow(
+                        icon: Icons.logout_rounded,
+                        iconColor: AppColors.danger,
+                        titleColor: AppColors.danger,
+                        title: 'ログアウト',
+                        subtitle: '現在のアカウントからログアウトします',
+                        trailing: _isLoggingOut
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.4,
+                                  color: AppColors.danger,
+                                ),
+                              )
+                            : null,
+                        onTap: _isLoggingOut ? null : _showLogoutDialog,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
+
+    return AppScreenFrame(child: content);
   }
 }
 
@@ -313,7 +327,11 @@ class _AccountCard extends StatelessWidget {
             backgroundImage: hasPhoto ? NetworkImage(photoUrl!) : null,
             child: hasPhoto
                 ? null
-                : const Icon(Icons.person_rounded, size: 36, color: AppColors.terracottaDeep),
+                : const Icon(
+                    Icons.person_rounded,
+                    size: 36,
+                    color: AppColors.terracottaDeep,
+                  ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -385,7 +403,11 @@ class _SpeedCard extends StatelessWidget {
                   color: AppColors.terracottaChipBg,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.speed_rounded, size: 24, color: AppColors.terracottaDeep),
+                child: const Icon(
+                  Icons.speed_rounded,
+                  size: 24,
+                  color: AppColors.terracottaDeep,
+                ),
               ),
               const SizedBox(width: 14),
               const Expanded(
@@ -424,11 +446,16 @@ class _SpeedCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.terracottaChipBg,
                   borderRadius: BorderRadius.circular(9999),
-                  border: Border.all(color: AppColors.terracottaDeep.withValues(alpha: 0.15)),
+                  border: Border.all(
+                    color: AppColors.terracottaDeep.withValues(alpha: 0.15),
+                  ),
                 ),
                 child: Text(
                   speedLevel,
@@ -468,11 +495,19 @@ class _SpeedCard extends StatelessWidget {
               children: [
                 Text(
                   '10 km/h',
-                  style: TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11, color: AppColors.textSecondary),
+                  style: TextStyle(
+                    fontFamily: 'JetBrainsMono',
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 Text(
                   '30 km/h',
-                  style: TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11, color: AppColors.textSecondary),
+                  style: TextStyle(
+                    fontFamily: 'JetBrainsMono',
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -486,14 +521,21 @@ class _SpeedCard extends StatelessWidget {
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.terracottaDeep,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: AppColors.terracottaDeep.withValues(alpha: 0.55),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                disabledBackgroundColor: AppColors.terracottaDeep.withValues(
+                  alpha: 0.55,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
               icon: isSaving
                   ? const SizedBox(
                       width: 19,
                       height: 19,
-                      child: CircularProgressIndicator(strokeWidth: 2.3, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.3,
+                        color: Colors.white,
+                      ),
                     )
                   : const Icon(Icons.check_rounded, size: 20),
               label: Text(
@@ -534,7 +576,10 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _SettingsCard extends StatelessWidget {
-  const _SettingsCard({required this.child, this.padding = const EdgeInsets.all(20)});
+  const _SettingsCard({
+    required this.child,
+    this.padding = const EdgeInsets.all(20),
+  });
 
   final Widget child;
   final EdgeInsets padding;
@@ -548,7 +593,9 @@ class _SettingsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.terracottaBorder.withValues(alpha: 0.35)),
+        border: Border.all(
+          color: AppColors.terracottaBorder.withValues(alpha: 0.35),
+        ),
         boxShadow: [
           BoxShadow(
             color: AppColors.terracottaCardShadow.withValues(alpha: 0.04),

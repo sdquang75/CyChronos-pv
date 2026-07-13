@@ -78,8 +78,15 @@ class _ContactScreenState extends State<ContactScreen> {
         icon: Container(
           width: 64,
           height: 64,
-          decoration: const BoxDecoration(color: AppColors.terracottaChipBg, shape: BoxShape.circle),
-          child: const Icon(Icons.check_rounded, size: 34, color: AppColors.terracottaDeep),
+          decoration: const BoxDecoration(
+            color: AppColors.terracottaChipBg,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.check_rounded,
+            size: 34,
+            color: AppColors.terracottaDeep,
+          ),
         ),
         title: const Text(
           '送信操作が完了しました',
@@ -114,7 +121,9 @@ class _ContactScreenState extends State<ContactScreen> {
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.terracottaDeep,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
               child: const Text(
                 '閉じる',
@@ -134,83 +143,86 @@ class _ContactScreenState extends State<ContactScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppScreenFrame(
-      child: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: AppColors.bgCool,
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const AppTopBar(title: 'Contact', fallbackRoute: '/settings'),
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'ご意見や不具合について、以下のフォームからお問い合わせください。',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontFamilyFallback: ['NotoSansJP'],
-                            fontSize: 14,
-                            color: AppColors.textSecondary,
-                            height: 1.6,
-                          ),
+    Widget content = Scaffold(
+      backgroundColor: AppColors.bgCool,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const AppTopBar(title: 'Contact', fallbackRoute: '/settings'),
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'ご意見や不具合について、以下のフォームからお問い合わせください。',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontFamilyFallback: ['NotoSansJP'],
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                          height: 1.6,
                         ),
-                        const SizedBox(height: 24),
-                        _buildFormCard(),
-                        const SizedBox(height: 16),
-                        _buildNoticeCard(),
-                        const SizedBox(height: 24),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton.icon(
-                            onPressed: _isSending ? null : _submitContact,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.terracottaDeep,
-                              foregroundColor: Colors.white,
-                              disabledBackgroundColor:
-                                  AppColors.terracottaDeep.withValues(alpha: 0.55),
-                              disabledForegroundColor: Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            ),
-                            icon: _isSending
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                                  )
-                                : const Icon(Icons.send_rounded, size: 21),
-                            label: Text(
-                              _isSending ? '送信しています' : '送信する',
-                              style: const TextStyle(
-                                fontFamily: 'HankenGrotesk',
-                                fontFamilyFallback: ['NotoSansJP'],
-                                fontSize: 17,
-                                fontWeight: FontWeight.w700,
-                              ),
+                      ),
+                      const SizedBox(height: 24),
+                      _buildFormCard(),
+                      const SizedBox(height: 16),
+                      _buildNoticeCard(),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton.icon(
+                          onPressed: _isSending ? null : _submitContact,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.terracottaDeep,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: AppColors.terracottaDeep
+                                .withValues(alpha: 0.55),
+                            disabledForegroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
                             ),
                           ),
+                          icon: _isSending
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.send_rounded, size: 21),
+                          label: Text(
+                            _isSending ? '送信しています' : '送信する',
+                            style: const TextStyle(
+                              fontFamily: 'HankenGrotesk',
+                              fontFamilyFallback: ['NotoSansJP'],
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
+
+    return AppScreenFrame(child: content);
   }
 
   Widget _buildFormCard() {
@@ -220,7 +232,9 @@ class _ContactScreenState extends State<ContactScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.terracottaBorder.withValues(alpha: 0.35)),
+        border: Border.all(
+          color: AppColors.terracottaBorder.withValues(alpha: 0.35),
+        ),
         boxShadow: [
           BoxShadow(
             color: AppColors.terracottaCardShadow.withValues(alpha: 0.04),
@@ -241,7 +255,10 @@ class _ContactScreenState extends State<ContactScreen> {
             validator: (value) => _validateRequired(value, 'お名前'),
           ),
           const SizedBox(height: 20),
-          const _FieldLabel(icon: Icons.mail_outline_rounded, text: '返信先メールアドレス'),
+          const _FieldLabel(
+            icon: Icons.mail_outline_rounded,
+            text: '返信先メールアドレス',
+          ),
           const SizedBox(height: 10),
           _ContactTextField(
             controller: _emailController,
@@ -260,7 +277,10 @@ class _ContactScreenState extends State<ContactScreen> {
             validator: (value) => _validateRequired(value, '件名'),
           ),
           const SizedBox(height: 20),
-          const _FieldLabel(icon: Icons.chat_bubble_outline_rounded, text: 'お問い合わせ内容'),
+          const _FieldLabel(
+            icon: Icons.chat_bubble_outline_rounded,
+            text: 'お問い合わせ内容',
+          ),
           const SizedBox(height: 10),
           _ContactTextField(
             controller: _messageController,
@@ -283,12 +303,18 @@ class _ContactScreenState extends State<ContactScreen> {
       decoration: BoxDecoration(
         color: AppColors.terracottaChipBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.terracottaDeep.withValues(alpha: 0.12)),
+        border: Border.all(
+          color: AppColors.terracottaDeep.withValues(alpha: 0.12),
+        ),
       ),
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline_rounded, size: 20, color: AppColors.terracottaDeep),
+          Icon(
+            Icons.info_outline_rounded,
+            size: 20,
+            color: AppColors.terracottaDeep,
+          ),
           SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -381,14 +407,22 @@ class _ContactTextField extends StatelessWidget {
         ),
         filled: true,
         fillColor: AppColors.bgCool,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 15,
+        ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: AppColors.terracottaBorder.withValues(alpha: 0.45)),
+          borderSide: BorderSide(
+            color: AppColors.terracottaBorder.withValues(alpha: 0.45),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.terracottaDeep, width: 1.5),
+          borderSide: const BorderSide(
+            color: AppColors.terracottaDeep,
+            width: 1.5,
+          ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),

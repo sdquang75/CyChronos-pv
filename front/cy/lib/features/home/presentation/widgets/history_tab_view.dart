@@ -20,6 +20,40 @@ class HistoryTabView extends ConsumerWidget {
         children: [
           const HomeTabHeader(title: 'アクティビティ履歴', subtitle: 'これまでの走行記録'),
           const SizedBox(height: 24),
+
+          // Statistics Grid
+          const Text(
+            'STATISTICS',
+            style: TextStyle(
+              fontFamily: 'JetBrainsMono',
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+              letterSpacing: 0.7,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Row(
+            children: [
+              Expanded(
+                child: _StatCard(
+                  label: '総走行距離',
+                  value: '83.2 km',
+                  icon: Icons.directions_bike_rounded,
+                ),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: _StatCard(
+                  label: '総走行時間',
+                  value: '4.5 hrs',
+                  icon: Icons.timer_rounded,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+
           tripsAsync.when(
             data: (trips) {
               if (trips.isEmpty) {
@@ -159,6 +193,58 @@ class _HistoryItem extends StatelessWidget {
               _HistoryStat(label: '時間', value: time),
               _HistoryStat(label: '平均速度', value: speed),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppColors.terracottaBorder.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppColors.terracottaAccent, size: 24),
+          const SizedBox(height: 16),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'HankenGrotesk',
+              fontFamilyFallback: const ['NotoSansJP'],
+              fontSize: 12,
+              color: AppColors.textSecondary.withValues(alpha: 0.8),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              fontFamily: 'JetBrainsMono',
+              fontWeight: FontWeight.w800,
+              fontSize: 20,
+              color: AppColors.terracottaDeep,
+            ),
           ),
         ],
       ),
