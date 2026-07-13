@@ -15,7 +15,7 @@ class DestinationDetailScreen extends StatelessWidget {
   const DestinationDetailScreen({super.key, required this.destination});
 
   // Same Map<String, String> shape _DestinationRouteCard/_startRoute use:
-  // id, title, genre, duration, distance, elevation, image, lat, lng,
+  // id, title, genre, duration, distance, image, lat, lng,
   // address, rating, photoReference.
   final Map<String, String> destination;
 
@@ -45,7 +45,6 @@ class DestinationDetailScreen extends StatelessWidget {
           waypointLabels: tags.isNotEmpty ? tags : const ['A', 'B', 'C'],
           distanceText: destination['distance'] ?? '12.4 km',
           durationText: destination['duration'] ?? '45 min',
-          elevationText: destination['elevation'] ?? '42 m',
           thumbnailAsset: destination['image'] ?? 'assets/kitty.jpeg',
           destLat: double.tryParse(destination['lat'] ?? ''),
           destLng: double.tryParse(destination['lng'] ?? ''),
@@ -165,7 +164,7 @@ class DestinationDetailScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                 children: [
                                   RouteMetric(
                                     label: 'DISTANCE',
@@ -175,11 +174,6 @@ class DestinationDetailScreen extends StatelessWidget {
                                   RouteMetric(
                                     label: 'TIME',
                                     value: destination['duration'] ?? '--',
-                                  ),
-                                  const MetricDivider(),
-                                  RouteMetric(
-                                    label: 'ELEVATION',
-                                    value: destination['elevation'] ?? '--',
                                   ),
                                 ],
                               ),

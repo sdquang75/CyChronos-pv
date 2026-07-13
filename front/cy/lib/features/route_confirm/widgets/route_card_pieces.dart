@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cy/core/theme/app_colors.dart';
 
 // Reusable pieces of the Figma "Confirm Route" Bottom Action Card
-// (waypoint badge, distance/time/elevation metric, divider, "start"
+// (waypoint badge, distance/time metric, divider, "start"
 // button). Shared between RouteConfirmScreen and DestinationListScreen so
 // every route summary card looks identical wherever it appears.
 

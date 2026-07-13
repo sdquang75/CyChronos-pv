@@ -42,7 +42,6 @@ class _DestinationListScreenState
       'genre': '自然 / 公園',
       'duration': '45 min',
       'distance': '9.8 km',
-      'elevation': '58 m',
       'image': 'assets/kitty.jpeg',
     },
     {
@@ -50,7 +49,6 @@ class _DestinationListScreenState
       'genre': 'カフェ',
       'duration': '25 min',
       'distance': '5.4 km',
-      'elevation': '12 m',
       'image': 'assets/kitty.jpeg',
     },
     {
@@ -58,7 +56,6 @@ class _DestinationListScreenState
       'genre': '観光 / 公園',
       'duration': '30 min',
       'distance': '6.7 km',
-      'elevation': '18 m',
       'image': 'assets/kitty.jpeg',
     },
     {
@@ -66,7 +63,6 @@ class _DestinationListScreenState
       'genre': '自然 / 観光',
       'duration': '60 min',
       'distance': '14.2 km',
-      'elevation': '96 m',
       'image': 'assets/kitty.jpeg',
     },
     {
@@ -74,7 +70,6 @@ class _DestinationListScreenState
       'genre': '公園 / 観光',
       'duration': '20 min',
       'distance': '4.1 km',
-      'elevation': '6 m',
       'image': 'assets/kitty.jpeg',
     },
     {
@@ -82,7 +77,6 @@ class _DestinationListScreenState
       'genre': '自然 / 公園',
       'duration': '18 min',
       'distance': '3.5 km',
-      'elevation': '4 m',
       'image': 'assets/kitty.jpeg',
     },
     {
@@ -90,7 +84,6 @@ class _DestinationListScreenState
       'genre': 'カフェ / 観光',
       'duration': '22 min',
       'distance': '4.8 km',
-      'elevation': '9 m',
       'image': 'assets/kitty.jpeg',
     },
     {
@@ -98,7 +91,6 @@ class _DestinationListScreenState
       'genre': '自然 / 公園',
       'duration': '35 min',
       'distance': '8.0 km',
-      'elevation': '10 m',
       'image': 'assets/kitty.jpeg',
     },
     {
@@ -106,7 +98,6 @@ class _DestinationListScreenState
       'genre': '公園 / 観光',
       'duration': '40 min',
       'distance': '9.1 km',
-      'elevation': '22 m',
       'image': 'assets/kitty.jpeg',
     },
     {
@@ -114,7 +105,6 @@ class _DestinationListScreenState
       'genre': 'カフェ',
       'duration': '15 min',
       'distance': '2.9 km',
-      'elevation': '3 m',
       'image': 'assets/kitty.jpeg',
     },
   ];
@@ -451,8 +441,6 @@ List<Map<String, String>> _parseApiDestinations(dynamic data) {
       'distance': distanceKm == null
           ? (item['distance'] ?? item['distanceText'] ?? '').toString()
           : '$distanceKm km',
-      'elevation': (item['elevation'] ?? item['elevationText'] ?? '')
-          .toString(),
       'image':
           (item['image'] ?? item['thumbnailAsset'] ?? 'assets/kitty.jpeg')
               .toString(),
@@ -669,7 +657,7 @@ class _DestinationRouteCard extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
                               RouteMetric(
                                 label: 'DISTANCE',
@@ -679,11 +667,6 @@ class _DestinationRouteCard extends StatelessWidget {
                               RouteMetric(
                                 label: 'TIME',
                                 value: destination['duration']!,
-                              ),
-                              const MetricDivider(),
-                              RouteMetric(
-                                label: 'ELEVATION',
-                                value: destination['elevation']!,
                               ),
                             ],
                           ),

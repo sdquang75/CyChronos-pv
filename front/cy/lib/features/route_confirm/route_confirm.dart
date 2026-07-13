@@ -24,7 +24,6 @@ class RouteConfirmScreen extends ConsumerStatefulWidget {
     this.waypointLabels = const ['A', 'B', 'C'],
     this.distanceText = '12.4 km',
     this.durationText = '45 min',
-    this.elevationText = '42 m',
     this.thumbnailAsset = 'assets/kitty.jpeg',
     this.destLat,
     this.destLng,
@@ -42,7 +41,6 @@ class RouteConfirmScreen extends ConsumerStatefulWidget {
   // fetched, distance/duration are recomputed from it.
   final String distanceText;
   final String durationText;
-  final String elevationText;
   final String thumbnailAsset;
 
   // Destination coordinates from the /api/suggest result. Null for
@@ -226,13 +224,11 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                 children: [
                                   RouteMetric(label: 'DISTANCE', value: _distanceText),
                                   const MetricDivider(),
                                   RouteMetric(label: 'TIME', value: _durationText),
-                                  const MetricDivider(),
-                                  RouteMetric(label: 'ELEVATION', value: widget.elevationText),
                                 ],
                               ),
                             ),
