@@ -6,15 +6,22 @@ import '../../features/auth/domain/auth_state.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/splash_screen.dart';
-
+import '../../features/destination/presentation/destination_list_screen.dart';
+import '../../features/detil/detil.dart';
+import '../../features/history/presentation/history_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/route_confirm/route_confirm.dart';
 import '../../features/settings/presentation/contact_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
+import '../network/place_photo.dart';
 
 // Bridges Riverpod state changes → GoRouter refresh
 class _AuthListenable extends ChangeNotifier {
   _AuthListenable(Ref ref) {
-    ref.listen<AuthState>(authProvider, (_, __) => notifyListeners());
+    ref.listen<AuthState>(
+      authProvider,
+      (_, __) => notifyListeners(),
+    );
   }
 }
 
@@ -32,8 +39,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/home';
       }
 
-      const protectedRoutes = {'/home', '/settings', '/contact'};
-      if (authState is AuthUnauthenticated && protectedRoutes.contains(location)) {
+      if (authState is AuthUnauthenticated && location == '/home') {
         return '/login';
       }
 
@@ -45,8 +51,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const SplashScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
+          transitionsBuilder: (
+            context,
+            animation,
+            secondaryAnimation,
+            child,
+          ) {
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
           },
           transitionDuration: const Duration(milliseconds: 600),
         ),
@@ -56,8 +70,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const LoginScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
+          transitionsBuilder: (
+            context,
+            animation,
+            secondaryAnimation,
+            child,
+          ) {
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
           },
           transitionDuration: const Duration(milliseconds: 800),
         ),
@@ -67,8 +89,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const HomeScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
+          transitionsBuilder: (
+            context,
+            animation,
+            secondaryAnimation,
+            child,
+          ) {
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
           },
           transitionDuration: const Duration(milliseconds: 600),
         ),
@@ -76,14 +106,22 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // 走行履歴画面
       GoRoute(
-        path: '/settings',
+        path: '/history',
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
-          child: const SettingsScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
+          child: const HistoryScreen(),
+          transitionsBuilder: (
+            context,
+            animation,
+            secondaryAnimation,
+            child,
+          ) {
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
           },
-          transitionDuration: const Duration(milliseconds: 400),
+          transitionDuration: const Duration(milliseconds: 500),
         ),
       ),
 
@@ -181,15 +219,68 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: '/contact',
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const ContactScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          transitionDuration: const Duration(milliseconds: 400),
-        ),
+        path: '/destination',
+        pageBuilder: (context, state) {
+          // ホーム画面から候補一覧と
+          // 検索に使った空き時間(分)を受け取る
+          final extraMap = state.extra is Map
+              ? Map<String, dynamic>.from(state.extra as Map)
+              : <String, dynamic>{};
+
+          final places =
+              extraMap['places'] as List<dynamic>? ?? [];
+
+          final minutes = extraMap['minutes'] as int?;
+
+          return CustomTransitionPage(
+            key: state.pageKey,
+            child: DestinationListScreen(
+              places: places,
+              minutes: minutes,
+            ),
+            transitionsBuilder: (
+              context,
+              animation,
+              secondaryAnimation,
+              child,
+            ) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 600),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/route_confirm',
+        pageBuilder: (context, state) {
+          // 詳細画面から渡された目的地1件分のデータを受け取る
+          final destination = state.extra is Map
+              ? Map<String, dynamic>.from(state.extra as Map)
+              : <String, dynamic>{};
+
+          return CustomTransitionPage(
+            key: state.pageKey,
+            // ルート確認画面に目的地データを渡す(現在地とルートは画面側でAPIから取得する)
+            child: RouteConfirmScreen(
+              destination: destination,
+            ),
+            transitionsBuilder: (
+              context,
+              animation,
+              secondaryAnimation,
+              child,
+            ) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 600),
+          );
+        },
       ),
     ],
   );

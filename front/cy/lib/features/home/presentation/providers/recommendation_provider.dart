@@ -14,18 +14,18 @@ final recommendationRepositoryProvider = Provider<RecommendationRepository>(
 
 final recommendationProvider =
     StateNotifierProvider<RecommendationNotifier, RecommendationState>(
-      (ref) => RecommendationNotifier(
-        ref.watch(locationServiceProvider),
-        ref.watch(recommendationRepositoryProvider),
-      ),
-    );
+  (ref) => RecommendationNotifier(
+    ref.watch(locationServiceProvider),
+    ref.watch(recommendationRepositoryProvider),
+  ),
+);
 
 class RecommendationNotifier extends StateNotifier<RecommendationState> {
   final LocationService _locationService;
   final RecommendationRepository _repo;
 
   RecommendationNotifier(this._locationService, this._repo)
-    : super(const RecommendationInitial());
+      : super(const RecommendationInitial());
 
   Future<void> fetchForCurrentLocation({
     required int minutes,
@@ -34,9 +34,7 @@ class RecommendationNotifier extends StateNotifier<RecommendationState> {
     state = const RecommendationLocating();
     try {
       final position = await _locationService.getCurrentPosition();
-      debugPrint(
-        '[recommendation] got position: ${position.latitude}, ${position.longitude}',
-      );
+      debugPrint('[recommendation] got position: ${position.latitude}, ${position.longitude}');
 
       state = const RecommendationLoading();
       final data = await _repo.fetchRecommendations(

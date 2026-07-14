@@ -1,11 +1,10 @@
 //スポットだすやつにょー
 
-const BASE_URL = "https://maps.googleapis.com"; // Google Maps APIのベースURL
+const BASE_URL = "https://maps.googleapis.com"; // Google Maps APIのベースURL   
 const hidecategory = [
   // 宿泊・生活インフラ系(サイクリングの目的地として弱い)
   "lodging", "hotel", "parking", "gas_station", "atm", "bank", "hospital", "doctor", "pharmacy",
-  "school", "primary_school", "secondary_school", "preschool", "university", "police",
-  "fire_station", "post_office", "local_government_office",
+  "school", "university", "police", "fire_station", "post_office", "local_government_office",
   // 会社・事業所系(観光目的地ではないので除外)
   "insurance_agency", "real_estate_agency", "lawyer", "accounting", "finance",
   "general_contractor", "electrician", "plumber", "roofing_contractor", "painter",
@@ -13,11 +12,6 @@ const hidecategory = [
   "locksmith", "laundry", "funeral_home", "cemetery", "courthouse", "embassy", "city_hall",
   "travel_agency", "dentist", "veterinary_care", "physiotherapist", "taxi_stand",
 ];
-
-// 会社の支社・本社などは、Google側にtype(corporate_office等)が無く名前でしか
-// 判別できないので、名前に含まれていたら外す(狙ったチェーン店の「支店」等は
-// 対象外にしたいので、営業所/支店ではなくこの3語だけに絞る)
-const hideNameKeywords = ["支社", "本社", "会社"]
 
 // 「それだけでは何の施設か分からない」汎用type。
 // カテゴリ未設定の会社・オフィスは types がこれだけになりがちなので、
@@ -146,29 +140,12 @@ function normalizePlace(place) {
 
 function normalizePlacesResponse(data) {
   return (data.results ?? [])
+    // ホテル・駐車場・会社など、サイクリングの目的地として弱いものを先に外す
     .filter((place) => {
-      const types = place.types ?? [];
+      const hasHiddenCategory = place.types &&
+        place.types.some((type) => hidecategory.includes(type));
 
-      // typeを指定しない(「すべて」)検索だと、区・町名・郵便番号のような
-      // 「場所」ではなく「行政区画/地名」自体がGoogleから返ってくる。
-      // 実在の店舗・施設は必ず point_of_interest か establishment を持つので、
-      // それが無いものは行き先として不適切とみなして外す
-      const isRealPlace =
-        types.includes("point_of_interest") || types.includes("establishment");
-
-      // ホテルや駐車場、学校、士業・事業所系など、サイクリングの目的地として弱いものを外す
-      const hasHiddenCategory = types.some((type) => hidecategory.includes(type));
-
-      // 会社の支社・本社などオフィス系を名前で外す
-      const hasHiddenNameKeyword = hideNameKeywords.some((keyword) =>
-        place.name?.includes(keyword)
-      );
-
-      // typesが汎用type(point_of_interest等)だけの施設は、カテゴリ未設定の会社・オフィスの
-      // 可能性が高いので外す
-      const onlyGenericTypes = types.length > 0 && types.every((type) => genericTypes.includes(type));
-
-      return isRealPlace && !hasHiddenCategory && !hasHiddenNameKeyword && !onlyGenericTypes;
+      return !hasHiddenCategory;
     })
     // typesが汎用type(point_of_interest等)だけの施設は、カテゴリ未設定の会社・オフィスの
     // 可能性が高いので外す(typesが無いものも同様に外す)
@@ -234,5 +211,7 @@ function filterWithinMinutes(places, minutes){
     return true;
   });
 }
+
+
 
 module.exports = { getNearbyPlaces, getPlacePhoto, normalizePlace, normalizePlacesResponse, shufflePlaces, pickSuggestions, attachDurations, filterWithinMinutes };

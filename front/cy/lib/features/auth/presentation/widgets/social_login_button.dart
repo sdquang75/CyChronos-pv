@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cy/core/theme/app_colors.dart';
 
 class SocialLoginButton extends StatefulWidget {
   final Widget icon;
@@ -46,58 +45,62 @@ class _SocialLoginButtonState extends State<SocialLoginButton> {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
+            height: 64,
             width: double.infinity,
             clipBehavior: Clip.antiAlias,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: _hovered
-                    ? AppColors.greenAccent
-                    : AppColors.borderMedium.withValues(alpha: 0.75),
+                    ? const Color(0xFF19005C)
+                    : const Color(0xFFC9C4D5).withValues(alpha: 0.3),
+                width: 2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 1,
-                  offset: const Offset(0, 1),
+                  color: const Color(0xFF2E0094).withValues(alpha: 0.05),
+                  blurRadius: 30,
+                  offset: const Offset(0, 10),
                 ),
               ],
             ),
-            // Icon pinned to a fixed leading position (not centered together
-            // with the label) so the Google/LINE/Facebook icons line up in
-            // the same vertical column across all three buttons, regardless
-            // of how long each label text is.
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: widget.isLoading
-                      ? const CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            AppColors.greenAccent,
-                          ),
-                        )
-                      : widget.icon,
-                ),
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      widget.label,
-                      style: const TextStyle(
-                        fontFamily: 'HankenGrotesk',
-                        fontFamilyFallback: ['NotoSansJP'],
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: widget.isLoading
+                        ? const CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFF6049C5),
+                            ),
+                          )
+                        : widget.icon,
+                  ),
+                  const SizedBox(width: 16),
+                  // ラベルがボタン幅に収まらない場合だけ縮小して1行に収める
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        widget.label,
+                        maxLines: 1,
+                        style: const TextStyle(
+                          fontFamily: 'HankenGrotesk',
+                          fontFamilyFallback: ['NotoSansJP'],
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF191C1F),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

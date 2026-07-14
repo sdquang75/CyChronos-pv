@@ -1,13 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../../core/network/api_client.dart';
 
 class AuthUser {
-  /// バックエンド users テーブルの user_id(trips/suggest APIで使用)。
-  /// バックエンドに繋がらない場合は null のまま、Firebaseセッションのみで続行する。
+  /// バックエンド users テーブルの user_id(トリップ系APIで使用)
   final int? userId;
   final String uid;
   final String name;
@@ -31,41 +29,76 @@ class AuthUser {
       );
 }
 
+/// ログイン時: バックエンド users に未登録(404)
+class AccountNotRegisteredException implements Exception {}
+
 class AuthRepository {
   final _auth = FirebaseAuth.instance;
   final _googleSignIn = GoogleSignIn();
   final Dio _dio = ApiClient.instance;
 
-  // ログイン専用のボタン/導線は無い(サードパーティログインで別途「登録」を
-  // 挟むのは不自然なため)。バックエンドに未登録(404)なら、その場で
-  // 自動的に /api/auth/register を叩いてアカウントを作る。
-  Future<AuthUser> _linkBackend(User user) async {
-    final idToken = await user.getIdToken();
-    if (idToken == null) return AuthUser.fromFirebase(user);
-
+  /// ログイン: Googleサインイン → POST /api/auth/login
+  /// 未登録なら [AccountNotRegisteredException] を投げる
+  Future<AuthUser> signInWithGoogle() async {
+    final user = await _signInWithGoogleFirebase();
+    final idToken = await _requireIdToken(user);
     try {
       final data = await _postAuth('/api/auth/login', idToken);
       return AuthUser.fromFirebase(user, userId: data['user_id'] as int?);
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
-        final data = await _postAuth('/api/auth/register', idToken);
+        await signOut();
+        throw AccountNotRegisteredException();
+      }
+      rethrow;
+    }
+  }
+
+  /// アカウント作成: Googleサインイン → POST /api/auth/register
+  /// 登録済み(409)の場合はそのままログインに切り替える
+  Future<AuthUser> registerWithGoogle() async {
+    final user = await _signInWithGoogleFirebase();
+    final idToken = await _requireIdToken(user);
+    try {
+      final data = await _postAuth('/api/auth/register', idToken);
+      return AuthUser.fromFirebase(user, userId: data['user_id'] as int?);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 409) {
+        final data = await _postAuth('/api/auth/login', idToken);
         return AuthUser.fromFirebase(user, userId: data['user_id'] as int?);
       }
-      // バックエンド未起動・オフライン等はFirebaseセッションのみで続行させる
-      debugPrint('auth backend link failed: $e');
+      rethrow;
+    }
+  }
+
+  /// セッション復元: FirebaseのキャッシュにユーザーがいればログインAPIで
+  /// user_id と最新プロフィールを取得する
+  Future<AuthUser?> getCurrentUser() async {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+    try {
+      final idToken = await _requireIdToken(user);
+      final data = await _postAuth('/api/auth/login', idToken);
+      return AuthUser.fromFirebase(user, userId: data['user_id'] as int?);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        // バックエンド側で未登録(削除済みなど)→ セッションを破棄
+        await signOut();
+        return null;
+      }
+      // バックエンド未起動・オフライン時は Firebase セッションのみで続行
+      return AuthUser.fromFirebase(user);
+    } catch (_) {
       return AuthUser.fromFirebase(user);
     }
   }
 
-  Future<Map<String, dynamic>> _postAuth(String path, String idToken) async {
-    final res = await _dio.post(
-      path,
-      options: Options(headers: {'Authorization': 'Bearer $idToken'}),
-    );
-    return (res.data as Map).cast<String, dynamic>();
+  Future<void> signOut() async {
+    await _auth.signOut();
+    if (!kIsWeb) await _googleSignIn.signOut();
   }
 
-  Future<AuthUser> signInWithGoogle() async {
+  Future<User> _signInWithGoogleFirebase() async {
     try {
       late final UserCredential credential;
 
@@ -87,78 +120,32 @@ class AuthRepository {
         credential = await _auth.signInWithCredential(oauthCredential);
       }
 
-      return _linkBackend(credential.user!);
+      return credential.user!;
     } on FirebaseAuthException catch (e) {
-      throw Exception(e.message ?? 'auth_error');
-    }
-  }
-
-  Future<AuthUser> signInWithFacebook() async {
-    try {
-      late final UserCredential credential;
-
-      if (kIsWeb) {
-        // Web: Firebase handles the Facebook popup flow directly
-        final provider = FacebookAuthProvider()
-          ..addScope('email')
-          ..addScope('public_profile');
-        credential = await _auth.signInWithPopup(provider);
-      } else {
-        // Android/iOS: native Facebook Login → Firebase credential
-        final result = await FacebookAuth.instance.login(
-          permissions: const ['email', 'public_profile'],
-        );
-
-        switch (result.status) {
-          case LoginStatus.cancelled:
-            throw Exception('sign_in_cancelled');
-          case LoginStatus.failed:
-            throw Exception(result.message ?? 'auth_error');
-          case LoginStatus.success:
-          case LoginStatus.operationInProgress:
-            break;
-        }
-
-        final accessToken = result.accessToken;
-        if (accessToken == null) throw Exception('sign_in_cancelled');
-
-        final oauthCredential = FacebookAuthProvider.credential(
-          accessToken.tokenString,
-        );
-        credential = await _auth.signInWithCredential(oauthCredential);
+      // ポップアップをユーザーが閉じた・多重に開いた場合はキャンセル扱い
+      if (e.code == 'popup-closed-by-user' ||
+          e.code == 'cancelled-popup-request' ||
+          e.code == 'user-cancelled') {
+        throw Exception('sign_in_cancelled');
       }
-
-      return _linkBackend(credential.user!);
-    } on FirebaseAuthException catch (e) {
+      if (e.code == 'popup-blocked') {
+        throw Exception('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。');
+      }
       throw Exception(e.message ?? 'auth_error');
     }
   }
 
-  // TODO: LINEログイン未実装。バックエンドでLINEアクセストークンを検証し
-  // Firebaseカスタムトークンを発行するAPIができたらsignInWithCustomTokenに置き換える。
-  // それまでは動作確認用に匿名サインインで代用する。
-  Future<AuthUser> signInWithLine() async {
-    try {
-      final credential = await _auth.signInAnonymously();
-      return _linkBackend(credential.user!);
-    } on FirebaseAuthException catch (e) {
-      throw Exception(e.message ?? 'auth_error');
-    }
+  Future<String> _requireIdToken(User user) async {
+    final idToken = await user.getIdToken();
+    if (idToken == null) throw Exception('auth_error');
+    return idToken;
   }
 
-  // セッション復元: Firebaseのキャッシュにユーザーがいれば、バックエンドから
-  // 最新の user_id を取り直す(取れなくてもFirebaseセッションのみで続行)
-  Future<AuthUser?> getCurrentUser() async {
-    final user = _auth.currentUser;
-    if (user == null) return null;
-    return _linkBackend(user);
-  }
-
-  Future<void> signOut() async {
-    await _auth.signOut();
-    if (!kIsWeb) {
-      await _googleSignIn.signOut();
-      await FacebookAuth.instance.logOut();
-    }
+  Future<Map<String, dynamic>> _postAuth(String path, String idToken) async {
+    final res = await _dio.post(
+      path,
+      options: Options(headers: {'Authorization': 'Bearer $idToken'}),
+    );
+    return (res.data as Map).cast<String, dynamic>();
   }
 }

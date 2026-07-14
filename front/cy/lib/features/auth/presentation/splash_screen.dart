@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cy/core/theme/app_colors.dart';
-import 'package:cy/core/widgets/app_screen_frame.dart';
 import 'providers/auth_provider.dart';
 import '../domain/auth_state.dart';
 
@@ -28,15 +26,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       duration: const Duration(milliseconds: 1500),
     );
 
-    _fadeAnim = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeIn));
+    _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animCtrl, curve: Curves.easeIn),
+    );
 
-    _scaleAnim = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutBack));
+    _scaleAnim = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutBack),
+    );
 
     _animCtrl.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) => _initAuth());
@@ -67,9 +63,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final bool isLargeScreen = size.width > 390 || size.height > 884;
+
     Widget content = Scaffold(
       body: Container(
-        color: AppColors.bgCool,
+        color: const Color(0xFFF8F9FE),
         child: Stack(
           children: [
             Positioned.fill(
@@ -78,7 +77,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   gradient: RadialGradient(
                     center: Alignment.topLeft,
                     radius: 1.414,
-                    colors: [AppColors.greenHaze, Color(0x00E6DEFF)],
+                    colors: [Color(0xFFE6DEFF), Color(0x00E6DEFF)],
                     stops: [0.0, 0.5],
                   ),
                 ),
@@ -90,7 +89,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   gradient: RadialGradient(
                     center: Alignment.topRight,
                     radius: 1.414,
-                    colors: [AppColors.greenHaze, Color(0x00FCF6FF)],
+                    colors: [Color(0xFFFCF6FF), Color(0x00FCF6FF)],
                     stops: [0.0, 0.5],
                   ),
                 ),
@@ -102,7 +101,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   gradient: RadialGradient(
                     center: Alignment.bottomRight,
                     radius: 1.414,
-                    colors: [AppColors.greenHaze, Color(0x00E8DEFF)],
+                    colors: [Color(0xFFE8DEFF), Color(0x00E8DEFF)],
                     stops: [0.0, 0.5],
                   ),
                 ),
@@ -114,7 +113,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   gradient: RadialGradient(
                     center: Alignment.bottomLeft,
                     radius: 1.414,
-                    colors: [AppColors.bgCool, Color(0x00F8F9FE)],
+                    colors: [Color(0xFFF8F9FE), Color(0x00F8F9FE)],
                     stops: [0.0, 0.5],
                   ),
                 ),
@@ -128,14 +127,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Temporarily hidden (not deleted) — kittytr.png placeholder.
-                      // Image.asset(
-                      //   'assets/kittytr.png',
-                      //   width: 120,
-                      //   height: 120,
-                      //   fit: BoxFit.contain,
-                      // ),
-                      // const SizedBox(height: 24),
+                      Image.asset(
+                        'assets/logo.png',
+                        width: 120,
+                        height: 120,
+                        fit: BoxFit.contain,
+                      ),
+                      const SizedBox(height: 24),
                       Text(
                         'CyChronos',
                         style: const TextStyle(
@@ -143,7 +141,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                           fontFamilyFallback: ['NotoSansJP'],
                           fontSize: 48,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.greenDeep,
+                          color: Color(0xFF19005C),
                           letterSpacing: -0.96,
                         ),
                       ),
@@ -154,7 +152,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         child: CircularProgressIndicator(
                           strokeWidth: 3,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            AppColors.greenAccent,
+                            Color(0xFF6049C5),
                           ),
                         ),
                       ),
@@ -170,11 +168,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               child: Center(
                 child: Text(
                   '© 2026 CyChronos',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontFamily: 'JetBrainsMono',
-                    fontFamilyFallback: const ['NotoSansJP'],
+                    fontFamilyFallback: ['NotoSansJP'],
                     fontSize: 12,
-                    color: AppColors.textSecondary.withValues(alpha: 0.6),
+                    color: Color(0x99484553),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -185,6 +183,30 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       ),
     );
 
-    return AppScreenFrame(child: content);
+    if (isLargeScreen) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF191C1F),
+        body: Center(
+          child: Container(
+            width: 390,
+            height: 884,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(40),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 40,
+                  offset: const Offset(0, 20),
+                ),
+              ],
+            ),
+            child: content,
+          ),
+        ),
+      );
+    }
+
+    return content;
   }
 }
