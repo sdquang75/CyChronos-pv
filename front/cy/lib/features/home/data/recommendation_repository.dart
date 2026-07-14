@@ -19,7 +19,7 @@ class RecommendationRepository {
         'lat': latitude,
         'lng': longitude,
         'type': type,
-        'minutes': minutes, 
+        'minutes': minutes,
       },
     );
     return response.data;

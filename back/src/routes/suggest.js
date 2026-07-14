@@ -14,7 +14,8 @@ router.get("/", async (req, res) => {
   const lng = parseFloat(req.query.lng);
   const lat = parseFloat(req.query.lat);
   const minutes = parseInt(req.query.minutes, 10);
-  const type = req.query.type || "cafe";
+  // 省略/空文字は「ジャンル絞り込みなし」= Google Places の type を付けずに検索する
+  const type = req.query.type || "";
   // 数値でないものが混ざっていたら 400 で返す
   if (!Number.isFinite(lng) || !Number.isFinite(lat) || !Number.isFinite(minutes)) {
     return res.status(400).json({ error: "lng, lat, minutes は数値で指定してください" });

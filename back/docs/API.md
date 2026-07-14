@@ -452,7 +452,7 @@ GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}&user_id={user
 | lng | クエリ | ○ | 現在地の経度 |
 | lat | クエリ | ○ | 現在地の緯度 |
 | minutes | クエリ | ○ | 移動可能時間(分)。1以上 |
-| type | クエリ | - | 施設の種類(省略時は `cafe`) |
+| type | クエリ | - | 施設の種類(Google Places の type。例: `cafe`, `park`。省略時は絞り込みなしで検索) |
 | user_id | クエリ | - | ユーザーID(正の整数)。指定時は訪問済みスポットを提案から除外(省略時は除外なし) |
 
 ### レスポンス(200 OK)
