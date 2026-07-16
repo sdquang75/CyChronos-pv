@@ -3,16 +3,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/network/place_photo.dart';
 import '../../../core/widgets/app_bottom_navigation.dart';
+import '../../../core/widgets/app_screen_frame.dart';
 
 class DestinationListScreen extends StatelessWidget {
   final List<dynamic> places;
   final int? minutes; // 検索に使った空き時間(分)。ヘッダーの表示用
 
-  const DestinationListScreen({
-    super.key,
-    required this.places,
-    this.minutes,
-  });
+  const DestinationListScreen({super.key, required this.places, this.minutes});
 
   // 空き時間を「X時間YY分」の形にする(受け取れなかったときは「--」)
   String _freeTimeText() {
@@ -25,136 +22,89 @@ class DestinationListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final bool isLargeScreen = size.width > 390 || size.height > 1115;
+    return AppScreenFrame(
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8F9FE),
+        body: Stack(
+          children: [
+            Positioned.fill(
+              bottom: AppBottomNavigation.barHeight,
+              child: SafeArea(
+                bottom: false,
+                child: Column(
+                  children: [
+                    _buildLogo(),
 
-    final Widget content = Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            bottom: AppBottomNavigation.barHeight,
-            child: SafeArea(
-              bottom: false,
-              child: Column(
-                children: [
-                  _buildLogo(),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildHeader(),
 
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
+                            const SizedBox(height: 20),
+
+                            Expanded(child: _buildDestinationList()),
+                          ],
+                        ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Row(
                         children: [
-                          _buildHeader(),
-
-                          const SizedBox(height: 20),
-
                           Expanded(
-                            child: _buildDestinationList(),
+                            child: _ActionButton(
+                              text: '情報変更',
+                              icon: Icons.tune_rounded,
+                              isPrimary: false,
+                              onPressed: () {
+                                _showMessage(context, '情報変更画面は後で実装します');
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _ActionButton(
+                              text: '再提案',
+                              icon: Icons.refresh_rounded,
+                              isPrimary: true,
+                              onPressed: () {
+                                _showMessage(context, '再提案機能は後で実装します');
+                              },
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  ),
 
-                  const SizedBox(height: 16),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _ActionButton(
-                            text: '情報変更',
-                            icon: Icons.tune_rounded,
-                            isPrimary: false,
-                            onPressed: () {
-                              _showMessage(
-                                context,
-                                '情報変更画面は後で実装します',
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _ActionButton(
-                            text: '再提案',
-                            icon: Icons.refresh_rounded,
-                            isPrimary: true,
-                            onPressed: () {
-                              _showMessage(
-                                context,
-                                '再提案機能は後で実装します',
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-                ],
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
             ),
-          ),
 
-          // 共通の画面下部メニューバー(HOME・HISTORY・SETTINGS)
-          const Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: AppBottomNavigation.barHeight,
-            child: AppBottomNavigation(
-              current: AppTab.home,
+            // 共通の画面下部メニューバー(HOME・HISTORY・SETTINGS)
+            const Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: AppBottomNavigation.barHeight,
+              child: AppBottomNavigation(current: AppTab.home),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
-
-    // HOME画面と同じPC表示用スマホフレーム
-    if (isLargeScreen) {
-      return Scaffold(
-        backgroundColor: const Color(0xFF191C1F),
-        body: Center(
-          child: Container(
-            width: 390,
-            height: 1115,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(40),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.4),
-                  blurRadius: 40,
-                  offset: const Offset(0, 20),
-                ),
-              ],
-            ),
-            child: content,
-          ),
-        ),
-      );
-    }
-
-    return content;
   }
 
   Widget _buildLogo() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        24,
-        24,
-        24,
-        20,
-      ),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
       child: Center(
         child: Image.asset(
           'assets/logo_long.png',
@@ -198,17 +148,12 @@ class DestinationListScreen extends StatelessWidget {
         const SizedBox(height: 16),
 
         Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 9,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           decoration: BoxDecoration(
             color: const Color(0xFFF1EBFF),
             borderRadius: BorderRadius.circular(9999),
             border: Border.all(
-              color: const Color(0xFF19005C).withValues(
-                alpha: 0.18,
-              ),
+              color: const Color(0xFF19005C).withValues(alpha: 0.18),
               width: 1,
             ),
           ),
@@ -255,10 +200,7 @@ class DestinationListScreen extends StatelessWidget {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.only(
-        top: 4,
-        bottom: 8,
-      ),
+      padding: const EdgeInsets.only(top: 4, bottom: 8),
       physics: const BouncingScrollPhysics(),
       itemCount: places.length,
       itemBuilder: (context, index) {
@@ -268,21 +210,14 @@ class DestinationListScreen extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
-        final destination = Map<String, dynamic>.from(
-          rawDestination,
-        );
+        final destination = Map<String, dynamic>.from(rawDestination);
 
-        return _DestinationCard(
-          destination: destination,
-        );
+        return _DestinationCard(destination: destination);
       },
     );
   }
 
-  void _showMessage(
-    BuildContext context,
-    String message,
-  ) {
+  void _showMessage(BuildContext context, String message) {
     ScaffoldMessenger.of(context).clearSnackBars();
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -296,9 +231,7 @@ class DestinationListScreen extends StatelessWidget {
         ),
         backgroundColor: const Color(0xFF2A0088),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -319,9 +252,7 @@ class _DestinationCard extends StatelessWidget {
   // distanceM
   final Map<String, dynamic> destination;
 
-  const _DestinationCard({
-    required this.destination,
-  });
+  const _DestinationCard({required this.destination});
 
   // カードのサムネイル。写真があればバック経由の実写真、なければロゴを出す
   Widget _buildThumbnail() {
@@ -338,25 +269,23 @@ class _DestinationCard extends StatelessWidget {
       photoUrl,
       fit: BoxFit.cover,
       // 通信失敗でも画面を壊さずロゴに切り替える
-      errorBuilder: (context, error, stackTrace) =>
-          Image.asset('assets/logo.png', fit: BoxFit.cover),
+      errorBuilder:
+          (context, error, stackTrace) =>
+              Image.asset('assets/logo.png', fit: BoxFit.cover),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final dynamic rawDuration =
-        destination['durationMinutes'];
+    final dynamic rawDuration = destination['durationMinutes'];
 
-    final int? durationMinutes = rawDuration is num
-        ? rawDuration.round()
-        : int.tryParse(
-            rawDuration?.toString() ?? '',
-          );
+    final int? durationMinutes =
+        rawDuration is num
+            ? rawDuration.round()
+            : int.tryParse(rawDuration?.toString() ?? '');
 
-    final String durationText = durationMinutes != null
-        ? '約$durationMinutes分'
-        : '所要時間不明';
+    final String durationText =
+        durationMinutes != null ? '約$durationMinutes分' : '所要時間不明';
 
     // 「詳細を見る」に限らず、カードのどこをタップしても詳細画面へ移動する
     return GestureDetector(
@@ -368,18 +297,11 @@ class _DestinationCard extends StatelessWidget {
 
   // 選択した目的地データをGoRouterのextraで詳細画面側へ渡す
   void _openDetail(BuildContext context) {
-    context.push(
-      '/detil',
-      extra: destination,
-    );
+    context.push('/detil', extra: destination);
   }
 
-  Widget _buildCard(
-    BuildContext context,
-    String durationText,
-  ) {
-    final String name =
-        destination['name']?.toString() ?? '名称不明';
+  Widget _buildCard(BuildContext context, String durationText) {
+    final String name = destination['name']?.toString() ?? '名称不明';
 
     return Container(
       width: double.infinity,
@@ -389,16 +311,12 @@ class _DestinationCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFFC9C4D5).withValues(
-            alpha: 0.35,
-          ),
+          color: const Color(0xFFC9C4D5).withValues(alpha: 0.35),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2E0094).withValues(
-              alpha: 0.04,
-            ),
+            color: const Color(0xFF2E0094).withValues(alpha: 0.04),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -415,9 +333,7 @@ class _DestinationCard extends StatelessWidget {
               color: const Color(0xFFF1EBFF),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: const Color(0xFFC9C4D5).withValues(
-                  alpha: 0.35,
-                ),
+                color: const Color(0xFFC9C4D5).withValues(alpha: 0.35),
               ),
             ),
             child: _buildThumbnail(), // スポットの実写真(なければロゴ)
@@ -455,14 +371,11 @@ class _DestinationCard extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF1EBFF),
-                          borderRadius: BorderRadius.circular(
-                            9999,
-                          ),
+                          borderRadius: BorderRadius.circular(9999),
                           border: Border.all(
-                            color: const Color(0xFF19005C)
-                                .withValues(
-                              alpha: 0.15,
-                            ),
+                            color: const Color(
+                              0xFF19005C,
+                            ).withValues(alpha: 0.15),
                           ),
                         ),
                         child: Row(
@@ -498,9 +411,7 @@ class _DestinationCard extends StatelessWidget {
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () => _openDetail(context),
-                        borderRadius: BorderRadius.circular(
-                          9999,
-                        ),
+                        borderRadius: BorderRadius.circular(9999),
                         child: const Padding(
                           padding: EdgeInsets.symmetric(
                             horizontal: 6,
@@ -513,9 +424,7 @@ class _DestinationCard extends StatelessWidget {
                                 '詳細を見る',
                                 style: TextStyle(
                                   fontFamily: 'HankenGrotesk',
-                                  fontFamilyFallback: [
-                                    'NotoSansJP',
-                                  ],
+                                  fontFamilyFallback: ['NotoSansJP'],
                                   fontWeight: FontWeight.w600,
                                   fontSize: 12,
                                   color: Color(0xFF19005C),
@@ -551,17 +460,12 @@ class _EmptyDestinationView extends StatelessWidget {
     return Center(
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(
-          horizontal: 24,
-          vertical: 36,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: const Color(0xFFC9C4D5).withValues(
-              alpha: 0.35,
-            ),
+            color: const Color(0xFFC9C4D5).withValues(alpha: 0.35),
           ),
         ),
         child: const Column(
@@ -619,13 +523,9 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = isPrimary
-        ? const Color(0xFF19005C)
-        : Colors.white;
+    final backgroundColor = isPrimary ? const Color(0xFF19005C) : Colors.white;
 
-    final foregroundColor = isPrimary
-        ? Colors.white
-        : const Color(0xFF19005C);
+    final foregroundColor = isPrimary ? Colors.white : const Color(0xFF19005C);
 
     return Material(
       color: Colors.transparent,
@@ -637,39 +537,28 @@ class _ActionButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: backgroundColor,
             borderRadius: BorderRadius.circular(9999),
-            border: Border.all(
-              color: const Color(0xFF19005C),
-              width: 1.5,
-            ),
-            boxShadow: isPrimary
-                ? [
-                    BoxShadow(
-                      color: const Color(0xFF19005C)
-                          .withValues(
-                        alpha: 0.18,
+            border: Border.all(color: const Color(0xFF19005C), width: 1.5),
+            boxShadow:
+                isPrimary
+                    ? [
+                      BoxShadow(
+                        color: const Color(0xFF19005C).withValues(alpha: 0.18),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
                       ),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ]
-                : null,
+                    ]
+                    : null,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                size: 18,
-                color: foregroundColor,
-              ),
+              Icon(icon, size: 18, color: foregroundColor),
               const SizedBox(width: 7),
               Text(
                 text,
                 style: TextStyle(
                   fontFamily: 'HankenGrotesk',
-                  fontFamilyFallback: const [
-                    'NotoSansJP',
-                  ],
+                  fontFamilyFallback: const ['NotoSansJP'],
                   fontWeight: FontWeight.w600,
                   fontSize: 15,
                   color: foregroundColor,
@@ -682,4 +571,3 @@ class _ActionButton extends StatelessWidget {
     );
   }
 }
-

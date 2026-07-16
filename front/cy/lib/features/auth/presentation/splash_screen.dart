@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'providers/auth_provider.dart';
 import '../domain/auth_state.dart';
+import '../../../core/widgets/app_screen_frame.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -26,13 +27,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       duration: const Duration(milliseconds: 1500),
     );
 
-    _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animCtrl, curve: Curves.easeIn),
-    );
+    _fadeAnim = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeIn));
 
-    _scaleAnim = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutBack),
-    );
+    _scaleAnim = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutBack));
 
     _animCtrl.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) => _initAuth());
@@ -63,150 +66,123 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final bool isLargeScreen = size.width > 390 || size.height > 884;
-
-    Widget content = Scaffold(
-      body: Container(
-        color: const Color(0xFFF8F9FE),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment.topLeft,
-                    radius: 1.414,
-                    colors: [Color(0xFFE6DEFF), Color(0x00E6DEFF)],
-                    stops: [0.0, 0.5],
+    return AppScreenFrame(
+      child: Scaffold(
+        body: Container(
+          color: const Color(0xFFF8F9FE),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment.topLeft,
+                      radius: 1.414,
+                      colors: [Color(0xFFE6DEFF), Color(0x00E6DEFF)],
+                      stops: [0.0, 0.5],
+                    ),
                   ),
                 ),
               ),
-            ),
-            Positioned.fill(
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment.topRight,
-                    radius: 1.414,
-                    colors: [Color(0xFFFCF6FF), Color(0x00FCF6FF)],
-                    stops: [0.0, 0.5],
+              Positioned.fill(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment.topRight,
+                      radius: 1.414,
+                      colors: [Color(0xFFFCF6FF), Color(0x00FCF6FF)],
+                      stops: [0.0, 0.5],
+                    ),
                   ),
                 ),
               ),
-            ),
-            Positioned.fill(
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment.bottomRight,
-                    radius: 1.414,
-                    colors: [Color(0xFFE8DEFF), Color(0x00E8DEFF)],
-                    stops: [0.0, 0.5],
+              Positioned.fill(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment.bottomRight,
+                      radius: 1.414,
+                      colors: [Color(0xFFE8DEFF), Color(0x00E8DEFF)],
+                      stops: [0.0, 0.5],
+                    ),
                   ),
                 ),
               ),
-            ),
-            Positioned.fill(
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment.bottomLeft,
-                    radius: 1.414,
-                    colors: [Color(0xFFF8F9FE), Color(0x00F8F9FE)],
-                    stops: [0.0, 0.5],
+              Positioned.fill(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment.bottomLeft,
+                      radius: 1.414,
+                      colors: [Color(0xFFF8F9FE), Color(0x00F8F9FE)],
+                      stops: [0.0, 0.5],
+                    ),
                   ),
                 ),
               ),
-            ),
-            Center(
-              child: FadeTransition(
-                opacity: _fadeAnim,
-                child: ScaleTransition(
-                  scale: _scaleAnim,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Image.asset(
-                        'assets/logo.png',
-                        width: 120,
-                        height: 120,
-                        fit: BoxFit.contain,
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'CyChronos',
-                        style: const TextStyle(
-                          fontFamily: 'HankenGrotesk',
-                          fontFamilyFallback: ['NotoSansJP'],
-                          fontSize: 48,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF19005C),
-                          letterSpacing: -0.96,
+              Center(
+                child: FadeTransition(
+                  opacity: _fadeAnim,
+                  child: ScaleTransition(
+                    scale: _scaleAnim,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          'assets/logo.png',
+                          width: 120,
+                          height: 120,
+                          fit: BoxFit.contain,
                         ),
-                      ),
-                      const SizedBox(height: 48),
-                      const SizedBox(
-                        width: 40,
-                        height: 40,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Color(0xFF6049C5),
+                        const SizedBox(height: 24),
+                        Text(
+                          'CyChronos',
+                          style: const TextStyle(
+                            fontFamily: 'HankenGrotesk',
+                            fontFamilyFallback: ['NotoSansJP'],
+                            fontSize: 48,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF19005C),
+                            letterSpacing: -0.96,
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 48),
+                        const SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFF6049C5),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            Positioned(
-              bottom: 48,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Text(
-                  '© 2026 CyChronos',
-                  style: const TextStyle(
-                    fontFamily: 'JetBrainsMono',
-                    fontFamilyFallback: ['NotoSansJP'],
-                    fontSize: 12,
-                    color: Color(0x99484553),
-                    fontWeight: FontWeight.w500,
+              Positioned(
+                bottom: 48,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Text(
+                    '© 2026 CyChronos',
+                    style: const TextStyle(
+                      fontFamily: 'JetBrainsMono',
+                      fontFamilyFallback: ['NotoSansJP'],
+                      fontSize: 12,
+                      color: Color(0x99484553),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
-
-    if (isLargeScreen) {
-      return Scaffold(
-        backgroundColor: const Color(0xFF191C1F),
-        body: Center(
-          child: Container(
-            width: 390,
-            height: 884,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(40),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 40,
-                  offset: const Offset(0, 20),
-                ),
-              ],
-            ),
-            child: content,
-          ),
-        ),
-      );
-    }
-
-    return content;
   }
 }

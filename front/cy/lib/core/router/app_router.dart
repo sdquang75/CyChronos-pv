@@ -18,10 +18,7 @@ import '../network/place_photo.dart';
 // Bridges Riverpod state changes → GoRouter refresh
 class _AuthListenable extends ChangeNotifier {
   _AuthListenable(Ref ref) {
-    ref.listen<AuthState>(
-      authProvider,
-      (_, __) => notifyListeners(),
-    );
+    ref.listen<AuthState>(authProvider, (_, __) => notifyListeners());
   }
 }
 
@@ -48,123 +45,55 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/',
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const SplashScreen(),
-          transitionsBuilder: (
-            context,
-            animation,
-            secondaryAnimation,
-            child,
-          ) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 600),
-        ),
+        pageBuilder:
+            (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const SplashScreen(),
+            ),
       ),
       GoRoute(
         path: '/login',
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const LoginScreen(),
-          transitionsBuilder: (
-            context,
-            animation,
-            secondaryAnimation,
-            child,
-          ) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 800),
-        ),
+        pageBuilder:
+            (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const LoginScreen(),
+            ),
       ),
       GoRoute(
         path: '/home',
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const HomeScreen(),
-          transitionsBuilder: (
-            context,
-            animation,
-            secondaryAnimation,
-            child,
-          ) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 600),
-        ),
+        pageBuilder:
+            (context, state) =>
+                NoTransitionPage(key: state.pageKey, child: const HomeScreen()),
       ),
 
       // 走行履歴画面
       GoRoute(
         path: '/history',
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const HistoryScreen(),
-          transitionsBuilder: (
-            context,
-            animation,
-            secondaryAnimation,
-            child,
-          ) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 500),
-        ),
+        pageBuilder:
+            (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const HistoryScreen(),
+            ),
       ),
 
       // 設定画面
       GoRoute(
         path: '/settings',
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const SettingsScreen(),
-          transitionsBuilder: (
-            context,
-            animation,
-            secondaryAnimation,
-            child,
-          ) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 500),
-        ),
+        pageBuilder:
+            (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const SettingsScreen(),
+            ),
       ),
 
       // お問い合わせ画面
       GoRoute(
         path: '/contact',
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const ContactScreen(),
-          transitionsBuilder: (
-            context,
-            animation,
-            secondaryAnimation,
-            child,
-          ) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 500),
-        ),
+        pageBuilder:
+            (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const ContactScreen(),
+            ),
       ),
 
       GoRoute(
@@ -172,9 +101,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) {
           // 一覧画面から渡された目的地1件分
           // (/api/suggest の places の1要素)を受け取る
-          final destination = state.extra is Map
-              ? Map<String, dynamic>.from(state.extra as Map)
-              : <String, dynamic>{};
+          final destination =
+              state.extra is Map
+                  ? Map<String, dynamic>.from(state.extra as Map)
+                  : <String, dynamic>{};
 
           // 数値はAPIの都合で int でも double でも来るので
           // num で受けてから変換する
@@ -189,7 +119,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             destination['photoReference']?.toString(),
           );
 
-          return CustomTransitionPage(
+          return NoTransitionPage(
             key: state.pageKey,
             // 受け取ったデータを詳細画面へ渡す
             // 欠けている項目は詳細画面側で「--」等を表示
@@ -203,18 +133,6 @@ final routerProvider = Provider<GoRouter>((ref) {
               rating: rating?.toDouble(), // 評価(例: 4.2)
               destination: destination, // ルート確認画面へ引き継ぐ用の元データ
             ),
-            transitionsBuilder: (
-              context,
-              animation,
-              secondaryAnimation,
-              child,
-            ) {
-              return FadeTransition(
-                opacity: animation,
-                child: child,
-              );
-            },
-            transitionDuration: const Duration(milliseconds: 600),
           );
         },
       ),
@@ -223,33 +141,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) {
           // ホーム画面から候補一覧と
           // 検索に使った空き時間(分)を受け取る
-          final extraMap = state.extra is Map
-              ? Map<String, dynamic>.from(state.extra as Map)
-              : <String, dynamic>{};
+          final extraMap =
+              state.extra is Map
+                  ? Map<String, dynamic>.from(state.extra as Map)
+                  : <String, dynamic>{};
 
-          final places =
-              extraMap['places'] as List<dynamic>? ?? [];
+          final places = extraMap['places'] as List<dynamic>? ?? [];
 
           final minutes = extraMap['minutes'] as int?;
 
-          return CustomTransitionPage(
+          return NoTransitionPage(
             key: state.pageKey,
-            child: DestinationListScreen(
-              places: places,
-              minutes: minutes,
-            ),
-            transitionsBuilder: (
-              context,
-              animation,
-              secondaryAnimation,
-              child,
-            ) {
-              return FadeTransition(
-                opacity: animation,
-                child: child,
-              );
-            },
-            transitionDuration: const Duration(milliseconds: 600),
+            child: DestinationListScreen(places: places, minutes: minutes),
           );
         },
       ),
@@ -257,28 +160,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/route_confirm',
         pageBuilder: (context, state) {
           // 詳細画面から渡された目的地1件分のデータを受け取る
-          final destination = state.extra is Map
-              ? Map<String, dynamic>.from(state.extra as Map)
-              : <String, dynamic>{};
+          final destination =
+              state.extra is Map
+                  ? Map<String, dynamic>.from(state.extra as Map)
+                  : <String, dynamic>{};
 
-          return CustomTransitionPage(
+          return NoTransitionPage(
             key: state.pageKey,
             // ルート確認画面に目的地データを渡す(現在地とルートは画面側でAPIから取得する)
-            child: RouteConfirmScreen(
-              destination: destination,
-            ),
-            transitionsBuilder: (
-              context,
-              animation,
-              secondaryAnimation,
-              child,
-            ) {
-              return FadeTransition(
-                opacity: animation,
-                child: child,
-              );
-            },
-            transitionDuration: const Duration(milliseconds: 600),
+            child: RouteConfirmScreen(destination: destination),
           );
         },
       ),

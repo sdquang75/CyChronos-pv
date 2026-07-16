@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'providers/auth_provider.dart';
 import '../domain/auth_state.dart';
 import 'widgets/social_login_button.dart';
+import '../../../core/widgets/app_screen_frame.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -27,7 +28,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   // ローディング中のスピナーを押されたボタンだけに出すための識別子
   _AuthAction? _pendingAction;
-
 
   @override
   void initState() {
@@ -105,163 +105,137 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     });
 
     final isLoading = ref.watch(authProvider) is AuthLoading;
-    final size = MediaQuery.of(context).size;
-    final bool isLargeScreen = size.width > 390 || size.height > 926;
 
-    Widget content = Scaffold(
-      body: MouseRegion(
-        onHover: (event) {
-          setState(() {
-            final s = MediaQuery.of(context).size;
-            _mouseX = (event.position.dx / s.width) - 0.5;
-            _mouseY = (event.position.dy / s.height) - 0.5;
-          });
-        },
-        child: Container(
-          color: const Color(0xFFF8F9FE),
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: RadialGradient(
-                      center: Alignment.topLeft,
-                      radius: 1.414,
-                      colors: [Color(0xFFE6DEFF), Color(0x00E6DEFF)],
-                      stops: [0.0, 0.5],
+    return AppScreenFrame(
+      child: Scaffold(
+        body: MouseRegion(
+          onHover: (event) {
+            setState(() {
+              final s = MediaQuery.of(context).size;
+              _mouseX = (event.position.dx / s.width) - 0.5;
+              _mouseY = (event.position.dy / s.height) - 0.5;
+            });
+          },
+          child: Container(
+            color: const Color(0xFFF8F9FE),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: RadialGradient(
+                        center: Alignment.topLeft,
+                        radius: 1.414,
+                        colors: [Color(0xFFE6DEFF), Color(0x00E6DEFF)],
+                        stops: [0.0, 0.5],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              Positioned.fill(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: RadialGradient(
-                      center: Alignment.topRight,
-                      radius: 1.414,
-                      colors: [Color(0xFFFCF6FF), Color(0x00FCF6FF)],
-                      stops: [0.0, 0.5],
+                Positioned.fill(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: RadialGradient(
+                        center: Alignment.topRight,
+                        radius: 1.414,
+                        colors: [Color(0xFFFCF6FF), Color(0x00FCF6FF)],
+                        stops: [0.0, 0.5],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              Positioned.fill(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: RadialGradient(
-                      center: Alignment.bottomRight,
-                      radius: 1.414,
-                      colors: [Color(0xFFE8DEFF), Color(0x00E8DEFF)],
-                      stops: [0.0, 0.5],
+                Positioned.fill(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: RadialGradient(
+                        center: Alignment.bottomRight,
+                        radius: 1.414,
+                        colors: [Color(0xFFE8DEFF), Color(0x00E8DEFF)],
+                        stops: [0.0, 0.5],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              Positioned.fill(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: RadialGradient(
-                      center: Alignment.bottomLeft,
-                      radius: 1.414,
-                      colors: [Color(0xFFF8F9FE), Color(0x00F8F9FE)],
-                      stops: [0.0, 0.5],
+                Positioned.fill(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: RadialGradient(
+                        center: Alignment.bottomLeft,
+                        radius: 1.414,
+                        colors: [Color(0xFFF8F9FE), Color(0x00F8F9FE)],
+                        stops: [0.0, 0.5],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              _GlowBlob(
-                top: -96,
-                left: -96,
-                color: const Color(0xFFE6DEFF).withValues(alpha: 0.18),
-                width: 384,
-                height: 384,
-                blur: 100,
-                offsetX: _mouseX * 30,
-                offsetY: _mouseY * 30,
-              ),
-              _GlowBlob(
-                bottom: -96,
-                right: -96,
-                color: const Color(0xFFE8DEFF).withValues(alpha: 0.18),
-                width: 384,
-                height: 384,
-                blur: 100,
-                offsetX: _mouseX * 60,
-                offsetY: _mouseY * 60,
-              ),
-              SafeArea(
-                child: Center(
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 48,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        FadeTransition(
-                          opacity: _headerFadeAnim,
-                          child: SlideTransition(
-                            position: _headerSlideAnim,
-                            child: _buildHeader(),
+                _GlowBlob(
+                  top: -96,
+                  left: -96,
+                  color: const Color(0xFFE6DEFF).withValues(alpha: 0.18),
+                  width: 384,
+                  height: 384,
+                  blur: 100,
+                  offsetX: _mouseX * 30,
+                  offsetY: _mouseY * 30,
+                ),
+                _GlowBlob(
+                  bottom: -96,
+                  right: -96,
+                  color: const Color(0xFFE8DEFF).withValues(alpha: 0.18),
+                  width: 384,
+                  height: 384,
+                  blur: 100,
+                  offsetX: _mouseX * 60,
+                  offsetY: _mouseY * 60,
+                ),
+                SafeArea(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 48,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          FadeTransition(
+                            opacity: _headerFadeAnim,
+                            child: SlideTransition(
+                              position: _headerSlideAnim,
+                              child: _buildHeader(),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 48),
-                        FadeTransition(
-                          opacity: _cardFadeAnim,
-                          child: SlideTransition(
-                            position: _cardSlideAnim,
-                            child: _buildLoginCard(isLoading),
+                          const SizedBox(height: 48),
+                          FadeTransition(
+                            opacity: _cardFadeAnim,
+                            child: SlideTransition(
+                              position: _cardSlideAnim,
+                              child: _buildLoginCard(isLoading),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 32),
-                        const Text(
-                          '© 2026 CyChronos',
-                          style: TextStyle(
-                            fontFamily: 'JetBrainsMono',
-                            fontFamilyFallback: ['NotoSansJP'],
-                            fontSize: 12,
-                            color: Color(0x99484553),
-                            fontWeight: FontWeight.w500,
+                          const SizedBox(height: 32),
+                          const Text(
+                            '© 2026 CyChronos',
+                            style: TextStyle(
+                              fontFamily: 'JetBrainsMono',
+                              fontFamilyFallback: ['NotoSansJP'],
+                              fontSize: 12,
+                              color: Color(0x99484553),
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
-
-    if (isLargeScreen) {
-      return Scaffold(
-        backgroundColor: const Color(0xFF191C1F),
-        body: Center(
-          child: Container(
-            width: 390,
-            height: 926,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(40),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 40,
-                  offset: const Offset(0, 20),
-                ),
-              ],
-            ),
-            child: content,
-          ),
-        ),
-      );
-    }
-
-    return content;
   }
 
   Widget _buildHeader() {
@@ -313,12 +287,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 icon: SvgPicture.string(_kGoogleSvg),
                 label: 'Googleでログイン',
                 isLoading: isLoading && _pendingAction == _AuthAction.login,
-                onPressed: isLoading
-                    ? null
-                    : () {
-                        setState(() => _pendingAction = _AuthAction.login);
-                        ref.read(authProvider.notifier).signInWithGoogle();
-                      },
+                onPressed:
+                    isLoading
+                        ? null
+                        : () {
+                          setState(() => _pendingAction = _AuthAction.login);
+                          ref.read(authProvider.notifier).signInWithGoogle();
+                        },
               ),
               const SizedBox(height: 24),
               Row(
@@ -345,12 +320,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 icon: SvgPicture.string(_kGoogleSvg),
                 label: 'Googleでアカウント作成',
                 isLoading: isLoading && _pendingAction == _AuthAction.register,
-                onPressed: isLoading
-                    ? null
-                    : () {
-                        setState(() => _pendingAction = _AuthAction.register);
-                        ref.read(authProvider.notifier).registerWithGoogle();
-                      },
+                onPressed:
+                    isLoading
+                        ? null
+                        : () {
+                          setState(() => _pendingAction = _AuthAction.register);
+                          ref.read(authProvider.notifier).registerWithGoogle();
+                        },
               ),
             ],
           ),
@@ -405,7 +381,8 @@ class _GlowBlob extends StatelessWidget {
   }
 }
 
-const _kGoogleSvg = '''<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+const _kGoogleSvg =
+    '''<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
   <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
   <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>

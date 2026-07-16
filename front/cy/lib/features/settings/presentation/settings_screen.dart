@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/widgets/app_bottom_navigation.dart';
+import '../../../core/widgets/app_screen_frame.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
 
@@ -19,14 +20,11 @@ class SettingsScreen extends ConsumerStatefulWidget {
   static const Color logoutColor = Color(0xFFBA1A1A);
 
   @override
-  ConsumerState<SettingsScreen> createState() =>
-      _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState
-    extends ConsumerState<SettingsScreen> {
-  static const String _averageSpeedKey =
-      'average_speed_kmh';
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  static const String _averageSpeedKey = 'average_speed_kmh';
 
   double _averageSpeedKmh = 18.0;
 
@@ -45,16 +43,14 @@ class _SettingsScreenState
       final SharedPreferences preferences =
           await SharedPreferences.getInstance();
 
-      final double savedSpeed =
-          preferences.getDouble(_averageSpeedKey) ?? 18.0;
+      final double savedSpeed = preferences.getDouble(_averageSpeedKey) ?? 18.0;
 
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _averageSpeedKmh =
-            savedSpeed.clamp(10.0, 30.0).toDouble();
+        _averageSpeedKmh = savedSpeed.clamp(10.0, 30.0).toDouble();
         _isLoadingSpeed = false;
       });
     } catch (_) {
@@ -66,10 +62,7 @@ class _SettingsScreenState
         _isLoadingSpeed = false;
       });
 
-      _showMessage(
-        '平均速度を読み込めませんでした',
-        isError: true,
-      );
+      _showMessage('平均速度を読み込めませんでした', isError: true);
     }
   }
 
@@ -86,10 +79,7 @@ class _SettingsScreenState
       final SharedPreferences preferences =
           await SharedPreferences.getInstance();
 
-      await preferences.setDouble(
-        _averageSpeedKey,
-        _averageSpeedKmh,
-      );
+      await preferences.setDouble(_averageSpeedKey, _averageSpeedKmh);
 
       if (!mounted) {
         return;
@@ -105,10 +95,7 @@ class _SettingsScreenState
         return;
       }
 
-      _showMessage(
-        '平均速度を保存できませんでした',
-        isError: true,
-      );
+      _showMessage('平均速度を保存できませんでした', isError: true);
     } finally {
       if (mounted) {
         setState(() {
@@ -147,9 +134,7 @@ class _SettingsScreenState
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: SettingsScreen.logoutColor.withValues(
-                alpha: 0.08,
-              ),
+              color: SettingsScreen.logoutColor.withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -180,12 +165,7 @@ class _SettingsScreenState
               height: 1.6,
             ),
           ),
-          actionsPadding: const EdgeInsets.fromLTRB(
-            20,
-            0,
-            20,
-            20,
-          ),
+          actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
           actions: [
             Row(
               children: [
@@ -195,26 +175,22 @@ class _SettingsScreenState
                       Navigator.of(dialogContext).pop(false);
                     },
                     style: OutlinedButton.styleFrom(
-                      foregroundColor:
-                          SettingsScreen.secondaryColor,
+                      foregroundColor: SettingsScreen.secondaryColor,
                       side: BorderSide(
-                        color: SettingsScreen.borderColor
-                            .withValues(alpha: 0.65),
+                        color: SettingsScreen.borderColor.withValues(
+                          alpha: 0.65,
+                        ),
                       ),
-                      minimumSize:
-                          const Size.fromHeight(48),
+                      minimumSize: const Size.fromHeight(48),
                       shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                     ),
                     child: const Text(
                       'キャンセル',
                       style: TextStyle(
                         fontFamily: 'HankenGrotesk',
-                        fontFamilyFallback: [
-                          'NotoSansJP',
-                        ],
+                        fontFamilyFallback: ['NotoSansJP'],
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                       ),
@@ -228,23 +204,18 @@ class _SettingsScreenState
                       Navigator.of(dialogContext).pop(true);
                     },
                     style: FilledButton.styleFrom(
-                      backgroundColor:
-                          SettingsScreen.logoutColor,
+                      backgroundColor: SettingsScreen.logoutColor,
                       foregroundColor: Colors.white,
-                      minimumSize:
-                          const Size.fromHeight(48),
+                      minimumSize: const Size.fromHeight(48),
                       shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                     ),
                     child: const Text(
                       'ログアウト',
                       style: TextStyle(
                         fontFamily: 'HankenGrotesk',
-                        fontFamilyFallback: [
-                          'NotoSansJP',
-                        ],
+                        fontFamilyFallback: ['NotoSansJP'],
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
@@ -283,10 +254,7 @@ class _SettingsScreenState
         return;
       }
 
-      _showMessage(
-        'ログアウトに失敗しました。もう一度お試しください。',
-        isError: true,
-      );
+      _showMessage('ログアウトに失敗しました。もう一度お試しください。', isError: true);
     } finally {
       if (mounted) {
         setState(() {
@@ -296,10 +264,7 @@ class _SettingsScreenState
     }
   }
 
-  void _showMessage(
-    String message, {
-    bool isError = false,
-  }) {
+  void _showMessage(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).clearSnackBars();
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -311,13 +276,10 @@ class _SettingsScreenState
             fontFamilyFallback: ['NotoSansJP'],
           ),
         ),
-        backgroundColor: isError
-            ? SettingsScreen.logoutColor
-            : const Color(0xFF2A0088),
+        backgroundColor:
+            isError ? SettingsScreen.logoutColor : const Color(0xFF2A0088),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -326,211 +288,138 @@ class _SettingsScreenState
   Widget build(BuildContext context) {
     final AuthState authState = ref.watch(authProvider);
 
-    final user = authState is AuthAuthenticated
-        ? authState.user
-        : null;
+    final user = authState is AuthAuthenticated ? authState.user : null;
 
     final String userName =
-        user?.name.isNotEmpty == true
-            ? user!.name
-            : 'CyChronos ライダー';
+        user?.name.isNotEmpty == true ? user!.name : 'CyChronos ライダー';
 
     final String userEmail = user?.email ?? '';
 
     final String? photoUrl = user?.photoUrl;
 
-    final bool hasPhoto =
-        photoUrl != null && photoUrl.isNotEmpty;
+    final bool hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
 
-    final Size screenSize = MediaQuery.of(context).size;
+    return AppScreenFrame(
+      child: Scaffold(
+        backgroundColor: SettingsScreen.backgroundColor,
+        body: Stack(
+          children: [
+            Positioned.fill(
+              bottom: AppBottomNavigation.barHeight,
+              child: SafeArea(
+                bottom: false,
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildLogo(),
 
-    final bool showPhoneFrame =
-        screenSize.width > 600;
+                      const SizedBox(height: 32),
 
-    final double availableHeight =
-        screenSize.height - 32;
-
-    final double phoneHeight = showPhoneFrame
-        ? availableHeight
-            .clamp(600.0, 1115.0)
-            .toDouble()
-        : screenSize.height;
-
-    final Widget content = Scaffold(
-      backgroundColor: SettingsScreen.backgroundColor,
-      body: Stack(
-        children: [
-          Positioned.fill(
-            bottom: AppBottomNavigation.barHeight,
-            child: SafeArea(
-              bottom: false,
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(
-                  24,
-                  24,
-                  24,
-                  40,
-                ),
-                child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-                    _buildLogo(),
-
-                    const SizedBox(height: 32),
-
-                    const Text(
-                      '設定',
-                      style: TextStyle(
-                        fontFamily: 'HankenGrotesk',
-                        fontFamilyFallback: [
-                          'NotoSansJP',
-                        ],
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                        color:
-                            SettingsScreen.primaryColor,
-                        height: 1.25,
+                      const Text(
+                        '設定',
+                        style: TextStyle(
+                          fontFamily: 'HankenGrotesk',
+                          fontFamilyFallback: ['NotoSansJP'],
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          color: SettingsScreen.primaryColor,
+                          height: 1.25,
+                        ),
                       ),
-                    ),
 
-                    const SizedBox(height: 8),
+                      const SizedBox(height: 8),
 
-                    const Text(
-                      'アカウントや走行時の設定を管理できます。',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontFamilyFallback: [
-                          'NotoSansJP',
-                        ],
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        color:
-                            SettingsScreen.secondaryColor,
-                        height: 1.5,
+                      const Text(
+                        'アカウントや走行時の設定を管理できます。',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontFamilyFallback: ['NotoSansJP'],
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: SettingsScreen.secondaryColor,
+                          height: 1.5,
+                        ),
                       ),
-                    ),
 
-                    const SizedBox(height: 28),
+                      const SizedBox(height: 28),
 
-                    _buildAccountCard(
-                      userName: userName,
-                      userEmail: userEmail,
-                      photoUrl: photoUrl,
-                      hasPhoto: hasPhoto,
-                    ),
-
-                    const SizedBox(height: 28),
-
-                    const _SectionTitle(
-                      text: 'RIDE SETTINGS',
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    _buildSpeedCard(),
-
-                    const SizedBox(height: 28),
-
-                    const _SectionTitle(
-                      text: 'SUPPORT',
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    _SettingsCard(
-                      child: _SettingsMenuRow(
-                        icon:
-                            Icons.mail_outline_rounded,
-                        title: 'お問い合わせ',
-                        subtitle:
-                            'ご意見や不具合を送信します',
-                        onTap: () {
-                          context.push('/contact');
-                        },
+                      _buildAccountCard(
+                        userName: userName,
+                        userEmail: userEmail,
+                        photoUrl: photoUrl,
+                        hasPhoto: hasPhoto,
                       ),
-                    ),
 
-                    const SizedBox(height: 28),
+                      const SizedBox(height: 28),
 
-                    const _SectionTitle(
-                      text: 'ACCOUNT',
-                    ),
+                      const _SectionTitle(text: 'RIDE SETTINGS'),
 
-                    const SizedBox(height: 12),
+                      const SizedBox(height: 12),
 
-                    _SettingsCard(
-                      child: _SettingsMenuRow(
-                        icon: Icons.logout_rounded,
-                        iconColor:
-                            SettingsScreen.logoutColor,
-                        title: 'ログアウト',
-                        titleColor:
-                            SettingsScreen.logoutColor,
-                        subtitle:
-                            '現在のアカウントからログアウトします',
-                        trailing: _isLoggingOut
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child:
-                                    CircularProgressIndicator(
-                                  strokeWidth: 2.4,
-                                  color: SettingsScreen
-                                      .logoutColor,
-                                ),
-                              )
-                            : null,
-                        onTap: _isLoggingOut
-                            ? null
-                            : _showLogoutDialog,
+                      _buildSpeedCard(),
+
+                      const SizedBox(height: 28),
+
+                      const _SectionTitle(text: 'SUPPORT'),
+
+                      const SizedBox(height: 12),
+
+                      _SettingsCard(
+                        child: _SettingsMenuRow(
+                          icon: Icons.mail_outline_rounded,
+                          title: 'お問い合わせ',
+                          subtitle: 'ご意見や不具合を送信します',
+                          onTap: () {
+                            context.push('/contact');
+                          },
+                        ),
                       ),
-                    ),
-                  ],
+
+                      const SizedBox(height: 28),
+
+                      const _SectionTitle(text: 'ACCOUNT'),
+
+                      const SizedBox(height: 12),
+
+                      _SettingsCard(
+                        child: _SettingsMenuRow(
+                          icon: Icons.logout_rounded,
+                          iconColor: SettingsScreen.logoutColor,
+                          title: 'ログアウト',
+                          titleColor: SettingsScreen.logoutColor,
+                          subtitle: '現在のアカウントからログアウトします',
+                          trailing:
+                              _isLoggingOut
+                                  ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.4,
+                                      color: SettingsScreen.logoutColor,
+                                    ),
+                                  )
+                                  : null,
+                          onTap: _isLoggingOut ? null : _showLogoutDialog,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // 共通の画面下部メニューバー(HOME・HISTORY・SETTINGS)
-          const Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: AppBottomNavigation.barHeight,
-            child: AppBottomNavigation(
-              current: AppTab.settings,
+            // 共通の画面下部メニューバー(HOME・HISTORY・SETTINGS)
+            const Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: AppBottomNavigation.barHeight,
+              child: AppBottomNavigation(current: AppTab.settings),
             ),
-          ),
-        ],
-      ),
-    );
-
-    if (!showPhoneFrame) {
-      return content;
-    }
-
-    return Scaffold(
-      backgroundColor: const Color(0xFF191C1F),
-      body: Center(
-        child: Container(
-          width: 390,
-          height: phoneHeight,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(40),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(
-                  alpha: 0.4,
-                ),
-                blurRadius: 40,
-                offset: const Offset(0, 20),
-              ),
-            ],
-          ),
-          child: content,
+          ],
         ),
       ),
     );
@@ -559,14 +448,11 @@ class _SettingsScreenState
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: SettingsScreen.borderColor.withValues(
-            alpha: 0.35,
-          ),
+          color: SettingsScreen.borderColor.withValues(alpha: 0.35),
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2E0094)
-                .withValues(alpha: 0.04),
+            color: const Color(0xFF2E0094).withValues(alpha: 0.04),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -576,27 +462,23 @@ class _SettingsScreenState
         children: [
           CircleAvatar(
             radius: 34,
-            backgroundColor:
-                SettingsScreen.accentBackgroundColor,
-            backgroundImage: hasPhoto
-                ? NetworkImage(photoUrl!)
-                : null,
-            child: hasPhoto
-                ? null
-                : const Icon(
-                    Icons.person_rounded,
-                    size: 36,
-                    color:
-                        SettingsScreen.primaryColor,
-                  ),
+            backgroundColor: SettingsScreen.accentBackgroundColor,
+            backgroundImage: hasPhoto ? NetworkImage(photoUrl!) : null,
+            child:
+                hasPhoto
+                    ? null
+                    : const Icon(
+                      Icons.person_rounded,
+                      size: 36,
+                      color: SettingsScreen.primaryColor,
+                    ),
           ),
 
           const SizedBox(width: 16),
 
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   userName,
@@ -604,13 +486,10 @@ class _SettingsScreenState
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontFamily: 'HankenGrotesk',
-                    fontFamilyFallback: [
-                      'NotoSansJP',
-                    ],
+                    fontFamilyFallback: ['NotoSansJP'],
                     fontSize: 19,
                     fontWeight: FontWeight.w700,
-                    color:
-                        SettingsScreen.primaryColor,
+                    color: SettingsScreen.primaryColor,
                   ),
                 ),
 
@@ -622,12 +501,9 @@ class _SettingsScreenState
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontFamily: 'Inter',
-                      fontFamilyFallback: [
-                        'NotoSansJP',
-                      ],
+                      fontFamilyFallback: ['NotoSansJP'],
                       fontSize: 13,
-                      color:
-                          SettingsScreen.secondaryColor,
+                      color: SettingsScreen.secondaryColor,
                     ),
                   ),
                 ],
@@ -647,255 +523,209 @@ class _SettingsScreenState
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: SettingsScreen.borderColor.withValues(
-            alpha: 0.35,
-          ),
+          color: SettingsScreen.borderColor.withValues(alpha: 0.35),
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2E0094)
-                .withValues(alpha: 0.04),
+            color: const Color(0xFF2E0094).withValues(alpha: 0.04),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: _isLoadingSpeed
-          ? const SizedBox(
-              height: 150,
-              child: Center(
-                child: CircularProgressIndicator(
-                  color:
-                      SettingsScreen.primaryColor,
+      child:
+          _isLoadingSpeed
+              ? const SizedBox(
+                height: 150,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: SettingsScreen.primaryColor,
+                  ),
                 ),
-              ),
-            )
-          : Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: SettingsScreen
-                            .accentBackgroundColor,
-                        borderRadius:
-                            BorderRadius.circular(14),
-                      ),
-                      child: const Icon(
-                        Icons.speed_rounded,
-                        size: 24,
-                        color: SettingsScreen
-                            .primaryColor,
-                      ),
-                    ),
-
-                    const SizedBox(width: 14),
-
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '平均速度',
-                            style: TextStyle(
-                              fontFamily:
-                                  'HankenGrotesk',
-                              fontFamilyFallback: [
-                                'NotoSansJP',
-                              ],
-                              fontSize: 16,
-                              fontWeight:
-                                  FontWeight.w700,
-                              color: SettingsScreen
-                                  .primaryColor,
-                            ),
-                          ),
-                          SizedBox(height: 3),
-                          Text(
-                            '目的地までの所要時間計算に使用します',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontFamilyFallback: [
-                                'NotoSansJP',
-                              ],
-                              fontSize: 12,
-                              color: SettingsScreen
-                                  .secondaryColor,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 22),
-
-                Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment:
-                      CrossAxisAlignment.end,
-                  children: [
-                    Container(
-                      padding:
-                          const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        color: SettingsScreen
-                            .accentBackgroundColor,
-                        borderRadius:
-                            BorderRadius.circular(9999),
-                        border: Border.all(
-                          color: SettingsScreen
-                              .primaryColor
-                              .withValues(alpha: 0.15),
-                        ),
-                      ),
-                      child: Text(
-                        _speedLevel,
-                        style: const TextStyle(
-                          fontFamily:
-                              'HankenGrotesk',
-                          fontFamilyFallback: [
-                            'NotoSansJP',
-                          ],
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: SettingsScreen
-                              .primaryColor,
-                        ),
-                      ),
-                    ),
-
-                    Text(
-                      '${_averageSpeedKmh.toStringAsFixed(1)} km/h',
-                      style: const TextStyle(
-                        fontFamily: 'JetBrainsMono',
-                        fontSize: 21,
-                        fontWeight: FontWeight.w800,
-                        color:
-                            SettingsScreen.primaryColor,
-                      ),
-                    ),
-                  ],
-                ),
-
-                Slider(
-                  value: _averageSpeedKmh,
-                  min: 10.0,
-                  max: 30.0,
-                  divisions: 40,
-                  activeColor:
-                      SettingsScreen.primaryColor,
-                  inactiveColor:
-                      SettingsScreen.borderColor
-                          .withValues(alpha: 0.55),
-                  onChanged: (value) {
-                    setState(() {
-                      _averageSpeedKmh = value;
-                    });
-                  },
-                ),
-
-                const Padding(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 4),
-                  child: Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.spaceBetween,
+              )
+              : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Text(
-                        '10 km/h',
-                        style: TextStyle(
-                          fontFamily: 'JetBrainsMono',
-                          fontSize: 11,
-                          color: SettingsScreen
-                              .secondaryColor,
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: SettingsScreen.accentBackgroundColor,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.speed_rounded,
+                          size: 24,
+                          color: SettingsScreen.primaryColor,
                         ),
                       ),
-                      Text(
-                        '30 km/h',
-                        style: TextStyle(
-                          fontFamily: 'JetBrainsMono',
-                          fontSize: 11,
-                          color: SettingsScreen
-                              .secondaryColor,
+
+                      const SizedBox(width: 14),
+
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '平均速度',
+                              style: TextStyle(
+                                fontFamily: 'HankenGrotesk',
+                                fontFamilyFallback: ['NotoSansJP'],
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: SettingsScreen.primaryColor,
+                              ),
+                            ),
+                            SizedBox(height: 3),
+                            Text(
+                              '目的地までの所要時間計算に使用します',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontFamilyFallback: ['NotoSansJP'],
+                                fontSize: 12,
+                                color: SettingsScreen.secondaryColor,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ),
 
-                const SizedBox(height: 18),
+                  const SizedBox(height: 22),
 
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: FilledButton.icon(
-                    onPressed: _isSavingSpeed
-                        ? null
-                        : _saveAverageSpeed,
-                    style: FilledButton.styleFrom(
-                      backgroundColor:
-                          SettingsScreen.primaryColor,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor:
-                          SettingsScreen.primaryColor
-                              .withValues(alpha: 0.55),
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(14),
-                      ),
-                    ),
-                    icon: _isSavingSpeed
-                        ? const SizedBox(
-                            width: 19,
-                            height: 19,
-                            child:
-                                CircularProgressIndicator(
-                              strokeWidth: 2.3,
-                              color: Colors.white,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: SettingsScreen.accentBackgroundColor,
+                          borderRadius: BorderRadius.circular(9999),
+                          border: Border.all(
+                            color: SettingsScreen.primaryColor.withValues(
+                              alpha: 0.15,
                             ),
-                          )
-                        : const Icon(
-                            Icons.check_rounded,
-                            size: 20,
                           ),
-                    label: Text(
-                      _isSavingSpeed
-                          ? '保存しています'
-                          : '平均速度を保存',
-                      style: const TextStyle(
-                        fontFamily:
-                            'HankenGrotesk',
-                        fontFamilyFallback: [
-                          'NotoSansJP',
-                        ],
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                        ),
+                        child: Text(
+                          _speedLevel,
+                          style: const TextStyle(
+                            fontFamily: 'HankenGrotesk',
+                            fontFamilyFallback: ['NotoSansJP'],
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: SettingsScreen.primaryColor,
+                          ),
+                        ),
+                      ),
+
+                      Text(
+                        '${_averageSpeedKmh.toStringAsFixed(1)} km/h',
+                        style: const TextStyle(
+                          fontFamily: 'JetBrainsMono',
+                          fontSize: 21,
+                          fontWeight: FontWeight.w800,
+                          color: SettingsScreen.primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  Slider(
+                    value: _averageSpeedKmh,
+                    min: 10.0,
+                    max: 30.0,
+                    divisions: 40,
+                    activeColor: SettingsScreen.primaryColor,
+                    inactiveColor: SettingsScreen.borderColor.withValues(
+                      alpha: 0.55,
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _averageSpeedKmh = value;
+                      });
+                    },
+                  ),
+
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '10 km/h',
+                          style: TextStyle(
+                            fontFamily: 'JetBrainsMono',
+                            fontSize: 11,
+                            color: SettingsScreen.secondaryColor,
+                          ),
+                        ),
+                        Text(
+                          '30 km/h',
+                          style: TextStyle(
+                            fontFamily: 'JetBrainsMono',
+                            fontSize: 11,
+                            color: SettingsScreen.secondaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: FilledButton.icon(
+                      onPressed: _isSavingSpeed ? null : _saveAverageSpeed,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: SettingsScreen.primaryColor,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: SettingsScreen.primaryColor
+                            .withValues(alpha: 0.55),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      icon:
+                          _isSavingSpeed
+                              ? const SizedBox(
+                                width: 19,
+                                height: 19,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.3,
+                                  color: Colors.white,
+                                ),
+                              )
+                              : const Icon(Icons.check_rounded, size: 20),
+                      label: Text(
+                        _isSavingSpeed ? '保存しています' : '平均速度を保存',
+                        style: const TextStyle(
+                          fontFamily: 'HankenGrotesk',
+                          fontFamilyFallback: ['NotoSansJP'],
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
     );
   }
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({
-    required this.text,
-  });
+  const _SectionTitle({required this.text});
 
   final String text;
 
@@ -915,9 +745,7 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _SettingsCard extends StatelessWidget {
-  const _SettingsCard({
-    required this.child,
-  });
+  const _SettingsCard({required this.child});
 
   final Widget child;
 
@@ -930,14 +758,11 @@ class _SettingsCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: SettingsScreen.borderColor.withValues(
-            alpha: 0.35,
-          ),
+          color: SettingsScreen.borderColor.withValues(alpha: 0.35),
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2E0094)
-                .withValues(alpha: 0.04),
+            color: const Color(0xFF2E0094).withValues(alpha: 0.04),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -974,43 +799,30 @@ class _SettingsMenuRow extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 18,
-            vertical: 18,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
           child: Row(
             children: [
               Container(
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color:
-                      iconColor.withValues(alpha: 0.08),
-                  borderRadius:
-                      BorderRadius.circular(14),
+                  color: iconColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(
-                  icon,
-                  color: iconColor,
-                  size: 23,
-                ),
+                child: Icon(icon, color: iconColor, size: 23),
               ),
 
               const SizedBox(width: 14),
 
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
                       style: TextStyle(
-                        fontFamily:
-                            'HankenGrotesk',
-                        fontFamilyFallback: const [
-                          'NotoSansJP',
-                        ],
+                        fontFamily: 'HankenGrotesk',
+                        fontFamilyFallback: const ['NotoSansJP'],
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: titleColor,
@@ -1023,12 +835,9 @@ class _SettingsMenuRow extends StatelessWidget {
                       subtitle,
                       style: const TextStyle(
                         fontFamily: 'Inter',
-                        fontFamilyFallback: [
-                          'NotoSansJP',
-                        ],
+                        fontFamilyFallback: ['NotoSansJP'],
                         fontSize: 12,
-                        color: SettingsScreen
-                            .secondaryColor,
+                        color: SettingsScreen.secondaryColor,
                         height: 1.4,
                       ),
                     ),
@@ -1041,11 +850,7 @@ class _SettingsMenuRow extends StatelessWidget {
               if (trailing != null)
                 trailing!
               else
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: iconColor,
-                  size: 26,
-                ),
+                Icon(Icons.chevron_right_rounded, color: iconColor, size: 26),
             ],
           ),
         ),
@@ -1053,4 +858,3 @@ class _SettingsMenuRow extends StatelessWidget {
     );
   }
 }
-

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' show LatLng;
 
 import '../../core/network/place_photo.dart';
+import '../../core/widgets/app_screen_frame.dart';
 import '../auth/domain/auth_state.dart';
 import '../auth/presentation/providers/auth_provider.dart';
 import '../home/data/location_service.dart';
@@ -15,7 +16,8 @@ import 'data/route_repository.dart';
 /// 開くと全画面にルートが出て、下に情報バー(目的地・距離・時間・案内開始)が被さる。
 /// 「案内開始」でバーが消えて全画面の案内モードになり、「案内を終了」で戻る
 class RouteConfirmScreen extends ConsumerStatefulWidget {
-  final Map<String, dynamic> destination; // 詳細画面から渡される目的地1件分(/api/suggest のplaces 1要素)
+  final Map<String, dynamic>
+  destination; // 詳細画面から渡される目的地1件分(/api/suggest のplaces 1要素)
   final LocationService? locationService; // テスト用に差し替え可(省略時は本物)
   final RouteRepository? repository; // テスト用に差し替え可(省略時は本物)
   final bool useMapTiles; // テスト時はfalse(タイル取得の通信ができないため簡易描画に切り替える)
@@ -57,10 +59,12 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
 
   // 実ルートが取れなかったときは、候補一覧時点の概算値(Matrix API)で代用する
   double? get _displayDistanceM =>
-      _route?.distanceM ?? (widget.destination['distanceM'] as num?)?.toDouble();
+      _route?.distanceM ??
+      (widget.destination['distanceM'] as num?)?.toDouble();
 
   double? get _displayDurationSec =>
-      _route?.durationSec ?? (widget.destination['durationSec'] as num?)?.toDouble();
+      _route?.durationSec ??
+      (widget.destination['durationSec'] as num?)?.toDouble();
 
   @override
   void initState() {
@@ -210,97 +214,103 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      // 案内モード中はロゴバーも消して全画面にする
-      appBar: _navigating
-          ? null
-          : AppBar(
-              title: const Image(
-                image: AssetImage('assets/logo_long.png'),
-                height: 40,
-                fit: BoxFit.contain,
-              ),
-            ),
-      body: Stack(
-        children: [
-          // マップ代わりのルート表示(常に全画面。バーはこの上に被さる)
-          Positioned.fill(child: _buildRoutePreview()),
-
-          // ルート取得に失敗したときだけ、概算値表示であることを上部に知らせる
-          if (_errorMessage != null && !_navigating)
-            Positioned(
-              top: 8,
-              left: 8,
-              right: 8,
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF3E0),
-                  borderRadius: BorderRadius.circular(8),
+    return AppScreenFrame(
+      child: Scaffold(
+        // 案内モード中はロゴバーも消して全画面にする
+        appBar:
+            _navigating
+                ? null
+                : AppBar(
+                  title: const Image(
+                    image: AssetImage('assets/logo_long.png'),
+                    height: 40,
+                    fit: BoxFit.contain,
+                  ),
                 ),
-                child: Text(
-                  _errorMessage!,
-                  style: const TextStyle(fontSize: 13, color: Colors.black87),
+        body: Stack(
+          children: [
+            // マップ代わりのルート表示(常に全画面。バーはこの上に被さる)
+            Positioned.fill(child: _buildRoutePreview()),
+
+            // ルート取得に失敗したときだけ、概算値表示であることを上部に知らせる
+            if (_errorMessage != null && !_navigating)
+              Positioned(
+                top: 8,
+                left: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF3E0),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                  ),
                 ),
               ),
-            ),
 
-          // 案内モード中だけ上に出る「残り距離・時間」のチップ(Googleマップのあの表示)
-          if (_navigating)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: SafeArea(
-                child: Center(
-                  child: Container(
-                    margin: const EdgeInsets.only(top: 12),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(9999),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+            // 案内モード中だけ上に出る「残り距離・時間」のチップ(Googleマップのあの表示)
+            if (_navigating)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: SafeArea(
+                  child: Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(9999),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        '${_distanceText()} ・ ${_durationText()}',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF19005C),
                         ),
-                      ],
-                    ),
-                    child: Text(
-                      '${_distanceText()} ・ ${_durationText()}',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF19005C),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
 
-          // 下部: 通常時は情報バー、案内モード中は「案内を終了」ボタンだけ。
-          // AnimatedSwitcherで切り替え時にスッと入れ替わる
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              // 下からスライドしてくる切り替えアニメーション
-              transitionBuilder: (child, animation) => SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 1),
-                  end: Offset.zero,
-                ).animate(animation),
-                child: child,
+            // 下部: 通常時は情報バー、案内モード中は「案内を終了」ボタンだけ。
+            // AnimatedSwitcherで切り替え時にスッと入れ替わる
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                // 下からスライドしてくる切り替えアニメーション
+                transitionBuilder:
+                    (child, animation) => SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 1),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                child: _navigating ? _buildEndButton() : _buildInfoPanel(),
               ),
-              child: _navigating ? _buildEndButton() : _buildInfoPanel(),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -331,16 +341,18 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     }
 
     // ルートが描けないときは目的地の写真(なければ仮画像)を出しておく
-    final photoUrl =
-        placePhotoUrl(widget.destination['photoReference']?.toString());
+    final photoUrl = placePhotoUrl(
+      widget.destination['photoReference']?.toString(),
+    );
     if (photoUrl == null) {
       return Image.asset('assets/testimage.png', fit: BoxFit.cover);
     }
     return Image.network(
       photoUrl,
       fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) =>
-          Image.asset('assets/testimage.png', fit: BoxFit.cover),
+      errorBuilder:
+          (context, error, stackTrace) =>
+              Image.asset('assets/testimage.png', fit: BoxFit.cover),
     );
   }
 
@@ -455,8 +467,11 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
           // 距離と所要時間を1行で
           Row(
             children: [
-              const Icon(Icons.directions_bike,
-                  size: 18, color: Color(0xFF19005C)),
+              const Icon(
+                Icons.directions_bike,
+                size: 18,
+                color: Color(0xFF19005C),
+              ),
               const SizedBox(width: 6),
               Text(
                 '${_distanceText()} ・ ${_durationText()}',
@@ -486,7 +501,9 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(0, 50),
                     side: const BorderSide(
-                        color: Color.fromARGB(255, 3, 11, 59), width: 2),
+                      color: Color.fromARGB(255, 3, 11, 59),
+                      width: 2,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -575,9 +592,10 @@ class _RoutePreviewPainter extends CustomPainter {
     // 完全な直線ルートで割り算がゼロにならないよう、ごく小さい値で下駄を履かせる
     final lngSpan = (maxLng - minLng).abs().clamp(1e-6, double.infinity);
     final latSpan = (maxLat - minLat).abs().clamp(1e-6, double.infinity);
-    final scale = (drawWidth / lngSpan) < (drawHeight / latSpan)
-        ? (drawWidth / lngSpan)
-        : (drawHeight / latSpan);
+    final scale =
+        (drawWidth / lngSpan) < (drawHeight / latSpan)
+            ? (drawWidth / lngSpan)
+            : (drawHeight / latSpan);
 
     // 描いたルートが領域の真ん中に来るようにずらす量
     final offsetX = (size.width - lngSpan * scale) / 2;
@@ -591,18 +609,19 @@ class _RoutePreviewPainter extends CustomPainter {
     }
 
     // ルートの線を描く
-    final path = Path()
-      ..moveTo(toOffset(points.first).dx, toOffset(points.first).dy);
+    final path =
+        Path()..moveTo(toOffset(points.first).dx, toOffset(points.first).dy);
     for (final point in points.skip(1)) {
       final offset = toOffset(point);
       path.lineTo(offset.dx, offset.dy);
     }
-    final linePaint = Paint()
-      ..color = const Color(0xFF19005C)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 5
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
+    final linePaint =
+        Paint()
+          ..color = const Color(0xFF19005C)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round;
     canvas.drawPath(path, linePaint);
 
     // 出発地(先頭の点)は丸

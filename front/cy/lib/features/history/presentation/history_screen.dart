@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/widgets/app_bottom_navigation.dart';
+import '../../../core/widgets/app_screen_frame.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
 import '../data/history_repository.dart';
@@ -12,14 +13,11 @@ class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
 
   @override
-  ConsumerState<HistoryScreen> createState() =>
-      _HistoryScreenState();
+  ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
 }
 
-class _HistoryScreenState
-    extends ConsumerState<HistoryScreen> {
-  final HistoryRepository _repository =
-      HistoryRepository();
+class _HistoryScreenState extends ConsumerState<HistoryScreen> {
+  final HistoryRepository _repository = HistoryRepository();
 
   bool _isLoading = true;
   String? _errorMessage;
@@ -45,8 +43,7 @@ class _HistoryScreenState
       // 未ログイン、またはバックエンド未接続で user_id が取れていない
       setState(() {
         _isLoading = false;
-        _errorMessage =
-            'ユーザー情報を取得できませんでした。再度ログインしてください。';
+        _errorMessage = 'ユーザー情報を取得できませんでした。再度ログインしてください。';
       });
       return;
     }
@@ -57,8 +54,7 @@ class _HistoryScreenState
     });
 
     try {
-      final trips =
-          await _repository.fetchTrips(userId: userId);
+      final trips = await _repository.fetchTrips(userId: userId);
 
       if (!mounted) return;
 
@@ -71,107 +67,62 @@ class _HistoryScreenState
 
       setState(() {
         _isLoading = false;
-        _errorMessage =
-            '履歴を取得できませんでした。通信環境をご確認のうえ、もう一度お試しください。';
+        _errorMessage = '履歴を取得できませんでした。通信環境をご確認のうえ、もう一度お試しください。';
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final bool isLargeScreen =
-        size.width > 390 || size.height > 1115;
+    return AppScreenFrame(
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8F9FE),
+        body: Stack(
+          children: [
+            Positioned.fill(
+              bottom: AppBottomNavigation.barHeight,
+              child: SafeArea(
+                bottom: false,
+                child: Column(
+                  children: [
+                    _buildLogo(),
 
-    final Widget content = Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            bottom: AppBottomNavigation.barHeight,
-            child: SafeArea(
-              bottom: false,
-              child: Column(
-                children: [
-                  _buildLogo(),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildHeader(),
 
-                  Expanded(
-                    child: Padding(
-                      padding:
-                          const EdgeInsets.symmetric(
-                        horizontal: 24,
-                      ),
-                      child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
-                        children: [
-                          _buildHeader(),
+                            const SizedBox(height: 20),
 
-                          const SizedBox(height: 20),
-
-                          Expanded(
-                            child: _buildBody(),
-                          ),
-                        ],
+                            Expanded(child: _buildBody()),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
 
-          const Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: AppBottomNavigation.barHeight,
-            child: AppBottomNavigation(
-              current: AppTab.history,
+            const Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: AppBottomNavigation.barHeight,
+              child: AppBottomNavigation(current: AppTab.history),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
-
-    // HOME画面と同じPC表示用スマホフレーム
-    if (isLargeScreen) {
-      return Scaffold(
-        backgroundColor: const Color(0xFF191C1F),
-        body: Center(
-          child: Container(
-            width: 390,
-            height: 1115,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(40),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(
-                    alpha: 0.4,
-                  ),
-                  blurRadius: 40,
-                  offset: const Offset(0, 20),
-                ),
-              ],
-            ),
-            child: content,
-          ),
-        ),
-      );
-    }
-
-    return content;
   }
 
   Widget _buildLogo() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        24,
-        24,
-        24,
-        20,
-      ),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
       child: Center(
         child: Image.asset(
           'assets/logo_long.png',
@@ -216,9 +167,7 @@ class _HistoryScreenState
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(
-          color: Color(0xFF19005C),
-        ),
+        child: CircularProgressIndicator(color: Color(0xFF19005C)),
       );
     }
 
@@ -244,10 +193,7 @@ class _HistoryScreenState
       color: const Color(0xFF19005C),
       onRefresh: _loadTrips,
       child: ListView.builder(
-        padding: const EdgeInsets.only(
-          top: 4,
-          bottom: 16,
-        ),
+        padding: const EdgeInsets.only(top: 4, bottom: 16),
         physics: const AlwaysScrollableScrollPhysics(
           parent: BouncingScrollPhysics(),
         ),
@@ -268,8 +214,7 @@ class _TripCard extends StatelessWidget {
 
   // 目的地名。未設定(空文字)のトリップは「目的地未設定」と表示する
   String _titleText() {
-    final name =
-        trip['destination_name']?.toString() ?? '';
+    final name = trip['destination_name']?.toString() ?? '';
     return name.isNotEmpty ? name : '目的地未設定';
   }
 
@@ -281,8 +226,7 @@ class _TripCard extends StatelessWidget {
     final dateTime = DateTime.tryParse(raw)?.toLocal();
     if (dateTime == null) return '--';
 
-    final month =
-        dateTime.month.toString().padLeft(2, '0');
+    final month = dateTime.month.toString().padLeft(2, '0');
     final day = dateTime.day.toString().padLeft(2, '0');
     return '${dateTime.year}/$month/$day';
   }
@@ -301,11 +245,8 @@ class _TripCard extends StatelessWidget {
 
     final total = seconds.round();
     final hours = total ~/ 3600;
-    final minutes = ((total % 3600) ~/ 60)
-        .toString()
-        .padLeft(2, '0');
-    final secs =
-        (total % 60).toString().padLeft(2, '0');
+    final minutes = ((total % 3600) ~/ 60).toString().padLeft(2, '0');
+    final secs = (total % 60).toString().padLeft(2, '0');
     return '$hours:$minutes:$secs';
   }
 
@@ -326,15 +267,11 @@ class _TripCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFFC9C4D5).withValues(
-            alpha: 0.35,
-          ),
+          color: const Color(0xFFC9C4D5).withValues(alpha: 0.35),
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2E0094).withValues(
-              alpha: 0.04,
-            ),
+            color: const Color(0xFF2E0094).withValues(alpha: 0.04),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -344,8 +281,7 @@ class _TripCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Text(
@@ -368,16 +304,14 @@ class _TripCard extends StatelessWidget {
                 style: TextStyle(
                   fontFamily: 'JetBrainsMono',
                   fontSize: 12,
-                  color: const Color(0xFF484553)
-                      .withValues(alpha: 0.6),
+                  color: const Color(0xFF484553).withValues(alpha: 0.6),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           Row(
-            mainAxisAlignment:
-                MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildStat('距離', _distanceText()),
               _buildStat('時間', _durationText()),
@@ -399,8 +333,7 @@ class _TripCard extends StatelessWidget {
             fontFamily: 'HankenGrotesk',
             fontFamilyFallback: const ['NotoSansJP'],
             fontSize: 12,
-            color: const Color(0xFF484553)
-                .withValues(alpha: 0.6),
+            color: const Color(0xFF484553).withValues(alpha: 0.6),
           ),
         ),
         const SizedBox(height: 2),
@@ -437,27 +370,18 @@ class _HistoryMessageView extends StatelessWidget {
     return Center(
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(
-          horizontal: 24,
-          vertical: 36,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: const Color(0xFFC9C4D5).withValues(
-              alpha: 0.35,
-            ),
+            color: const Color(0xFFC9C4D5).withValues(alpha: 0.35),
           ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 42,
-              color: const Color(0xFF19005C),
-            ),
+            Icon(icon, size: 42, color: const Color(0xFF19005C)),
             const SizedBox(height: 16),
             Text(
               title,
@@ -488,18 +412,13 @@ class _HistoryMessageView extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onRetry,
                 style: FilledButton.styleFrom(
-                  backgroundColor:
-                      const Color(0xFF19005C),
+                  backgroundColor: const Color(0xFF19005C),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                icon: const Icon(
-                  Icons.refresh_rounded,
-                  size: 18,
-                ),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
                 label: const Text(
                   '再読み込み',
                   style: TextStyle(
