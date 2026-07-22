@@ -6,8 +6,10 @@ const cache = require("../services/cache");
 
 const router = express.Router();
 
-// 1回の提案で返す最大件数。母集団(最大40件)からランダムに抜くことで毎回顔ぶれが変わる
+// 1回の提案で返す最大件数。Matrixで時間判定した母集団からランダムに抜くことで毎回顔ぶれが変わる
 const MAX_SUGGESTIONS = 10;
+const MAX_MATRIX_DESTINATIONS = 24;
+const SEARCH_POINT_COUNT = 4;
 
 router.get("/", async (req, res) => {
   // クエリは文字列で来るので parseFloat / parseInt で数値に変換
@@ -49,15 +51,34 @@ router.get("/", async (req, res) => {
       const searchArea = getSearchAreaFromIsochrone(isochroneData);
 
 
-      const placesData = await places.getNearbyPlaces(
-        searchArea.centerLng,
-        searchArea.centerLat,
-        searchArea.radius,
-        type
+      // 中心1点だけを検索すると、レストラン等が現在地付近に偏り、±10分帯の候補が消える。
+      // 到達圏の外周を分散検索し、各方向の候補を均等に集めてから実所要時間を計算する。
+      const searchPoints = searchArea.searchPoints;
+      const placeSearchRadius = Math.min(
+        Math.max(Math.ceil(searchArea.radius * 0.25), 1500),
+        5000
       );
-      let normalizedPlaces = places.normalizePlacesResponse(placesData);
-      normalizedPlaces = normalizedPlaces.slice(0, 24);
+      const effectiveSearchPoints = searchPoints.length > 0
+        ? searchPoints
+        : [{ lng: searchArea.centerLng, lat: searchArea.centerLat }];
+      const placesDataList = await Promise.all(
+        effectiveSearchPoints.map((point) => places.getNearbyPlaces(
+          point.lng,
+          point.lat,
+          placeSearchRadius,
+          type,
+          { includeNextPage: false }
+        ))
+      );
+      const normalizedGroups = placesDataList.map(places.normalizePlacesResponse);
+      let normalizedPlaces = places.mergeNormalizedPlaceGroups(
+        normalizedGroups,
+        MAX_MATRIX_DESTINATIONS
+      );
       try {
+        if (normalizedPlaces.length === 0) {
+          throw new Error("検索条件に合う施設候補がありません");
+        }
         // 候補から座標だけの配列を作る
         const coordsList = normalizedPlaces.map((place) => ({ lng: place.lng, lat: place.lat }));
         // 現在地から各候補への所要時間(秒)と距離(m)を取る
@@ -146,7 +167,8 @@ function getSearchAreaFromIsochrone(isochroneData) {
   const lngMeters = (maxLng - minLng) * 111000 * Math.cos(centerLat * Math.PI / 180);
   const radius = Math.min(Math.ceil(Math.max(latMeters, lngMeters) / 2 * 1.2), 50000);
 
-  return { bbox, centerLng, centerLat, radius };
+  const searchPoints = places.getBoundarySearchPoints(coordinates, SEARCH_POINT_COUNT);
+  return { bbox, centerLng, centerLat, radius, searchPoints };
 }
 
 module.exports = router;

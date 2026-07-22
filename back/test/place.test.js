@@ -1,7 +1,7 @@
 // pickSuggestions(訪問済み除外+補充)などのテスト。外部API不要で `node --test` で実行できる
 const test = require("node:test");
 const assert = require("node:assert");
-const { applyPlaceSearchFilter, pickSuggestions, attachDurations, filterWithinMinutes } = require("../src/services/place");
+const { applyPlaceSearchFilter, mergeNormalizedPlaceGroups, getBoundarySearchPoints, pickSuggestions, attachDurations, filterWithinMinutes } = require("../src/services/place");
 
 // テスト用のダミー候補を n 件作る(idは p1, p2, ...)
 function makePlaces(n) {
@@ -83,15 +83,15 @@ test("全部超過なら空配列になる", () => {
   assert.deepStrictEqual(filterWithinMinutes(places, 30), []);
 });
 
-test("±10分の候補がゼロなら、上限内の近い候補へフォールバックする", () => {
+test("±10分より近い候補へフォールバックせず、時間条件を厳守する", () => {
   const places = attachDurations(makePlaces(3), [300, 600, 1199]);
   const result = filterWithinMinutes(places, 30);
-  assert.deepStrictEqual(result.map((p) => p.durationSec), [300, 600, 1199]);
+  assert.deepStrictEqual(result, []);
 });
 
-test("durationSec が無い place は素通りする(Matrix失敗時のフォールバック)", () => {
+test("durationSec が無い place は時間条件を保証できないため除外する", () => {
   const result = filterWithinMinutes(makePlaces(3), 30); // attachDurations を通していない
-  assert.strictEqual(result.length, 3);
+  assert.strictEqual(result.length, 0);
 });
 
 // --- applyPlaceSearchFilter(Google Nearby Searchの検索条件) ---
@@ -119,6 +119,29 @@ test("グルメ(restaurant)など対応typeはそのまま送る", () => {
   applyPlaceSearchFilter(url, "restaurant");
   assert.strictEqual(url.searchParams.get("type"), "restaurant");
   assert.strictEqual(url.searchParams.has("keyword"), false);
+});
+
+// --- 外周分散検索の候補作成 ---
+
+test("Isochrone外周から指定数の検索中心を等間隔で作る", () => {
+  const ring = [
+    [0, 0], [1, 0], [2, 0], [3, 0],
+    [4, 0], [5, 0], [6, 0], [7, 0], [0, 0],
+  ];
+  assert.deepStrictEqual(getBoundarySearchPoints(ring, 4), [
+    { lng: 0, lat: 0 },
+    { lng: 2, lat: 0 },
+    { lng: 4, lat: 0 },
+    { lng: 6, lat: 0 },
+  ]);
+});
+
+test("複数方向の候補を均等に結合し、place_id重複を除外する", () => {
+  const result = mergeNormalizedPlaceGroups([
+    [{ id: "a" }, { id: "b" }, { id: "c" }],
+    [{ id: "d" }, { id: "a" }, { id: "e" }],
+  ], 4);
+  assert.deepStrictEqual(result.map((place) => place.id), ["a", "d", "b", "c"]);
 });
 
 // --- normalizePlacesResponse(会社・事業所の除外) ---
@@ -162,4 +185,14 @@ test("typesが無い施設も除外される(何の施設か判断できない�
   ]};
   const result = normalizePlacesResponse(data);
   assert.deepStrictEqual(result.map((p) => p.name), ["いい神社"]);
+});
+
+test("すべて検索で返る大阪市・北区などの行政区画は除外する", () => {
+  const data = { results: [
+    makeGooglePlace("大阪市", ["locality", "political"]),
+    makeGooglePlace("北区", ["sublocality_level_1", "sublocality", "political"]),
+    makeGooglePlace("大阪城", ["tourist_attraction", "point_of_interest", "establishment"]),
+  ]};
+  const result = normalizePlacesResponse(data);
+  assert.deepStrictEqual(result.map((p) => p.name), ["大阪城"]);
 });

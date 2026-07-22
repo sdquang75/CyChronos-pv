@@ -18,6 +18,13 @@ const hidecategory = [
 // 全typeが汎用のものは目的地候補から外す
 const genericTypes = ["point_of_interest", "establishment", "premise", "geocode", "plus_code"];
 
+// 「すべて」検索で返りやすい市区町村・住所など、目的地ではない地理情報type。
+const administrativeTypes = new Set([
+  "country", "political", "locality", "sublocality", "neighborhood",
+  "postal_code", "postal_code_prefix", "postal_code_suffix", "postal_town",
+  "route", "street_address", "street_number", "intersection",
+]);
+
 const sabunminutes = 10; //±10分の範囲で候補を絞る
 
 /**
@@ -27,7 +34,7 @@ const sabunminutes = 10; //±10分の範囲で候補を絞る
  * @param {number} lng 経度
  * @param {number} lat 緯度
  */
-async function getNearbyPlaces(lng, lat, radius, type) {
+async function getNearbyPlaces(lng, lat, radius, type, { includeNextPage = true } = {}) {
 
   // .env に置いた Google Places のAPIキーを読み込む
   const token = process.env.GOOGLE_PLACES_API_KEY;
@@ -46,7 +53,7 @@ async function getNearbyPlaces(lng, lat, radius, type) {
   // Googleは1回につき最大20件・毎回同じ「有名さ順」しか返さない。
   // next_page_token で2ページ目(最大+20件)を取り、提案の母集団を増やす。
   // 3ページ目まで取ると更に+2秒かかるので、いまは2ページで止めている。
-  if (data.next_page_token) {
+  if (includeNextPage && data.next_page_token) {
     try {
       results.push(...(await fetchNextPage(data.next_page_token, token)));
     } catch (error) {
@@ -56,6 +63,12 @@ async function getNearbyPlaces(lng, lat, radius, type) {
   }
 
   return { ...data, results };
+}
+
+function isAdministrativeType(type) {
+  return administrativeTypes.has(type) ||
+    /^administrative_area_level_[1-7]$/.test(type) ||
+    /^sublocality_level_[1-5]$/.test(type);
 }
 
 // Nearby Search (Legacy) の type に使えないレスポンス専用typeを吸収する。
@@ -163,6 +176,11 @@ function normalizePlacesResponse(data) {
 
       return !hasHiddenCategory;
     })
+    // 「大阪市」「北区」等の行政区画・住所結果はサイクリング目的地ではないので外す
+    .filter((place) => {
+      const types = Array.isArray(place.types) ? place.types : [];
+      return !types.some(isAdministrativeType);
+    })
     // typesが汎用type(point_of_interest等)だけの施設は、カテゴリ未設定の会社・オフィスの
     // 可能性が高いので外す(typesが無いものも同様に外す)
     .filter((place) => {
@@ -177,6 +195,53 @@ function normalizePlacesResponse(data) {
       Number.isFinite(place.lat) &&
       Number.isFinite(place.lng)
     );
+}
+
+// 複数の外周検索結果を方向ごとに1件ずつ取り、place_id重複を除きながら均等に結合する。
+function mergeNormalizedPlaceGroups(placeGroups, maxCount) {
+  const groups = placeGroups.filter(Array.isArray);
+  const maxGroupLength = groups.reduce((max, group) => Math.max(max, group.length), 0);
+  const merged = [];
+  const seenIds = new Set();
+
+  for (let index = 0; index < maxGroupLength && merged.length < maxCount; index += 1) {
+    for (const group of groups) {
+      const place = group[index];
+      if (!place?.id || seenIds.has(place.id)) continue;
+      seenIds.add(place.id);
+      merged.push(place);
+      if (merged.length >= maxCount) break;
+    }
+  }
+
+  return merged;
+}
+
+// Isochrone外周を等間隔にサンプリングし、ジャンル検索の中心点として使う。
+function getBoundarySearchPoints(coordinates, count) {
+  if (!Array.isArray(coordinates) || !Number.isInteger(count) || count < 1) {
+    return [];
+  }
+
+  const validCoordinates = coordinates.filter((coordinate) =>
+    Array.isArray(coordinate) &&
+    Number.isFinite(coordinate[0]) &&
+    Number.isFinite(coordinate[1])
+  );
+  if (validCoordinates.length === 0) return [];
+
+  // GeoJSON Polygonは先頭と末尾が同一点なので、重複サンプルを避ける。
+  const first = validCoordinates[0];
+  const last = validCoordinates[validCoordinates.length - 1];
+  const openRing = validCoordinates.length > 1 && first[0] === last[0] && first[1] === last[1]
+    ? validCoordinates.slice(0, -1)
+    : validCoordinates;
+  const pointCount = Math.min(count, openRing.length);
+
+  return Array.from({ length: pointCount }, (_, index) => {
+    const coordinateIndex = Math.floor(index * openRing.length / pointCount);
+    return { lng: openRing[coordinateIndex][0], lat: openRing[coordinateIndex][1] };
+  });
 }
 
 // Fisher-Yatesシャッフル。Googleは毎回同じ順(有名さ順)で返すので、提案に変化をつける。
@@ -217,28 +282,17 @@ function attachDurations(places, durations, distances = []) {
   });
 }
 
-// 指定時間±10分を優先する。該当がゼロなら、近すぎる候補も含めてゼロ件を避ける。
-// Matrix取得に失敗して durationSec 自体が無い候補は従来どおり素通りさせる。
+// 指定時間±10分を厳守する。所要時間不明の候補も条件を保証できないため除外する。
 function filterWithinMinutes(places, minutes) {
   const minDurationSec = Math.max(0, minutes - sabunminutes) * 60;
   const maxDurationSec = (minutes + sabunminutes) * 60;
-  const reachable = places.filter((place) =>
-    place.durationSec === undefined ||
-    (Number.isFinite(place.durationSec) && place.durationSec <= maxDurationSec)
-  );
-  const hasPreferredCandidate = reachable.some((place) =>
-    Number.isFinite(place.durationSec) && place.durationSec >= minDurationSec
-  );
-
-  if (!hasPreferredCandidate) {
-    return reachable;
-  }
-
-  return reachable.filter((place) =>
-    place.durationSec === undefined || place.durationSec >= minDurationSec
+  return places.filter((place) =>
+    Number.isFinite(place.durationSec) &&
+    place.durationSec >= minDurationSec &&
+    place.durationSec <= maxDurationSec
   );
 }
 
 
 
-module.exports = { getNearbyPlaces, getPlacePhoto, applyPlaceSearchFilter, normalizePlace, normalizePlacesResponse, shufflePlaces, pickSuggestions, attachDurations, filterWithinMinutes };
+module.exports = { getNearbyPlaces, getPlacePhoto, applyPlaceSearchFilter, normalizePlace, normalizePlacesResponse, mergeNormalizedPlaceGroups, getBoundarySearchPoints, shufflePlaces, pickSuggestions, attachDurations, filterWithinMinutes };
