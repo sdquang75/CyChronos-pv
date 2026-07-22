@@ -8,8 +8,9 @@ const router = express.Router();
 
 // 1回の提案で返す最大件数。Matrixで時間判定した母集団からランダムに抜くことで毎回顔ぶれが変わる
 const MAX_SUGGESTIONS = 10;
-const MAX_MATRIX_DESTINATIONS = 24;
-const SEARCH_POINT_COUNT = 4;
+// 外周4点では検索円の間に漏れが出たため6点にする。1地点20件を全て時間判定する。
+const SEARCH_POINT_COUNT = 6;
+const MAX_CANDIDATES = SEARCH_POINT_COUNT * 20;
 
 router.get("/", async (req, res) => {
   // クエリは文字列で来るので parseFloat / parseInt で数値に変換
@@ -47,12 +48,14 @@ router.get("/", async (req, res) => {
     let candidates = cache.get(cacheKey);
 
     if (!candidates) {
-      const isochroneData = await mapbox.getIsochrone(lng, lat, minutes + 10); //±10分
+      // 上限側(minutes+10)の外周だと範囲外候補が増えるため、指定時間ちょうどの外周を検索中心にする。
+      // 各検索点の半径で±10分帯を覆い、最終判定はMatrixの実所要時間で行う。
+      const isochroneData = await mapbox.getIsochrone(lng, lat, minutes);
       const searchArea = getSearchAreaFromIsochrone(isochroneData);
 
 
       // 中心1点だけを検索すると、レストラン等が現在地付近に偏り、±10分帯の候補が消える。
-      // 到達圏の外周を分散検索し、各方向の候補を均等に集めてから実所要時間を計算する。
+      // 到達圏の外周を6方向に分散検索し、各方向の候補を均等に集めてから実所要時間を計算する。
       const searchPoints = searchArea.searchPoints;
       const placeSearchRadius = Math.min(
         Math.max(Math.ceil(searchArea.radius * 0.25), 1500),
@@ -73,21 +76,15 @@ router.get("/", async (req, res) => {
       const normalizedGroups = placesDataList.map(places.normalizePlacesResponse);
       let normalizedPlaces = places.mergeNormalizedPlaceGroups(
         normalizedGroups,
-        MAX_MATRIX_DESTINATIONS
+        MAX_CANDIDATES
       );
-      try {
-        if (normalizedPlaces.length === 0) {
-          throw new Error("検索条件に合う施設候補がありません");
-        }
+      if (normalizedPlaces.length > 0) {
         // 候補から座標だけの配列を作る
         const coordsList = normalizedPlaces.map((place) => ({ lng: place.lng, lat: place.lat }));
-        // 現在地から各候補への所要時間(秒)と距離(m)を取る
+        // 現在地から全候補への所要時間(秒)と距離(m)を24件ずつ分割して取る
         const { durations, distances } = await mapbox.getTravelTimes({ lng, lat }, coordsList);
         //  候補に所要時間と距離を貼り付けた結果で置き換える
         normalizedPlaces = places.attachDurations(normalizedPlaces, durations, distances);
-      }
-      catch (error) {
-        console.error(error);
       }
       candidates = {
         searchArea,

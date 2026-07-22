@@ -2,6 +2,8 @@
 // ルーター(routes/)からは「関数を呼ぶだけ」にする
 
 const BASE_URL = "https://api.mapbox.com";
+// Matrix APIは出発地を含めて最大25座標なので、1回に渡せる目的地は24件。
+const MAX_MATRIX_DESTINATIONS = 24;
 
 /**
  * 指定地点から自転車で minutes 分以内に行ける範囲(GeoJSONポリゴン)を取得する
@@ -65,7 +67,7 @@ async function getCyclingRoute(from, to) {
  * @param {{lng: number, lat: number}} from 出発地
  * @param {Array<{lng: number, lat: number}>} destinations 目的地の配列
  */
-async function getTravelTimes(from, destinations) {
+async function getTravelTimesBatch(from, destinations) {
   const token = process.env.MAPBOX_ACCESS_TOKEN;
 
   const coords = [from, ...destinations].map((point) => `${point.lng},${point.lat}`).join(";");
@@ -98,6 +100,29 @@ async function getTravelTimes(from, destinations) {
     throw new Error("Mapbox API error: durations の件数が目的地の数と一致しません");
   }
   return { durations: destinationDurations, distances: destinationDistances };
+}
+
+// 候補が24件を超えても切り捨てず、Matrixの上限ごとに分割して全件の時間を調べる。
+async function getTravelTimes(from, destinations) {
+  if (!Array.isArray(destinations)) {
+    throw new TypeError("destinations は配列で指定してください");
+  }
+  if (destinations.length === 0) {
+    return { durations: [], distances: [] };
+  }
+
+  const batches = [];
+  for (let index = 0; index < destinations.length; index += MAX_MATRIX_DESTINATIONS) {
+    batches.push(destinations.slice(index, index + MAX_MATRIX_DESTINATIONS));
+  }
+
+  const results = await Promise.all(
+    batches.map((batch) => getTravelTimesBatch(from, batch))
+  );
+  return {
+    durations: results.flatMap((result) => result.durations),
+    distances: results.flatMap((result) => result.distances),
+  };
 }
 
 module.exports = { getIsochrone, getCyclingRoute, getTravelTimes };
