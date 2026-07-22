@@ -149,10 +149,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           final places = extraMap['places'] as List<dynamic>? ?? [];
 
           final minutes = extraMap['minutes'] as int?;
+          final type = extraMap['type']?.toString() ?? 'cafe';
 
           return NoTransitionPage(
             key: state.pageKey,
-            child: DestinationListScreen(places: places, minutes: minutes),
+            child: DestinationListScreen(places: places, minutes: minutes, type: type),
           );
         },
       ),

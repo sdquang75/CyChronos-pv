@@ -93,7 +93,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         final minutes = int.tryParse(_minutesController.text) ?? 0;
         context.push(
           '/destination',
-          extra: {'places': places, 'minutes': hours * 60 + minutes},
+          extra: {
+            'places':places, 
+            'minutes': hours * 60 + minutes,
+            'type': _selectedPlacesType(),
+          },
         );
         message = 'おすすめスポットを取得しました。';
       case RecommendationLocationServiceDisabled():
