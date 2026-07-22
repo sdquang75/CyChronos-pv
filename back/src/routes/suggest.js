@@ -6,8 +6,11 @@ const cache = require("../services/cache");
 
 const router = express.Router();
 
-// 1回の提案で返す最大件数。母集団(最大40件)からランダムに抜くことで毎回顔ぶれが変わる
+// 1回の提案で返す最大件数。Matrixで時間判定した母集団からランダムに抜くことで毎回顔ぶれが変わる
 const MAX_SUGGESTIONS = 10;
+// 外周4点では検索円の間に漏れが出たため6点にする。1地点20件を全て時間判定する。
+const SEARCH_POINT_COUNT = 6;
+const MAX_CANDIDATES = SEARCH_POINT_COUNT * 20;
 
 router.get("/", async (req, res) => {
   // クエリは文字列で来るので parseFloat / parseInt で数値に変換
@@ -45,28 +48,43 @@ router.get("/", async (req, res) => {
     let candidates = cache.get(cacheKey);
 
     if (!candidates) {
+      // 上限側(minutes+10)の外周だと範囲外候補が増えるため、指定時間ちょうどの外周を検索中心にする。
+      // 各検索点の半径で±10分帯を覆い、最終判定はMatrixの実所要時間で行う。
       const isochroneData = await mapbox.getIsochrone(lng, lat, minutes);
       const searchArea = getSearchAreaFromIsochrone(isochroneData);
 
 
-      const placesData = await places.getNearbyPlaces(
-        searchArea.centerLng,
-        searchArea.centerLat,
-        searchArea.radius,
-        type
+      // 中心1点だけを検索すると、レストラン等が現在地付近に偏り、±10分帯の候補が消える。
+      // 到達圏の外周を6方向に分散検索し、各方向の候補を均等に集めてから実所要時間を計算する。
+      const searchPoints = searchArea.searchPoints;
+      const placeSearchRadius = Math.min(
+        Math.max(Math.ceil(searchArea.radius * 0.25), 1500),
+        5000
       );
-      let normalizedPlaces = places.normalizePlacesResponse(placesData);
-      normalizedPlaces = normalizedPlaces.slice(0, 24);
-      try {
+      const effectiveSearchPoints = searchPoints.length > 0
+        ? searchPoints
+        : [{ lng: searchArea.centerLng, lat: searchArea.centerLat }];
+      const placesDataList = await Promise.all(
+        effectiveSearchPoints.map((point) => places.getNearbyPlaces(
+          point.lng,
+          point.lat,
+          placeSearchRadius,
+          type,
+          { includeNextPage: false }
+        ))
+      );
+      const normalizedGroups = placesDataList.map(places.normalizePlacesResponse);
+      let normalizedPlaces = places.mergeNormalizedPlaceGroups(
+        normalizedGroups,
+        MAX_CANDIDATES
+      );
+      if (normalizedPlaces.length > 0) {
         // 候補から座標だけの配列を作る
         const coordsList = normalizedPlaces.map((place) => ({ lng: place.lng, lat: place.lat }));
-        // 現在地から各候補への所要時間(秒)と距離(m)を取る
+        // 現在地から全候補への所要時間(秒)と距離(m)を24件ずつ分割して取る
         const { durations, distances } = await mapbox.getTravelTimes({ lng, lat }, coordsList);
         //  候補に所要時間と距離を貼り付けた結果で置き換える
         normalizedPlaces = places.attachDurations(normalizedPlaces, durations, distances);
-      }
-      catch (error) {
-        console.error(error);
       }
       candidates = {
         searchArea,
@@ -80,7 +98,7 @@ router.get("/", async (req, res) => {
     // user_id があれば訪問済みの place_id を取得(なければ除外なし=空配列)
     const visitedPlaceIds = userId === null ? [] : await visits.getVisitedPlaceIds(userId);
 
-    const filterdPlaces = places.filterWithinMinutes(candidates.normalizedPlaces, minutes);
+    const filterdPlaces = places.filterWithinMinutes(candidates.normalizedPlaces, minutes); //±10分
 
     // 訪問済みを除外し、シャッフルして先頭N件だけ返す(足りなければ訪問済みで補充)
 
@@ -146,7 +164,8 @@ function getSearchAreaFromIsochrone(isochroneData) {
   const lngMeters = (maxLng - minLng) * 111000 * Math.cos(centerLat * Math.PI / 180);
   const radius = Math.min(Math.ceil(Math.max(latMeters, lngMeters) / 2 * 1.2), 50000);
 
-  return { bbox, centerLng, centerLat, radius };
+  const searchPoints = places.getBoundarySearchPoints(coordinates, SEARCH_POINT_COUNT);
+  return { bbox, centerLng, centerLat, radius, searchPoints };
 }
 
 module.exports = router;
