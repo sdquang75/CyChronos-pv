@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-// LatLngだけ取り込む(このパッケージのPathクラスがFlutter標準のPathと名前衝突するため)
-import 'package:latlong2/latlong.dart' show LatLng;
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../core/network/place_photo.dart';
 import '../auth/domain/auth_state.dart';
@@ -18,7 +16,7 @@ class RouteConfirmScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> destination; // 詳細画面から渡される目的地1件分(/api/suggest のplaces 1要素)
   final LocationService? locationService; // テスト用に差し替え可(省略時は本物)
   final RouteRepository? repository; // テスト用に差し替え可(省略時は本物)
-  final bool useMapTiles; // テスト時はfalse(タイル取得の通信ができないため簡易描画に切り替える)
+  final bool useMapTiles; // テスト時はfalse(Google Maps SDKが動かないため簡易描画に切り替える)
 
   const RouteConfirmScreen({
     super.key,
@@ -316,8 +314,8 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
 
     final route = _route;
     if (route != null && route.points.length >= 2) {
-      // 本物の地図(OpenStreetMap)の上にルートを重ねる。
-      // テスト時はタイル取得の通信ができないので簡易描画(線だけ)に切り替える
+      // 本物の地図(Google Maps)の上にルートを重ねる。
+      // テスト時は地図SDKが動かないので簡易描画(線だけ)に切り替える
       if (widget.useMapTiles) {
         return _buildMap(route);
       }
@@ -344,70 +342,66 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     );
   }
 
-  /// 本物の地図(OpenStreetMapタイル)にルートの線と出発・目的地のマーカーを重ねる
+  /// 本物の地図(Google Maps)にルートの線と出発・目的地のマーカーを重ねる
   Widget _buildMap(CyclingRoute route) {
-    // ルートの [経度, 緯度] を地図ライブラリの LatLng(緯度, 経度) に変換(順番が逆なので注意)
+    // ルートの [経度, 緯度] を地図SDKの LatLng(緯度, 経度) に変換(順番が逆なので注意)
     final routePoints =
         route.points.map((point) => LatLng(point[1], point[0])).toList();
 
-    return FlutterMap(
-      options: MapOptions(
-        // ルート全体が画面に収まるようにカメラを合わせる(下は情報バーのぶん余白を多めに)
-        initialCameraFit: CameraFit.bounds(
-          bounds: LatLngBounds.fromPoints(routePoints),
-          padding: const EdgeInsets.fromLTRB(48, 100, 48, 260),
+    // ルート全体が収まる南西・北東の角を求める(カメラ合わせ用)
+    var minLat = routePoints.first.latitude;
+    var maxLat = minLat;
+    var minLng = routePoints.first.longitude;
+    var maxLng = minLng;
+    for (final point in routePoints) {
+      if (point.latitude < minLat) minLat = point.latitude;
+      if (point.latitude > maxLat) maxLat = point.latitude;
+      if (point.longitude < minLng) minLng = point.longitude;
+      if (point.longitude > maxLng) maxLng = point.longitude;
+    }
+    final bounds = LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
+
+    return GoogleMap(
+      initialCameraPosition:
+          CameraPosition(target: routePoints.first, zoom: 13),
+      // 下の情報バー・上のチップに隠れないよう、地図の見える中心を上下にずらす
+      padding: const EdgeInsets.only(top: 100, bottom: 260),
+      onMapCreated: (controller) async {
+        // 地図のレイアウト確定前にbounds指定すると失敗することがあるので少し待つ
+        await Future.delayed(const Duration(milliseconds: 100));
+        // 待っている間に画面が閉じられていたら、破棄済みの地図を触らない
+        if (!mounted) return;
+        // ルート全体が画面に収まるようにカメラを合わせる
+        await controller.moveCamera(CameraUpdate.newLatLngBounds(bounds, 48));
+      },
+      // ルートの線
+      polylines: {
+        Polyline(
+          polylineId: const PolylineId('route'),
+          points: routePoints,
+          width: 5,
+          color: const Color(0xFF19005C),
         ),
-      ),
-      children: [
-        // 背景の地図タイル(OpenStreetMap。APIキー不要)
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.cychronos.app',
+      },
+      // 出発地(青)と目的地(赤=デフォルト)のマーカー
+      markers: {
+        Marker(
+          markerId: const MarkerId('start'),
+          position: routePoints.first,
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueAzure),
         ),
-        // ルートの線
-        PolylineLayer(
-          polylines: [
-            Polyline(
-              points: routePoints,
-              strokeWidth: 5,
-              color: const Color(0xFF19005C),
-            ),
-          ],
+        Marker(
+          markerId: const MarkerId('destination'),
+          position: routePoints.last,
         ),
-        // 出発地(青丸)と目的地(赤ピン)のマーカー
-        MarkerLayer(
-          markers: [
-            Marker(
-              point: routePoints.first,
-              width: 18,
-              height: 18,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2A65D9),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 3),
-                ),
-              ),
-            ),
-            Marker(
-              point: routePoints.last,
-              width: 40,
-              height: 40,
-              // ピンの先端が目的地を指すように、絵を上へずらして表示する
-              alignment: Alignment.topCenter,
-              child: const Icon(
-                Icons.location_pin,
-                size: 40,
-                color: Color(0xFFD93A2A),
-              ),
-            ),
-          ],
-        ),
-        // OpenStreetMapの利用条件で表示が必要なクレジット
-        const SimpleAttributionWidget(
-          source: Text('OpenStreetMap contributors'),
-        ),
-      ],
+      },
+      zoomControlsEnabled: false,
+      myLocationButtonEnabled: false,
+      mapToolbarEnabled: false,
     );
   }
 

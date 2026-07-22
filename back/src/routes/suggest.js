@@ -45,7 +45,7 @@ router.get("/", async (req, res) => {
     let candidates = cache.get(cacheKey);
 
     if (!candidates) {
-      const isochroneData = await mapbox.getIsochrone(lng, lat, minutes);
+      const isochroneData = await mapbox.getIsochrone(lng, lat, minutes + 10); //±10分
       const searchArea = getSearchAreaFromIsochrone(isochroneData);
 
 
@@ -80,7 +80,7 @@ router.get("/", async (req, res) => {
     // user_id があれば訪問済みの place_id を取得(なければ除外なし=空配列)
     const visitedPlaceIds = userId === null ? [] : await visits.getVisitedPlaceIds(userId);
 
-    const filterdPlaces = places.filterWithinMinutes(candidates.normalizedPlaces, minutes);
+    const filterdPlaces = places.filterWithinMinutes(candidates.normalizedPlaces, minutes); //±10分
 
     // 訪問済みを除外し、シャッフルして先頭N件だけ返す(足りなければ訪問済みで補充)
 

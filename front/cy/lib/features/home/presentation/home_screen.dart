@@ -31,13 +31,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final selected = _selectedGenres.first;
 
     const typeMap = {
-      // 「すべて」はジャンルを絞らず幅広く検索する
-      // (Google Placesのほぼ全スポットが持つtype)
-      'All': 'point_of_interest',
+      // Google Placesの検索typeではない値はバックエンド側で専用条件へ変換する
+      'All': 'all',
       'Cafe': 'cafe',
       'Nature': 'park',
       'Food': 'restaurant',
-      'Temple': 'place_of_worship',
+      'Temple': 'temple',
       'Art': 'museum',
       'Viewpoint': 'tourist_attraction',
       'Shop': 'store',

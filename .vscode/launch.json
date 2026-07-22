@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "CyChronos Chrome (port 5000)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/front/cy",
+      "program": "${workspaceFolder}/front/cy/lib/main.dart",
+      "deviceId": "chrome",
+      "toolArgs": [
+        "--web-port=5000",
+        "--dart-define=API_BASE_URL=http://localhost:3000"
+      ]
+    }
+  ]
+}

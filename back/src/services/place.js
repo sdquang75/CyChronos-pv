@@ -18,6 +18,7 @@ const hidecategory = [
 // 全typeが汎用のものは目的地候補から外す
 const genericTypes = ["point_of_interest", "establishment", "premise", "geocode", "plus_code"];
 
+const sabunminutes = 10; //±10分の範囲で候補を絞る
 
 /**
  * 指定範囲からいけそうなスポットを取得する
@@ -35,9 +36,7 @@ async function getNearbyPlaces(lng, lat, radius, type) {
   const url = new URL(`${BASE_URL}/maps/api/place/nearbysearch/json`);
   url.searchParams.set("location", `${lat},${lng}`); // 検索の中心座標
   url.searchParams.set("radius", radius);            // 検索半径(m)
-  if (type) {
-    url.searchParams.set("type", type);              // 施設の種類
-  }
+  applyPlaceSearchFilter(url, type);
   url.searchParams.set("language", "ja");            // 名前・住所を日本語で返させる(未指定だとローマ字になりがち)
   url.searchParams.set("key", token);                // APIキー
 
@@ -57,6 +56,23 @@ async function getNearbyPlaces(lng, lat, radius, type) {
   }
 
   return { ...data, results };
+}
+
+// Nearby Search (Legacy) の type に使えないレスポンス専用typeを吸収する。
+// 既存フロントとの互換性を保つため point_of_interest / place_of_worship も受け付ける。
+function applyPlaceSearchFilter(url, type) {
+  const normalizedType = typeof type === "string" ? type.trim() : "";
+
+  if (!normalizedType || normalizedType === "all" || normalizedType === "point_of_interest") {
+    return;
+  }
+
+  if (normalizedType === "temple" || normalizedType === "place_of_worship") {
+    url.searchParams.set("keyword", "寺院");
+    return;
+  }
+
+  url.searchParams.set("type", normalizedType);
 }
 
 /**
@@ -201,17 +217,28 @@ function attachDurations(places, durations, distances = []) {
   });
 }
 
-// 指定時間内に収まるplaceのみを返す。
-// durationSec フィールド自体が無い place は素通りさせる(Matrix失敗時に所要時間なしで続行するため)
-function filterWithinMinutes(places, minutes){
-  return places.filter((place) => {
-    if (place.durationSec === null || place.durationSec > minutes * 60) {
-      return false;
-    }
-    return true;
-  });
+// 指定時間±10分を優先する。該当がゼロなら、近すぎる候補も含めてゼロ件を避ける。
+// Matrix取得に失敗して durationSec 自体が無い候補は従来どおり素通りさせる。
+function filterWithinMinutes(places, minutes) {
+  const minDurationSec = Math.max(0, minutes - sabunminutes) * 60;
+  const maxDurationSec = (minutes + sabunminutes) * 60;
+  const reachable = places.filter((place) =>
+    place.durationSec === undefined ||
+    (Number.isFinite(place.durationSec) && place.durationSec <= maxDurationSec)
+  );
+  const hasPreferredCandidate = reachable.some((place) =>
+    Number.isFinite(place.durationSec) && place.durationSec >= minDurationSec
+  );
+
+  if (!hasPreferredCandidate) {
+    return reachable;
+  }
+
+  return reachable.filter((place) =>
+    place.durationSec === undefined || place.durationSec >= minDurationSec
+  );
 }
 
 
 
-module.exports = { getNearbyPlaces, getPlacePhoto, normalizePlace, normalizePlacesResponse, shufflePlaces, pickSuggestions, attachDurations, filterWithinMinutes };
+module.exports = { getNearbyPlaces, getPlacePhoto, applyPlaceSearchFilter, normalizePlace, normalizePlacesResponse, shufflePlaces, pickSuggestions, attachDurations, filterWithinMinutes };

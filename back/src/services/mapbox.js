@@ -49,6 +49,7 @@ async function getCyclingRoute(from, to) {
 
   const url = new URL(`${BASE_URL}/directions/v5/mapbox/cycling/${from.lng},${from.lat};${to.lng},${to.lat}`);
   url.searchParams.set("geometries", "geojson");
+  url.searchParams.set("overview", "full");
   url.searchParams.set("access_token", token);
 
   const response = await fetch(url);

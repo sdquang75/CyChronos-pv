@@ -1,7 +1,7 @@
 // pickSuggestions(訪問済み除外+補充)などのテスト。外部API不要で `node --test` で実行できる
 const test = require("node:test");
 const assert = require("node:assert");
-const { pickSuggestions, attachDurations, filterWithinMinutes } = require("../src/services/place");
+const { applyPlaceSearchFilter, pickSuggestions, attachDurations, filterWithinMinutes } = require("../src/services/place");
 
 // テスト用のダミー候補を n 件作る(idは p1, p2, ...)
 function makePlaces(n) {
@@ -72,10 +72,10 @@ test("attachDurations は元の配列を変更しない", () => {
 
 // --- filterWithinMinutes(時間超過の除外) ---
 
-test("指定時間を超える場所と到達不能(null)が落ちる", () => {
-  const places = attachDurations(makePlaces(4), [600, 1800, 1801, null]);
-  const result = filterWithinMinutes(places, 30); // 30分 = 1800秒まで
-  assert.deepStrictEqual(result.map((p) => p.durationSec), [600, 1800]); // 境界ちょうどは残る
+test("指定時間の±10分を外れる場所と到達不能(null)が落ちる", () => {
+  const places = attachDurations(makePlaces(6), [1199, 1200, 1800, 2400, 2401, null]);
+  const result = filterWithinMinutes(places, 30); // 30分指定では20〜40分を残す
+  assert.deepStrictEqual(result.map((p) => p.durationSec), [1200, 1800, 2400]); // 境界ちょうどは残る
 });
 
 test("全部超過なら空配列になる", () => {
@@ -83,9 +83,42 @@ test("全部超過なら空配列になる", () => {
   assert.deepStrictEqual(filterWithinMinutes(places, 30), []);
 });
 
+test("±10分の候補がゼロなら、上限内の近い候補へフォールバックする", () => {
+  const places = attachDurations(makePlaces(3), [300, 600, 1199]);
+  const result = filterWithinMinutes(places, 30);
+  assert.deepStrictEqual(result.map((p) => p.durationSec), [300, 600, 1199]);
+});
+
 test("durationSec が無い place は素通りする(Matrix失敗時のフォールバック)", () => {
   const result = filterWithinMinutes(makePlaces(3), 30); // attachDurations を通していない
   assert.strictEqual(result.length, 3);
+});
+
+// --- applyPlaceSearchFilter(Google Nearby Searchの検索条件) ---
+
+test("すべて(allと旧point_of_interest)は非対応typeを送らず、ジャンルを絞らない", () => {
+  for (const type of ["all", "point_of_interest"]) {
+    const url = new URL("https://example.test/search");
+    applyPlaceSearchFilter(url, type);
+    assert.strictEqual(url.searchParams.has("type"), false);
+    assert.strictEqual(url.searchParams.has("keyword"), false);
+  }
+});
+
+test("寺院(templeと旧place_of_worship)はtypeではなく日本語キーワードで検索する", () => {
+  for (const type of ["temple", "place_of_worship"]) {
+    const url = new URL("https://example.test/search");
+    applyPlaceSearchFilter(url, type);
+    assert.strictEqual(url.searchParams.has("type"), false);
+    assert.strictEqual(url.searchParams.get("keyword"), "寺院");
+  }
+});
+
+test("グルメ(restaurant)など対応typeはそのまま送る", () => {
+  const url = new URL("https://example.test/search");
+  applyPlaceSearchFilter(url, "restaurant");
+  assert.strictEqual(url.searchParams.get("type"), "restaurant");
+  assert.strictEqual(url.searchParams.has("keyword"), false);
 });
 
 // --- normalizePlacesResponse(会社・事業所の除外) ---
