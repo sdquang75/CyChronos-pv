@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class SocialLoginButton extends StatefulWidget {
   final Widget icon;
@@ -37,6 +38,7 @@ class _SocialLoginButtonState extends State<SocialLoginButton> {
               ? null
               : (_) {
                   setState(() => _pressed = false);
+                  HapticFeedback.lightImpact();
                   widget.onPressed?.call();
                 },
           onTapCancel: widget.isLoading

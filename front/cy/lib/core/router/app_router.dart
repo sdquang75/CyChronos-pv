@@ -22,6 +22,27 @@ class _AuthListenable extends ChangeNotifier {
   }
 }
 
+// 下部タブ(HOME/HISTORY/SETTINGS)はgo()で「置き換え」遷移するため、
+// 前後関係のないスライドではなく短いフェードで切り替える
+Page<void> _fadeTabPage(GoRouterState state, Widget child) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 180),
+    reverseTransitionDuration: const Duration(milliseconds: 180),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(opacity: animation, child: child);
+    },
+  );
+}
+
+// push()で積む詳細系の画面はMaterialPageの標準遷移に任せる。
+// テーマ側でpageTransitionsThemeを上書きしていないため、iOS/macOSでは
+// 自動的にCupertino風のスライド遷移+エッジスワイプで戻る操作が有効になる
+Page<void> _pushPage(GoRouterState state, Widget child) {
+  return MaterialPage<void>(key: state.pageKey, child: child);
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
   final listenable = _AuthListenable(ref);
 
@@ -46,54 +67,38 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/',
         pageBuilder:
-            (context, state) => NoTransitionPage(
-              key: state.pageKey,
-              child: const SplashScreen(),
-            ),
+            (context, state) => _fadeTabPage(state, const SplashScreen()),
       ),
       GoRoute(
         path: '/login',
         pageBuilder:
-            (context, state) => NoTransitionPage(
-              key: state.pageKey,
-              child: const LoginScreen(),
-            ),
+            (context, state) => _fadeTabPage(state, const LoginScreen()),
       ),
       GoRoute(
         path: '/home',
         pageBuilder:
-            (context, state) =>
-                NoTransitionPage(key: state.pageKey, child: const HomeScreen()),
+            (context, state) => _fadeTabPage(state, const HomeScreen()),
       ),
 
       // 走行履歴画面
       GoRoute(
         path: '/history',
         pageBuilder:
-            (context, state) => NoTransitionPage(
-              key: state.pageKey,
-              child: const HistoryScreen(),
-            ),
+            (context, state) => _fadeTabPage(state, const HistoryScreen()),
       ),
 
       // 設定画面
       GoRoute(
         path: '/settings',
         pageBuilder:
-            (context, state) => NoTransitionPage(
-              key: state.pageKey,
-              child: const SettingsScreen(),
-            ),
+            (context, state) => _fadeTabPage(state, const SettingsScreen()),
       ),
 
       // お問い合わせ画面
       GoRoute(
         path: '/contact',
         pageBuilder:
-            (context, state) => NoTransitionPage(
-              key: state.pageKey,
-              child: const ContactScreen(),
-            ),
+            (context, state) => _pushPage(state, const ContactScreen()),
       ),
 
       GoRoute(
@@ -119,11 +124,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             destination['photoReference']?.toString(),
           );
 
-          return NoTransitionPage(
-            key: state.pageKey,
+          return _pushPage(
+            state,
             // 受け取ったデータを詳細画面へ渡す
             // 欠けている項目は詳細画面側で「--」等を表示
-            child: DetilScreen(
+            DetilScreen(
               name: destination['name']?.toString() ?? '',
               address: destination['address']?.toString() ?? '',
               genre: destination['genre']?.toString() ?? '',
@@ -151,9 +156,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           final minutes = extraMap['minutes'] as int?;
           final type = extraMap['type']?.toString() ?? 'cafe';
 
-          return NoTransitionPage(
-            key: state.pageKey,
-            child: DestinationListScreen(places: places, minutes: minutes, type: type),
+          return _pushPage(
+            state,
+            DestinationListScreen(places: places, minutes: minutes, type: type),
           );
         },
       ),
@@ -166,10 +171,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   ? Map<String, dynamic>.from(state.extra as Map)
                   : <String, dynamic>{};
 
-          return NoTransitionPage(
-            key: state.pageKey,
+          return _pushPage(
+            state,
             // ルート確認画面に目的地データを渡す(現在地とルートは画面側でAPIから取得する)
-            child: RouteConfirmScreen(destination: destination),
+            RouteConfirmScreen(destination: destination),
           );
         },
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/widgets/app_screen_frame.dart';
@@ -69,6 +70,8 @@ class _ContactScreenState extends State<ContactScreen> {
     if (!isValid || _isSending) {
       return;
     }
+
+    HapticFeedback.mediumImpact();
 
     setState(() {
       _isSending = true;

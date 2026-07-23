@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -536,6 +537,7 @@ class _DestinationCard extends StatelessWidget {
 
   // 選択した目的地を詳細画面へ渡す
   void _openDetail(BuildContext context) {
+    HapticFeedback.selectionClick();
     context.push(
       '/detil',
       extra: destination,

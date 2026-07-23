@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -112,6 +113,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   /// ログイン済みならトリップ開始も記録する(訪問済み除外が効くようになる)
   Future<void> _startNavigation() async {
     if (_busy) return; // 二度押しガード
+    HapticFeedback.mediumImpact();
     setState(() => _busy = true);
 
     // ログイン済みユーザーの user_id を取る(取れなければ記録なしで案内だけする)
@@ -148,6 +150,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   /// 案内終了: バーを戻す。トリップ記録中ならバックに終了も記録する
   Future<void> _endNavigation() async {
     if (_busy) return; // 二度押しガード
+    HapticFeedback.mediumImpact();
     setState(() => _busy = true);
 
     final authState = ref.read(authProvider);

@@ -1,5 +1,6 @@
 //settings_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -70,6 +71,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (_isSavingSpeed) {
       return;
     }
+
+    HapticFeedback.lightImpact();
 
     setState(() {
       _isSavingSpeed = true;
@@ -201,6 +204,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 Expanded(
                   child: FilledButton(
                     onPressed: () {
+                      HapticFeedback.mediumImpact();
                       Navigator.of(dialogContext).pop(true);
                     },
                     style: FilledButton.styleFrom(
@@ -797,7 +801,13 @@ class _SettingsMenuRow extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap:
+            onTap == null
+                ? null
+                : () {
+                  HapticFeedback.selectionClick();
+                  onTap!();
+                },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
           child: Row(

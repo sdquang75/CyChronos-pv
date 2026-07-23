@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/widgets/app_bottom_navigation.dart';
@@ -191,7 +192,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
     return RefreshIndicator(
       color: const Color(0xFF19005C),
-      onRefresh: _loadTrips,
+      onRefresh: () {
+        HapticFeedback.lightImpact();
+        return _loadTrips();
+      },
       child: ListView.builder(
         padding: const EdgeInsets.only(top: 4, bottom: 16),
         physics: const AlwaysScrollableScrollPhysics(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/widgets/app_bottom_navigation.dart';
@@ -508,6 +509,7 @@ class DetilScreen extends StatelessWidget {
                   children: [
                     ElevatedButton(
                       onPressed: () {
+                        HapticFeedback.lightImpact();
                         // 目的地データを丸ごと渡してルート確認画面へ(pushなので「戻る」でここに帰れる)
                         context.push('/route_confirm', extra: destination);
                       },

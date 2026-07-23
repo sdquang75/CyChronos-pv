@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
@@ -31,6 +32,7 @@ class AppBottomNavigation extends StatelessWidget {
     final String location =
         GoRouterState.of(context).matchedLocation;
     if (location == path) return;
+    HapticFeedback.selectionClick();
     context.go(path);
   }
 
