@@ -149,17 +149,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Positioned(
               left: 0,
               right: 0,
-              bottom: AppBottomNavigation.barHeight + 16,
+              bottom: AppBottomNavigation.barHeightFor(context) + 16,
               child: _buildFloatingCTA(),
             ),
 
             // 共通の画面下部メニューバー(HOME・HISTORY・SETTINGS)
-            const Positioned(
+            Positioned(
               left: 0,
               right: 0,
               bottom: 0,
-              height: AppBottomNavigation.barHeight,
-              child: AppBottomNavigation(current: AppTab.home),
+              height: AppBottomNavigation.barHeightFor(context),
+              child: const AppBottomNavigation(current: AppTab.home),
             ),
           ],
         ),

@@ -11,8 +11,21 @@ enum AppTab { home, history, settings }
 /// 全画面共通の画面下部メニューバー。
 /// おすすめスポット一覧画面の形式(左からHOME・HISTORY・SETTINGS)に統一する。
 class AppBottomNavigation extends StatelessWidget {
-  /// メニューバーの高さ。各画面で本文の下余白(Positionedのbottom等)に使う
-  static const double barHeight = 88.92;
+  /// アイコン+ラベル部分の高さ(下端の余白は含まない)
+  static const double _contentHeight = 68.92;
+
+  /// 端末に下部セーフエリアが無い機種向けの最低限の余白
+  /// (3ボタンナビ以前を想定した元々のデザイン値)
+  static const double _minBottomInset = 20;
+
+  /// メニューバーの実際の高さ。ジェスチャーナビゲーションバーやホームインジケーターの
+  /// 実測の余白(MediaQuery.padding.bottom)に応じて可変にし、被らないようにする。
+  /// 各画面で本文の下余白(Positionedのbottom等)にはこれを使う
+  static double barHeightFor(BuildContext context) {
+    final double bottomInset = MediaQuery.of(context).padding.bottom;
+    return _contentHeight +
+        (bottomInset > _minBottomInset ? bottomInset : _minBottomInset);
+  }
 
   /// いま表示している画面のタブ(ハイライト表示用)。
   /// おすすめ一覧や詳細のようにタブ本体ではない画面でもHOMEを渡してよい
@@ -58,39 +71,44 @@ class AppBottomNavigation extends StatelessWidget {
               ),
             ),
           ),
-          padding: const EdgeInsets.only(
-            top: 12,
-            bottom: 20,
-          ),
-          child: Row(
-            mainAxisAlignment:
-                MainAxisAlignment.spaceAround,
-            children: [
-              _BottomNavItem(
-                label: 'HOME',
-                svgData: _kHomeTabSvg,
-                isSelected: current == AppTab.home,
-                onTap: () {
-                  _goTo(context, '/home');
-                },
-              ),
-              _BottomNavItem(
-                label: 'HISTORY',
-                svgData: _kHistoryTabSvg,
-                isSelected: current == AppTab.history,
-                onTap: () {
-                  _goTo(context, '/history');
-                },
-              ),
-              _BottomNavItem(
-                label: 'SETTINGS',
-                icon: Icons.settings_outlined,
-                isSelected: current == AppTab.settings,
-                onTap: () {
-                  _goTo(context, '/settings');
-                },
-              ),
-            ],
+          padding: const EdgeInsets.only(top: 12),
+          // 端末の実際の下部インセット(ジェスチャーナビゲーションバー/ホーム
+          // インジケーター)がminimumより大きい場合はそちらを優先して被りを防ぐ
+          child: SafeArea(
+            top: false,
+            left: false,
+            right: false,
+            minimum: const EdgeInsets.only(bottom: _minBottomInset),
+            child: Row(
+              mainAxisAlignment:
+                  MainAxisAlignment.spaceAround,
+              children: [
+                _BottomNavItem(
+                  label: 'HOME',
+                  svgData: _kHomeTabSvg,
+                  isSelected: current == AppTab.home,
+                  onTap: () {
+                    _goTo(context, '/home');
+                  },
+                ),
+                _BottomNavItem(
+                  label: 'HISTORY',
+                  svgData: _kHistoryTabSvg,
+                  isSelected: current == AppTab.history,
+                  onTap: () {
+                    _goTo(context, '/history');
+                  },
+                ),
+                _BottomNavItem(
+                  label: 'SETTINGS',
+                  icon: Icons.settings_outlined,
+                  isSelected: current == AppTab.settings,
+                  onTap: () {
+                    _goTo(context, '/settings');
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -10,6 +10,13 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // 全画面が縦向き固定でデザインされているため、横向きに回転すると
+  // レイアウトが崩れる。回転自体をロックしておく
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
   // アプリの背景は基本的に明るい色調(#F8F9FE)なので、ステータスバー/
   // ナビゲーションバーもそれに合わせて暗いアイコンにし、エッジトゥエッジ表示にする。
   // OSのバー分の余白は各画面のSafeAreaで確保する

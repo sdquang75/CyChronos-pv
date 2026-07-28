@@ -103,9 +103,9 @@ class DetilScreen extends StatelessWidget {
           ),
         ),
         // 他画面と共通の画面下部メニューバー(HOME・HISTORY・SETTINGS)
-        bottomNavigationBar: const SizedBox(
-          height: AppBottomNavigation.barHeight,
-          child: AppBottomNavigation(current: AppTab.home),
+        bottomNavigationBar: SizedBox(
+          height: AppBottomNavigation.barHeightFor(context),
+          child: const AppBottomNavigation(current: AppTab.home),
         ),
         body: SingleChildScrollView(
           // 縦に長い画面なので、小さい端末でもスクロールして全部見られるようにする

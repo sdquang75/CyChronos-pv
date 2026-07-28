@@ -68,7 +68,7 @@ class _DestinationListScreenState
         body: Stack(
           children: [
             Positioned.fill(
-              bottom: AppBottomNavigation.barHeight,
+              bottom: AppBottomNavigation.barHeightFor(context),
               child: SafeArea(
                 bottom: false,
                 child: Column(
@@ -140,12 +140,12 @@ class _DestinationListScreenState
 
             // 共通の画面下部メニューバー
             // HOME・HISTORY・SETTINGS
-            const Positioned(
+            Positioned(
               left: 0,
               right: 0,
               bottom: 0,
-              height: AppBottomNavigation.barHeight,
-              child: AppBottomNavigation(
+              height: AppBottomNavigation.barHeightFor(context),
+              child: const AppBottomNavigation(
                 current: AppTab.home,
               ),
             ),
