@@ -3,13 +3,15 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:go_router/go_router.dart';
 
-/// 画面下部メニューバーのタブ種別
-enum AppTab { home, history, settings }
+import '../theme/app_colors.dart';
 
 /// 全画面共通の画面下部メニューバー。
 /// おすすめスポット一覧画面の形式(左からHOME・HISTORY・SETTINGS)に統一する。
+///
+/// タブの切り替えはHomeScreen(IndexedStackシェル)のcurrentIndex/onTapで
+/// 制御する「dumbな」コンポーネント。go_routerへは依存しない
+/// (タブ切り替えはページ遷移ではなくIndexedStackのインデックス変更のため)
 class AppBottomNavigation extends StatelessWidget {
   /// アイコン+ラベル部分の高さ(下端の余白は含まない)
   static const double _contentHeight = 68.92;
@@ -27,26 +29,23 @@ class AppBottomNavigation extends StatelessWidget {
         (bottomInset > _minBottomInset ? bottomInset : _minBottomInset);
   }
 
-  /// いま表示している画面のタブ(ハイライト表示用)。
-  /// おすすめ一覧や詳細のようにタブ本体ではない画面でもHOMEを渡してよい
-  /// (遷移するかどうかは実際のルートで判定する)
-  final AppTab current;
+  /// いま選択中のタブ(0: HOME, 1: HISTORY, 2: SETTINGS)
+  final int currentIndex;
+
+  /// タブがタップされたときに呼ばれる(既に選択中のタブを再タップした場合も含む。
+  /// 何もしないかどうかは呼び出し側で判断する)
+  final ValueChanged<int> onTap;
 
   const AppBottomNavigation({
     super.key,
-    required this.current,
+    required this.currentIndex,
+    required this.onTap,
   });
 
-  // すでに表示中のルートをもう一度タップしたときだけ遷移しない。
-  // ハイライト(current)とは別に実ルートで判定する
-  // (例: おすすめ一覧はHOMEをハイライトするが、ルートは/destinationなので
-  //  HOMEタップで/homeへ移動できる必要がある)
-  void _goTo(BuildContext context, String path) {
-    final String location =
-        GoRouterState.of(context).matchedLocation;
-    if (location == path) return;
+  void _handleTap(int index) {
+    if (index == currentIndex) return;
     HapticFeedback.selectionClick();
-    context.go(path);
+    onTap(index);
   }
 
   @override
@@ -59,14 +58,10 @@ class AppBottomNavigation extends StatelessWidget {
         ),
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFFF8F9FE).withValues(
-              alpha: 0.8,
-            ),
+            color: AppColors.bgCool.withValues(alpha: 0.8),
             border: Border(
               top: BorderSide(
-                color: const Color(0xFFC9C4D5).withValues(
-                  alpha: 0.3,
-                ),
+                color: AppColors.border.withValues(alpha: 0.3),
                 width: 1,
               ),
             ),
@@ -86,26 +81,20 @@ class AppBottomNavigation extends StatelessWidget {
                 _BottomNavItem(
                   label: 'HOME',
                   svgData: _kHomeTabSvg,
-                  isSelected: current == AppTab.home,
-                  onTap: () {
-                    _goTo(context, '/home');
-                  },
+                  isSelected: currentIndex == 0,
+                  onTap: () => _handleTap(0),
                 ),
                 _BottomNavItem(
                   label: 'HISTORY',
                   svgData: _kHistoryTabSvg,
-                  isSelected: current == AppTab.history,
-                  onTap: () {
-                    _goTo(context, '/history');
-                  },
+                  isSelected: currentIndex == 1,
+                  onTap: () => _handleTap(1),
                 ),
                 _BottomNavItem(
                   label: 'SETTINGS',
                   icon: Icons.settings_outlined,
-                  isSelected: current == AppTab.settings,
-                  onTap: () {
-                    _goTo(context, '/settings');
-                  },
+                  isSelected: currentIndex == 2,
+                  onTap: () => _handleTap(2),
                 ),
               ],
             ),
@@ -134,8 +123,8 @@ class _BottomNavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color color = isSelected
-        ? const Color(0xFF19005C)
-        : const Color(0xFF484553);
+        ? AppColors.primary
+        : AppColors.textSecondary;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/widgets/app_bottom_navigation.dart';
-import '../../core/widgets/app_screen_frame.dart';
+import '../route_confirm/route_confirm.dart';
 
 // Google Placesの英語ジャンル(type) → 画面表示用の日本語ラベルの変換表
 const Map<String, String> _genreLabels = {
@@ -91,25 +90,25 @@ class DetilScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppScreenFrame(
-      child: Scaffold(
-        // 戻る操作は左上の戻るマークのみ
-        // (一覧からpushで来たときはAppBarが自動で戻るボタンを表示する)
-        appBar: AppBar(
-          title: const Image(
-            image: AssetImage('assets/logo_long.png'),
-            height: 40, // 高度制限
-            fit: BoxFit.contain,
-          ),
+    // AppScreenFrame・下部メニューバーはHomeScreen(IndexedStackシェル)側で
+    // 一括して描画されるので、ここでは自分の中身だけを組み立てる。
+    // 共有の浮動メニューバーに本文が隠れないよう、下端の余白だけ確保しておく
+    return Scaffold(
+      // 戻る操作は左上の戻るマークのみ
+      // (一覧からpushで来たときはAppBarが自動で戻るボタンを表示する)
+      appBar: AppBar(
+        title: const Image(
+          image: AssetImage('assets/logo_long.png'),
+          height: 40, // 高度制限
+          fit: BoxFit.contain,
         ),
-        // 他画面と共通の画面下部メニューバー(HOME・HISTORY・SETTINGS)
-        bottomNavigationBar: SizedBox(
-          height: AppBottomNavigation.barHeightFor(context),
-          child: const AppBottomNavigation(current: AppTab.home),
+      ),
+      body: SingleChildScrollView(
+        // 縦に長い画面なので、小さい端末でもスクロールして全部見られるようにする
+        padding: EdgeInsets.only(
+          bottom: AppBottomNavigation.barHeightFor(context),
         ),
-        body: SingleChildScrollView(
-          // 縦に長い画面なので、小さい端末でもスクロールして全部見られるようにする
-          child: Column(
+        child: Column(
             children: [
               SizedBox(
                 width: double.infinity, // 横幅を画面いっぱいに広げる
@@ -510,8 +509,16 @@ class DetilScreen extends StatelessWidget {
                     ElevatedButton(
                       onPressed: () {
                         HapticFeedback.lightImpact();
-                        // 目的地データを丸ごと渡してルート確認画面へ(pushなので「戻る」でここに帰れる)
-                        context.push('/route_confirm', extra: destination);
+                        // 目的地データを丸ごと渡してルート確認画面へ
+                        // (RideFlowの入れ子Navigatorでpushするので「戻る」でここに帰れる)
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder:
+                                (_) => RouteConfirmScreen(
+                                  destination: destination,
+                                ),
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         minimumSize: Size(250, 55), // 幅を50に設定
@@ -579,7 +586,7 @@ class DetilScreen extends StatelessWidget {
             ],
           ),
         ),
-      ),
     );
   }
 }
+

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/network/place_photo.dart';
 import '../../../core/widgets/app_bottom_navigation.dart';
-import '../../../core/widgets/app_screen_frame.dart';
+import '../../../core/widgets/staggered_entrance.dart';
+import '../../../core/widgets/tap_scale.dart';
+import '../../detil/detil.dart';
 import '../../home/data/location_service.dart';
 import '../../home/presentation/providers/recommendation_provider.dart';
 
@@ -62,98 +62,85 @@ class _DestinationListScreenState
 
   @override
   Widget build(BuildContext context) {
-    return AppScreenFrame(
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF8F9FE),
-        body: Stack(
-          children: [
-            Positioned.fill(
-              bottom: AppBottomNavigation.barHeightFor(context),
-              child: SafeArea(
-                bottom: false,
-                child: Column(
+    // AppScreenFrame・下部メニューバーはHomeScreen(IndexedStackシェル)側で
+    // 一括して描画されるので、ここでは自分の中身だけを組み立てる
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FE),
+      body: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: EdgeInsets.only(
+            bottom: AppBottomNavigation.barHeightFor(context),
+          ),
+          child: Column(
+            children: [
+              _buildLogo(),
+
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(),
+
+                      const SizedBox(height: 20),
+
+                      Expanded(
+                        child: _buildDestinationList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                ),
+                child: Row(
                   children: [
-                    _buildLogo(),
+                    Expanded(
+                      child: _ActionButton(
+                        text: '情報変更',
+                        icon: Icons.tune_rounded,
+                        isPrimary: false,
+                        onPressed: _goBackToHome,
+                      ),
+                    ),
+
+                    const SizedBox(width: 12),
 
                     Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildHeader(),
-
-                            const SizedBox(height: 20),
-
-                            Expanded(
-                              child: _buildDestinationList(),
-                            ),
-                          ],
-                        ),
+                      child: _ActionButton(
+                        text: _isRefreshing
+                            ? '検索中...'
+                            : '再提案',
+                        icon: _isRefreshing
+                            ? Icons.hourglass_top_rounded
+                            : Icons.refresh_rounded,
+                        isPrimary: true,
+                        onPressed: () {
+                          _refreshRecommendations();
+                        },
                       ),
                     ),
-
-                    const SizedBox(height: 16),
-
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _ActionButton(
-                              text: '情報変更',
-                              icon: Icons.tune_rounded,
-                              isPrimary: false,
-                              onPressed: _goBackToHome,
-                            ),
-                          ),
-
-                          const SizedBox(width: 12),
-
-                          Expanded(
-                            child: _ActionButton(
-                              text: _isRefreshing
-                                  ? '検索中...'
-                                  : '再提案',
-                              icon: _isRefreshing
-                                  ? Icons.hourglass_top_rounded
-                                  : Icons.refresh_rounded,
-                              isPrimary: true,
-                              onPressed: () {
-                                _refreshRecommendations();
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
                   ],
                 ),
               ),
-            ),
 
-            // 共通の画面下部メニューバー
-            // HOME・HISTORY・SETTINGS
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: AppBottomNavigation.barHeightFor(context),
-              child: const AppBottomNavigation(
-                current: AppTab.home,
-              ),
-            ),
-          ],
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );
   }
+
 
   Widget _buildLogo() {
     return Padding(
@@ -283,24 +270,25 @@ class _DestinationListScreenState
           rawDestination,
         );
 
-        return _DestinationCard(
-          destination: destination,
+        return StaggeredEntrance(
+          key: ValueKey(destination['id'] ?? destination['name'] ?? index),
+          delay: Duration(milliseconds: 45 * index),
+          child: _DestinationCard(
+            destination: destination,
+          ),
         );
       },
     );
   }
 
   // 「情報変更」を押したときの処理
+  // RideFlow(HOMEタブ専用の入れ子Navigator)からpushされてきた画面なので、
+  // popすればHOMEタブのプランナー画面(入力した時間やジャンルはそのまま)に戻る
   void _goBackToHome() {
-    // ホーム画面からpushで移動してきた場合はpopで戻る
-    // popを使うことで、ホーム画面に入力した時間やジャンルが残る
-    if (context.canPop()) {
-      context.pop();
-      return;
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
     }
-
-    // 一覧画面が直接開かれた場合の予備処理
-    context.go('/home');
   }
 
   // 「再提案」を押したときの処理
@@ -522,9 +510,8 @@ class _DestinationCard extends StatelessWidget {
         ? '約$durationMinutes分'
         : '所要時間不明';
 
-    // カード全体をタップして詳細画面へ移動できる
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    // カード全体をタップして詳細画面へ移動できる(押下時に軽く縮小+触覚フィードバック)
+    return TapScale(
       onTap: () {
         _openDetail(context);
       },
@@ -535,12 +522,34 @@ class _DestinationCard extends StatelessWidget {
     );
   }
 
-  // 選択した目的地を詳細画面へ渡す
+  // 選択した目的地を詳細画面へ渡す(RideFlowの入れ子Navigatorでpush。
+  // 元はapp_router.dartの/detilルートが持っていた変換ロジックをここに移した)
   void _openDetail(BuildContext context) {
-    HapticFeedback.selectionClick();
-    context.push(
-      '/detil',
-      extra: destination,
+    // 数値はAPIの都合で int でも double でも来るので num で受けてから変換する
+    final durationSec = destination['durationSec'] as num?;
+    final distanceM = destination['distanceM'] as num?;
+    final rating = destination['rating'] as num?;
+
+    // 写真は photoReference をバックの写真プロキシのURLに変換して渡す。
+    // 写真なしのスポットは null になり、詳細画面側で仮画像が表示される
+    final imageUrl = placePhotoUrl(
+      destination['photoReference']?.toString(),
+    );
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (_) => DetilScreen(
+              name: destination['name']?.toString() ?? '',
+              address: destination['address']?.toString() ?? '',
+              genre: destination['genre']?.toString() ?? '',
+              imageUrl: imageUrl,
+              durationSec: durationSec?.round(), // 所要時間(秒)
+              distanceMeter: distanceM?.round(), // 距離(m)
+              rating: rating?.toDouble(), // 評価(例: 4.2)
+              destination: destination, // ルート確認画面へ引き継ぐ用の元データ
+            ),
+      ),
     );
   }
 

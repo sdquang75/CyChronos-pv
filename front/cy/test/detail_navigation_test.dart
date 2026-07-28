@@ -1,6 +1,7 @@
-// 「一覧画面 → 詳細画面」の遷移テスト。
-// 本物のルーター(routerProvider)を使い、一覧のカードで「詳細を見る」を押すと
-// そのスポットのデータが詳細画面に正しく渡って表示されるかを確認する。
+// 「ホーム → 目的地一覧 → 詳細 → ルート確認」の遷移テスト。
+// 本物のルーター(routerProvider)とHomeScreen(IndexedStackシェル)+RideFlow
+// (HOMEタブ専用の入れ子Navigator)を使い、検索結果からスポットのデータが
+// 詳細画面・ルート確認画面へ正しく渡っていくかを確認する。
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,14 +9,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cy/core/router/app_router.dart';
+import 'package:cy/features/auth/data/auth_repository.dart';
 import 'package:cy/features/auth/domain/auth_state.dart';
 import 'package:cy/features/auth/presentation/providers/auth_provider.dart';
+import 'package:cy/features/home/data/location_service.dart';
+import 'package:cy/features/home/data/recommendation_repository.dart';
+import 'package:cy/features/home/domain/recommendation_state.dart';
+import 'package:cy/features/home/presentation/providers/recommendation_provider.dart';
 
-// テスト用の偽認証。Firebaseを呼ばず「未ログイン」のままにする
+// テスト用の偽認証。RideFlow(HOMEタブ)にはログイン必須なので認証済みにする
 // (本物のAuthNotifierはFirebase初期化が必要でテストでは動かないため)
 class _FakeAuthNotifier extends StateNotifier<AuthState>
     implements AuthNotifier {
-  _FakeAuthNotifier() : super(const AuthUnauthenticated());
+  _FakeAuthNotifier()
+    : super(
+        const AuthAuthenticated(
+          user: AuthUser(
+            userId: 1,
+            uid: 'test-uid',
+            name: 'テストユーザー',
+            email: 't@example.com',
+          ),
+        ),
+      );
 
   @override
   Future<void> checkAuth() async {}
@@ -30,8 +46,25 @@ class _FakeAuthNotifier extends StateNotifier<AuthState>
   Future<void> signOut() async {}
 }
 
+// テスト用の偽おすすめ通知。位置情報/バックエンドを叩かず、
+// 渡されたplacesを即座にRecommendationLoadedとして返す
+class _FakeRecommendationNotifier extends RecommendationNotifier {
+  _FakeRecommendationNotifier(this._places)
+    : super(LocationService(), RecommendationRepository());
+
+  final List<Map<String, dynamic>> _places;
+
+  @override
+  Future<void> fetchForCurrentLocation({
+    required int minutes,
+    required String type,
+  }) async {
+    state = RecommendationLoaded({'places': _places});
+  }
+}
+
 void main() {
-  testWidgets('一覧の「詳細を見る」を押すと、そのスポットのデータが詳細画面に表示される',
+  testWidgets('検索結果の「詳細を見る」を押すと、そのスポットのデータが詳細画面に表示される',
       (WidgetTester tester) async {
     // スマホサイズの画面にする(大画面だとPC用フレーム表示に切り替わるため)
     tester.view.physicalSize = const Size(390, 844);
@@ -66,10 +99,13 @@ void main() {
       'distanceKm': 8.8,
     };
 
-    // 認証だけ偽物に差し替えて、本物のルーターでアプリを組み立てる
+    // 認証・おすすめ検索だけ偽物に差し替えて、本物のルーターでアプリを組み立てる
     final container = ProviderContainer(
       overrides: [
         authProvider.overrideWith((ref) => _FakeAuthNotifier()),
+        recommendationProvider.overrideWith(
+          (ref) => _FakeRecommendationNotifier([place]),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -83,21 +119,22 @@ void main() {
       ),
     );
 
-    // スプラッシュを飛ばして一覧画面へ(ホーム画面が検索後にやるのと同じ渡し方)
-    router.go('/destination', extra: {
-      'places': [place],
-      'minutes': 90, // ホームで入力した空き時間(1時間30分)
-    });
-    await tester.pump();
+    // スプラッシュの最低表示タイマー(3.5秒)を消化しておく
+    // (認証済みなので自動で/homeへリダイレクトされる)
+    await tester.pump(const Duration(seconds: 4));
     await tester.pump(const Duration(milliseconds: 700)); // 画面切り替え待ち
 
-    // スプラッシュの最低表示タイマー(3.5秒)を消化しておく(テスト終了時のタイマー残りエラー防止)
-    await tester.pump(const Duration(seconds: 4));
+    // HOMEタブ(RideFlow)の空き時間入力を「1時間30分」にして検索する
+    await tester.enterText(find.byType(TextField).at(0), '1');
+    await tester.enterText(find.byType(TextField).at(1), '30');
+    await tester.tap(find.text('ルートを検索'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700)); // 一覧へのpush待ち
 
     // 一覧にスポット名・所要時間・空き時間が出ている
     expect(find.text('テストカフェ'), findsOneWidget);
     expect(find.text('約30分'), findsOneWidget);
-    expect(find.text('1時間30分'), findsOneWidget); // 渡した空き時間がヘッダーに出る
+    expect(find.text('1時間30分'), findsOneWidget); // 入力した空き時間がヘッダーに出る
 
     // 「詳細を見る」を押して詳細画面へ
     await tester.tap(find.text('詳細を見る'));
@@ -119,7 +156,10 @@ void main() {
     await tester.tap(find.text('ルートを見る'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 700)); // 画面切り替え待ち
-    await tester.pumpAndSettle(); // ルート取得(失敗)の完了待ち
+    // pumpAndSettleは使わない: IndexedStackで裏に常駐しているHISTORY/SETTINGS
+    // タブが実バックエンド無し環境でずっとローディング表示のままになり得るため、
+    // ルート取得(失敗)が完了するのに十分な時間だけ進める
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('テストカフェ'), findsOneWidget); // 目的地名が引き継がれている
     expect(find.textContaining('8.8km'), findsOneWidget); // 概算の距離にフォールバック

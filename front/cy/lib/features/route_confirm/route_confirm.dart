@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../core/network/place_photo.dart';
-import '../../core/widgets/app_screen_frame.dart';
 import '../auth/domain/auth_state.dart';
 import '../auth/presentation/providers/auth_provider.dart';
 import '../home/data/location_service.dart';
@@ -215,20 +213,21 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppScreenFrame(
-      child: Scaffold(
-        // 案内モード中はロゴバーも消して全画面にする
-        appBar:
-            _navigating
-                ? null
-                : AppBar(
-                  title: const Image(
-                    image: AssetImage('assets/logo_long.png'),
-                    height: 40,
-                    fit: BoxFit.contain,
-                  ),
+    // AppScreenFrameはHomeScreen(IndexedStackシェル)側で一括して描画されるので、
+    // ここでは自分の中身だけを組み立てる
+    return Scaffold(
+      // 案内モード中はロゴバーも消して全画面にする
+      appBar:
+          _navigating
+              ? null
+              : AppBar(
+                title: const Image(
+                  image: AssetImage('assets/logo_long.png'),
+                  height: 40,
+                  fit: BoxFit.contain,
                 ),
-        body: Stack(
+              ),
+      body: Stack(
           children: [
             // マップ代わりのルート表示(常に全画面。バーはこの上に被さる)
             Positioned.fill(child: _buildRoutePreview()),
@@ -312,7 +311,6 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
             ),
           ],
         ),
-      ),
     );
   }
 
@@ -489,10 +487,11 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                 child: OutlinedButton(
                   onPressed: () {
                     // 詳細画面に戻って選び直せるようにする
-                    if (context.canPop()) {
-                      context.pop();
-                    } else {
-                      context.go('/home'); // 直接開かれたときの保険
+                    // (RideFlowの入れ子Navigatorでpushされてきた画面なので、
+                    // go_routerではなく素のNavigatorでpopする)
+                    final navigator = Navigator.of(context);
+                    if (navigator.canPop()) {
+                      navigator.pop();
                     }
                   },
                   style: OutlinedButton.styleFrom(

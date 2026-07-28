@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/widgets/app_bottom_navigation.dart';
-import '../../../core/widgets/app_screen_frame.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
 
@@ -303,22 +302,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     final bool hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
 
-    return AppScreenFrame(
-      child: Scaffold(
-        backgroundColor: SettingsScreen.backgroundColor,
-        body: Stack(
-          children: [
-            Positioned.fill(
-              bottom: AppBottomNavigation.barHeightFor(context),
-              child: SafeArea(
-                bottom: false,
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildLogo(),
+    // AppScreenFrame・下部メニューバーはHomeScreen(IndexedStackシェル)側で
+    // 一括して描画されるので、ここでは自分の中身だけを組み立てる
+    return Scaffold(
+      backgroundColor: SettingsScreen.backgroundColor,
+      body: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(
+            24,
+            24,
+            24,
+            40 + AppBottomNavigation.barHeightFor(context),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildLogo(),
 
                       const SizedBox(height: 32),
 
@@ -409,21 +410,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           onTap: _isLoggingOut ? null : _showLogoutDialog,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            // 共通の画面下部メニューバー(HOME・HISTORY・SETTINGS)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: AppBottomNavigation.barHeightFor(context),
-              child: const AppBottomNavigation(current: AppTab.settings),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/widgets/app_bottom_navigation.dart';
-import '../../../core/widgets/app_screen_frame.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
 import '../data/history_repository.dart';
@@ -75,47 +74,37 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppScreenFrame(
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF8F9FE),
-        body: Stack(
-          children: [
-            Positioned.fill(
-              bottom: AppBottomNavigation.barHeightFor(context),
-              child: SafeArea(
-                bottom: false,
-                child: Column(
-                  children: [
-                    _buildLogo(),
+    // AppScreenFrame・下部メニューバーはHomeScreen(IndexedStackシェル)側で
+    // 一括して描画されるので、ここでは自分の中身だけを組み立てる
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FE),
+      body: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: EdgeInsets.only(
+            bottom: AppBottomNavigation.barHeightFor(context),
+          ),
+          child: Column(
+            children: [
+              _buildLogo(),
 
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildHeader(),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(),
 
-                            const SizedBox(height: 20),
+                      const SizedBox(height: 20),
 
-                            Expanded(child: _buildBody()),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                      Expanded(child: _buildBody()),
+                    ],
+                  ),
                 ),
               ),
-            ),
-
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: AppBottomNavigation.barHeightFor(context),
-              child: const AppBottomNavigation(current: AppTab.history),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
