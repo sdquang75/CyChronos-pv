@@ -13,3 +13,4 @@ node_modules/
 **/GoogleService-Info.plist
 claude.md
 back/HANDOFF.md
+output/pdf/Api定義書.pdf
