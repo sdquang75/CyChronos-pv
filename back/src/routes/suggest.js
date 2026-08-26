@@ -24,14 +24,10 @@ router.get("/", async (req, res) => {
     return res.status(400).json({ error: "minutes は1以上で指定してください" });
   }
 
-  // user_id は省略可。指定があれば訪問済みスポットを提案から除外する(trips系と同じくクエリで受ける)
-  let userId = null;
-  if (req.query.user_id !== undefined) {
-    userId = Number(req.query.user_id);
-    if (!Number.isInteger(userId) || userId <= 0) {
-      return res.status(400).json({ error: "user_id は正の整数で指定してください" });
-    }
-  }
+  // ログイン済みなら訪問済みスポットを提案から除外する。
+  // クエリの user_id は他人のIDを書けてしまうため使わず、検証済みトークン由来の値だけを見る
+  // (optionalAppUser ミドルウェアが req.appUser にセットする。未ログインなら null)
+  const userId = req.appUser?.user_id ?? null;
 
   // ここから先でやりたいこと:
   // 1. Mapboxで「この時間で行ける範囲」を取る

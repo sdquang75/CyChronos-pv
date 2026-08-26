@@ -11,6 +11,7 @@ import '../auth/domain/auth_state.dart';
 import '../auth/presentation/providers/auth_provider.dart';
 import '../home/data/location_service.dart';
 import 'data/route_repository.dart';
+import 'data/trip_logger.dart';
 
 /// ルート確認・案内画面(Googleマップ風)。
 /// 開くと全画面にルートが出て、下に情報バー(目的地・距離・時間・案内開始)が被さる。
@@ -21,6 +22,7 @@ class RouteConfirmScreen extends ConsumerStatefulWidget {
   final LocationService? locationService; // テスト用に差し替え可(省略時は本物)
   final RouteRepository? repository; // テスト用に差し替え可(省略時は本物)
   final bool useMapTiles; // テスト時はfalse(タイル取得の通信ができないため簡易描画に切り替える)
+  final TripLogger? tripLogger; // テスト用に差し替え可(省略時は本物)
 
   const RouteConfirmScreen({
     super.key,
@@ -28,6 +30,7 @@ class RouteConfirmScreen extends ConsumerStatefulWidget {
     this.locationService,
     this.repository,
     this.useMapTiles = true,
+    this.tripLogger,
   });
 
   @override
@@ -39,6 +42,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
       widget.locationService ?? LocationService();
   late final RouteRepository _repository =
       widget.repository ?? RouteRepository();
+  late final TripLogger _tripLogger = widget.tripLogger ?? TripLogger();
 
   CyclingRoute? _route; // 取得できた実ルート(null = 取得前 or 失敗)
   bool _loading = true; // ルート取得中かどうか
@@ -70,6 +74,13 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   void initState() {
     super.initState();
     _loadRoute();
+  }
+
+  @override
+  void dispose() {
+    // 案内中に画面ごと破棄された場合の後始末(位置情報の購読を残さない)
+    _tripLogger.dispose();
+    super.dispose();
   }
 
   /// 現在地を取得して、バックの /api/maps/route で実際の走行ルートを取りに行く
@@ -129,6 +140,8 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
           destinationName: _name,
         );
         _tripId = tripId;
+        // 走行中の座標を記録し始める(終了時にサーバーが距離・平均速度を集計する)
+        _tripLogger.start(tripId);
         _showMessage('案内を開始しました。行ってらっしゃい!');
       } else {
         _showMessage('ログイン情報が取得できないため、走行記録なしで案内します');
@@ -158,6 +171,10 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     final tripId = _tripId;
 
     try {
+      // 残っている座標を送りきってから終了APIを呼ぶ。
+      // サーバーは終了時に location_log を集計するので、この順番でないと距離が欠ける
+      await _tripLogger.stop();
+
       if (tripId != null && userId != null) {
         await _repository.endTrip(userId: userId, tripId: tripId);
         _tripId = null;

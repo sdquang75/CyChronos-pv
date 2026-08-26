@@ -8,26 +8,39 @@
 - 外部API: Mapbox(`.env` の `MAPBOX_ACCESS_TOKEN`)、Google Places(`.env` の `GOOGLE_PLACES_API_KEY`)
 - 認証: Googleアカウント(Firebase Authentication)。フロントでGoogleサインインして取得した **IDトークン** を `Authorization: Bearer <IDトークン>` ヘッダーで送信し、バックエンドが `firebase-admin` で検証する(`.env` の `FIREBASE_PROJECT_ID`)
 
+### 認証が必要なAPI
+
+| 区分 | 対象 | Authorization ヘッダー |
+|---|---|---|
+| 必須 | `/api/trips/*`、`/api/locations` | **必須**。無い/無効なら 401 |
+| 任意 | `/api/suggest` | 付ければ訪問済みスポットを除外。無くても提案は返る |
+| 個別 | `/api/auth/*` | 各APIの記載どおり必須 |
+| 不要 | `/api/maps/*` | — |
+
+⚠️ **走行データ系API(トリップ・座標)は `user_id` を引数で受け取らない。** どのユーザーのデータかは検証済みIDトークンから決まる。`user_id` は連番なので、クライアントから渡せる形にすると他人のIDを指定して他人の走行履歴や座標を読み書きできてしまうため。
+
 ## エンドポイント一覧
 
 | 機能 | メソッド | パス | 引数 |
 |---|---|---|---|
 | アカウント作成 | POST | `/api/auth/register` | IDトークン(Authorizationヘッダー) |
 | ログイン | POST | `/api/auth/login` | IDトークン(Authorizationヘッダー) |
-| トリップ開始 | POST | `/api/trips/start` | user_id(ボディ) |
-| トリップ終了 | POST | `/api/trips/{trip_id}/end` | user_id(ボディ), trip_id(パス) |
-| 座標保存 | POST | `/api/locations` | user_id, trip_id, lat, lng(ボディ) |
-| ログ全件取得 | GET | `/api/trips` | user_id(クエリ) |
-| ログ単体取得 | GET | `/api/trips/{trip_id}` | user_id(クエリ), trip_id(パス) |
-| ログ削除(論理削除) | DELETE | `/api/trips/{trip_id}` | user_id(クエリ), trip_id(パス) |
+| トリップ開始 | POST | `/api/trips/start` | (認証のみ) |
+| トリップ終了 | POST | `/api/trips/{trip_id}/end` | trip_id(パス) |
+| 座標保存 | POST | `/api/locations` | trip_id と lat/lng または points[](ボディ) |
+| ログ全件取得 | GET | `/api/trips` | (認証のみ) |
+| ログ単体取得 | GET | `/api/trips/{trip_id}` | trip_id(パス) |
+| ログ削除(論理削除) | DELETE | `/api/trips/{trip_id}` | trip_id(パス) |
 | 到達圏取得 | GET | `/api/maps/isochrone` | lng, lat, minutes(クエリ) |
 | 自転車ルート取得 | GET | `/api/maps/route` | fromLng, fromLat, toLng, toLat(クエリ) |
 | 周辺スポット検索 | GET | `/api/maps/places` | lng, lat, radius, type(クエリ) |
-| スポット提案 | GET | `/api/suggest` | lng, lat, minutes, type, user_id(クエリ) |
+| スポット提案 | GET | `/api/suggest` | lng, lat, minutes, type(クエリ) |
 
-認証系の想定フロー: フロントでGoogleサインイン(Firebase Auth)→ 初回のみ**アカウント作成**で `users` に登録 → 2回目以降はアプリ起動時に**ログイン**で `user_id` とプロフィールを取得 → 以降のAPIはその `user_id` を使って呼び出す。
+認証系の想定フロー: フロントでGoogleサインイン(Firebase Auth)→ 初回のみ**アカウント作成**で `users` に登録 → 2回目以降はアプリ起動時に**ログイン**でプロフィールを取得 → 以降のAPIは毎回 IDトークンを `Authorization` ヘッダーに付けて呼び出す。
 
-想定フロー: **トリップ開始**で `trip_id` を取得 → ナビ画面が一定間隔で**座標保存**を呼ぶ → 走行終了時に**トリップ終了** → 履歴画面で**取得**、不要になったら**削除**。
+想定フロー: **トリップ開始**で `trip_id` を取得 → ナビ画面が走行中の座標をためて**座標保存**でまとめて送る → 走行終了時に**トリップ終了**(このタイミングでサーバーが距離・所要時間・平均速度を集計する)→ 履歴画面で**取得**、不要になったら**削除**。
+
+⚠️ 座標を送りきる前に**トリップ終了**を呼ぶと、集計から漏れた分だけ走行距離が短くなる。フロントは終了APIの前に未送信の座標を送りきること。
 
 地図系の想定フロー: 出発前に**スポット提案**(または**到達圏取得**+**周辺スポット検索**)で行き先候補を表示 → 行き先決定後に**自転車ルート取得**で経路を描画。
 
@@ -47,14 +60,15 @@ POST /api/trips/start
 
 | 項目 | 型 | 必須 | 説明 |
 |---|---|---|---|
-| user_id | integer | ○ | ユーザーID |
 | destination_name | string | - | 目的地名(省略時は空文字) |
 | destination_place_id | string | - | 目的地のGoogle Place ID(省略時は null)。「8. スポット提案」の `places[].id` をそのまま渡す。保存しておくと次回以降の提案からそのスポットが除外される |
 | destination_url | string | - | 目的地URL(省略時は null) |
 
 ```json
-{ "user_id": 1, "destination_place_id": "ChIJxxxxxxxxxxxxxxxx" }
+{ "destination_place_id": "ChIJxxxxxxxxxxxxxxxx" }
 ```
+
+※ どのユーザーのトリップになるかは IDトークンから決まる(`user_id` は送らない)。
 
 ### レスポンス(201 Created)
 
@@ -65,14 +79,16 @@ POST /api/trips/start
 | ステータス | 内容 |
 |---|---|
 | 201 Created | 作成成功。作成された trip_id を返す |
-| 400 Bad Request | user_id 不正、destination_place_id が255文字以内の文字列でない |
-| 404 Not Found | ユーザーが存在しない |
+| 400 Bad Request | destination_place_id が255文字以内の文字列でない |
+| 401 Unauthorized | IDトークンが無い/検証に失敗した |
+| 404 Not Found | アカウントが未登録 |
 
 ---
 
 ## 0-2. トリップ終了
 
 トリップの `status` を `active` から `completed` に変更し、`end_time` にサーバー受信時刻を登録する。
+あわせて**走行実績(距離・所要時間・平均速度)を集計**して `trip_history` に書き込む。
 
 ```
 POST /api/trips/{trip_id}/end
@@ -83,15 +99,23 @@ POST /api/trips/{trip_id}/end
 | 項目 | 渡し方 | 必須 | 説明 |
 |---|---|---|---|
 | trip_id | パス | ○ | 終了するトリップID |
-| user_id | ボディ | ○ | ユーザーID(所有者チェック) |
 
-```json
-{ "user_id": 1 }
-```
+リクエストボディ: なし(所有者チェックはIDトークンで行う)
+
+### 走行実績の集計
+
+| 項目 | 算出方法 |
+|---|---|
+| `duration_sec` | `end_time - start_time`(秒)。**座標ログが無くても必ず入る** |
+| `total_distance_m` | `location_log` の連続する2点間の距離(Haversine法)の合計(m、四捨五入) |
+| `average_speed_kmh` | `total_distance_m` ÷ `duration_sec` を km/h に換算(小数2桁) |
+
+座標ログが2点未満のトリップは、距離と平均速度を `null` のままにする。0を入れてしまうと
+「本当に0km走った」のか「記録できていなかった」のか区別できなくなるため。
 
 ### レスポンス(200 OK)
 
-更新後のトリップを返す。
+更新後のトリップを返す(集計済みの値が入る)。
 
 ```json
 {
@@ -102,9 +126,9 @@ POST /api/trips/{trip_id}/end
   "destination_url": null,
   "start_time": "2026-07-03T02:52:22.000Z",
   "end_time": "2026-07-03T02:52:32.000Z",
-  "total_distance_m": null,
-  "duration_sec": null,
-  "average_speed_kmh": null,
+  "total_distance_m": 12480,
+  "duration_sec": 4800,
+  "average_speed_kmh": 9.36,
   "status": "completed",
   "created_at": "2026-07-03T02:52:22.000Z",
   "updated_at": "2026-07-03T02:52:32.000Z"
@@ -114,7 +138,8 @@ POST /api/trips/{trip_id}/end
 | ステータス | 内容 |
 |---|---|
 | 200 OK | 終了成功。更新後のトリップを返す |
-| 400 Bad Request | 引数不正 |
+| 400 Bad Request | trip_id 不正 |
+| 401 Unauthorized | IDトークンが無い/検証に失敗した |
 | 404 Not Found | トリップが存在しない/他ユーザーのトリップ/削除済み |
 | 409 Conflict | トリップが active でない(すでに completed / cancelled) |
 
@@ -122,7 +147,8 @@ POST /api/trips/{trip_id}/end
 
 ## 1. 座標保存
 
-サイクリング中にナビ画面が一定間隔で送信する座標を `location_log` テーブルに保存する。
+サイクリング中の座標を `location_log` テーブルに保存する。
+1点ずつでも、端末側でためた複数点をまとめてでも送れる。**1点ずつ送ると1時間の走行で数百リクエストになるため、まとめ送りを推奨**。
 
 ```
 POST /api/locations
@@ -132,44 +158,68 @@ POST /api/locations
 
 | 項目 | 型 | 必須 | 説明 |
 |---|---|---|---|
-| user_id | integer | ○ | ユーザーID(トリップの所有者チェックに使用) |
 | trip_id | integer | ○ | 保存先のトリップID |
-| lat | number | ○ | 緯度(-90〜90) |
-| lng | number | ○ | 経度(-180〜180) |
+| lat | number | △ | 緯度(-90〜90)。単発で送る場合は必須 |
+| lng | number | △ | 経度(-180〜180)。単発で送る場合は必須 |
+| points | array | △ | まとめ送りする座標の配列(1〜500件)。指定時は lat/lng より優先 |
+
+`points[]` の各要素:
+
+| 項目 | 型 | 必須 | 説明 |
+|---|---|---|---|
+| lat / lng | number | ○ | 座標 |
+| recorded_at | string | - | 実際に記録した日時(ISO8601)。省略時はサーバー受信時刻 |
+| speed_kmh | number | - | そのときの速度(km/h、0〜999.99) |
+| accuracy_m | number | - | 位置精度(m、0〜9999.99) |
+
+単発で送る場合:
 
 ```json
-{ "user_id": 1, "trip_id": 1, "lat": 34.6941, "lng": 135.5030 }
+{ "trip_id": 1, "lat": 34.6941, "lng": 135.5030 }
+```
+
+まとめて送る場合:
+
+```json
+{
+  "trip_id": 1,
+  "points": [
+    { "lat": 34.6941, "lng": 135.5030, "recorded_at": "2026-07-03T02:52:30.000Z", "speed_kmh": 18.4, "accuracy_m": 5.2 },
+    { "lat": 34.6945, "lng": 135.5036, "recorded_at": "2026-07-03T02:52:35.000Z", "speed_kmh": 19.1, "accuracy_m": 4.8 }
+  ]
+}
 ```
 
 ### 挙動
 
-- `log_num`(トリップ内の連番)はサーバー側で自動採番する
-- `recorded_at`(記録日時)はサーバー受信時刻(`NOW()`)を保存する
-- トリップが `user_id` のものでない場合・論理削除済みの場合は保存しない
+- `log_num`(トリップ内の連番)はサーバー側で自動採番する。まとめ送りでも配列の順に1つずつ振る
+- `recorded_at` を省略した場合はサーバー受信時刻を保存する
+- 範囲外・数値でない `speed_kmh` / `accuracy_m` は `null` として保存する
+- ログイン中ユーザーのトリップでない場合・論理削除済みの場合は保存しない
+- 1リクエストの上限は500件。超える場合は分割して送る
 
 ### レスポンス
 
 | ステータス | 内容 |
 |---|---|
 | 204 No Content | 保存成功(**戻り値なし**) |
-| 400 Bad Request | 引数不正 `{"error": "..."}` |
+| 400 Bad Request | 引数不正、points が空/501件以上 `{"error": "..."}` |
+| 401 Unauthorized | IDトークンが無い/検証に失敗した |
 | 404 Not Found | トリップが存在しない/他ユーザーのトリップ/削除済み |
 
 ---
 
 ## 2. ログ全件取得
 
-指定ユーザーのトリップ(走行履歴)一覧を返す。論理削除済みのトリップは含まない。
+ログイン中ユーザーのトリップ(走行履歴)一覧を返す。論理削除済みのトリップは含まない。
 
 ```
-GET /api/trips?user_id={user_id}
+GET /api/trips
 ```
 
 ### 引数
 
-| 項目 | 渡し方 | 必須 | 説明 |
-|---|---|---|---|
-| user_id | クエリ | ○ | ユーザーID |
+なし(どのユーザーの履歴かは IDトークンから決まる)
 
 ### レスポンス(200 OK)
 
@@ -200,7 +250,7 @@ GET /api/trips?user_id={user_id}
 | ステータス | 内容 |
 |---|---|
 | 200 OK | トリップ一覧 |
-| 400 Bad Request | user_id 不正 |
+| 401 Unauthorized | IDトークンが無い/検証に失敗した |
 
 ---
 
@@ -209,7 +259,7 @@ GET /api/trips?user_id={user_id}
 トリップ1件の詳細と、そのトリップの座標ログ一覧(`log_num` 昇順)を返す。
 
 ```
-GET /api/trips/{trip_id}?user_id={user_id}
+GET /api/trips/{trip_id}
 ```
 
 ### 引数
@@ -217,7 +267,6 @@ GET /api/trips/{trip_id}?user_id={user_id}
 | 項目 | 渡し方 | 必須 | 説明 |
 |---|---|---|---|
 | trip_id | パス | ○ | トリップID |
-| user_id | クエリ | ○ | ユーザーID(所有者チェック) |
 
 ### レスポンス(200 OK)
 
@@ -253,7 +302,8 @@ GET /api/trips/{trip_id}?user_id={user_id}
 | ステータス | 内容 |
 |---|---|
 | 200 OK | トリップ詳細+座標ログ |
-| 400 Bad Request | 引数不正 |
+| 400 Bad Request | trip_id 不正 |
+| 401 Unauthorized | IDトークンが無い/検証に失敗した |
 | 404 Not Found | トリップが存在しない/他ユーザーのトリップ/削除済み |
 
 ---
@@ -263,7 +313,7 @@ GET /api/trips/{trip_id}?user_id={user_id}
 トリップを論理削除する。`trip_history.deleted_at` に現在時刻をセットするのみで、レコードは物理削除しない(`location_log` は変更しない)。削除後は取得系APIの結果に含まれなくなる。
 
 ```
-DELETE /api/trips/{trip_id}?user_id={user_id}
+DELETE /api/trips/{trip_id}
 ```
 
 ### 引数
@@ -271,14 +321,14 @@ DELETE /api/trips/{trip_id}?user_id={user_id}
 | 項目 | 渡し方 | 必須 | 説明 |
 |---|---|---|---|
 | trip_id | パス | ○ | トリップID |
-| user_id | クエリ | ○ | ユーザーID(所有者チェック) |
 
 ### レスポンス
 
 | ステータス | 内容 |
 |---|---|
 | 204 No Content | 削除成功(戻り値なし) |
-| 400 Bad Request | 引数不正 |
+| 400 Bad Request | trip_id 不正 |
+| 401 Unauthorized | IDトークンが無い/検証に失敗した |
 | 404 Not Found | トリップが存在しない/他ユーザーのトリップ/削除済み |
 
 ---
@@ -439,10 +489,10 @@ GET /api/maps/places?lng={lng}&lat={lat}&radius={radius}&type={type}
 
 各候補には現在地から自転車での所要時間(`durationMinutes`)が付く。所要時間が `minutes` を超える候補・自転車で到達できない候補は除外される(※`minutes` は片道扱い)。
 
-`user_id` を渡すと、そのユーザーが過去に訪問したスポットを提案から除外する。未訪問だけで10件に満たない場合は訪問済みから補充する(候補ゼロにはならない)。
+**IDトークンを付けて呼ぶと**、そのユーザーが過去に訪問したスポットを提案から除外する。未訪問だけで10件に満たない場合は訪問済みから補充する(候補ゼロにはならない)。トークンなしでも呼べるが、その場合は除外なし。
 
 ```
-GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}&user_id={user_id}
+GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}
 ```
 
 ### 引数
@@ -453,7 +503,8 @@ GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}&user_id={user
 | lat | クエリ | ○ | 現在地の緯度 |
 | minutes | クエリ | ○ | 移動可能時間(分)。1以上 |
 | type | クエリ | - | 施設の種類(省略時は `cafe`) |
-| user_id | クエリ | - | ユーザーID(正の整数)。指定時は訪問済みスポットを提案から除外(省略時は除外なし) |
+
+※ 訪問済み除外の対象ユーザーは `Authorization` ヘッダーのIDトークンから決まる(`user_id` クエリは廃止)。
 
 ### レスポンス(200 OK)
 
@@ -497,7 +548,7 @@ GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}&user_id={user
 | ステータス | 内容 |
 |---|---|
 | 200 OK | 検索範囲と提案スポット一覧 |
-| 400 Bad Request | lng / lat / minutes が数値でない、minutes が1未満、user_id が正の整数でない |
+| 400 Bad Request | lng / lat / minutes が数値でない、minutes が1未満 |
 | 502 Bad Gateway | 外部APIの呼び出しに失敗。`{"error": "Mapbox APIの呼び出しに失敗しました"}` または `{"error": "Google Maps APIの呼び出しに失敗しました"}` |
 
 ---
@@ -585,6 +636,7 @@ POST /api/auth/login
 
 | ステータス | 発生条件 |
 |---|---|
+| 401 Unauthorized | 認証が必要なAPIで Authorization ヘッダーが無い、またはIDトークンの検証に失敗した |
 | 404 Not Found | 未定義のパスへのアクセス `{"error": "Not Found"}` |
 | 500 Internal Server Error | DB接続失敗などサーバー内部エラー `{"error": "Internal Server Error"}` |
 
@@ -594,7 +646,7 @@ POST /api/auth/login
 |---|---|
 | `src/app.js` | Expressアプリ本体・ルーターのマウント |
 | `src/routes/auth.js` | アカウント作成・ログインAPI |
-| `src/middleware/auth.js` | Firebase IDトークン検証ミドルウェア |
+| `src/middleware/auth.js` | 認証ミドルウェア(`verifyFirebaseToken` / `requireAppUser` / `optionalAppUser`) |
 | `src/services/firebase.js` | firebase-admin 初期化 |
 | `src/routes/locations.js` | 座標保存API |
 | `src/routes/trips.js` | ログ取得・削除API |
