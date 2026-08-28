@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -212,23 +214,38 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     // ここでは自分の中身だけを組み立てる
     return Scaffold(
       backgroundColor: AppColors.bgCool,
-      // 案内モード中はヘッダーも消して全画面にする
-      appBar:
-          _navigating
-              ? null
-              : PreferredSize(
-                preferredSize: Size.fromHeight(AppTopBar.heightFor(context)),
-                child: const AppTopBar(title: 'ルート確認'),
-              ),
+      // ヘッダーはappBar(bodyの高さを変えてしまい、案内開始/終了のたびに
+      // マップの表示領域が伸縮してズレて見える原因になっていた)ではなく、
+      // マップの上に被さるオーバーレイとして出す。案内モード中はこれごと消して全画面にする
       body: Stack(
           children: [
-            // マップ代わりのルート表示(常に全画面。バーはこの上に被さる)
+            // マップ代わりのルート表示(常に全画面・常に同じ大きさ。バーはこの上に被さる)
             Positioned.fill(child: _buildRoutePreview()),
+
+            // 通常時だけ上に出るヘッダー(戻るボタン+タイトル)。
+            // マップに直に重ねると文字が読みにくいので、下部メニューバーと
+            // 同じすりガラス調の背景を敷いて視認性を確保する
+            if (!_navigating)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: AppTopBar.heightFor(context),
+                child: ClipRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                    child: Container(
+                      color: AppColors.bgCool.withValues(alpha: 0.8),
+                      child: const AppTopBar(title: 'ルート確認'),
+                    ),
+                  ),
+                ),
+              ),
 
             // ルート取得に失敗したときだけ、概算値表示であることを上部に知らせる
             if (_errorMessage != null && !_navigating)
               Positioned(
-                top: 8,
+                top: AppTopBar.heightFor(context) + 8,
                 left: 8,
                 right: 8,
                 child: Container(

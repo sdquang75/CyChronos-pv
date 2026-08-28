@@ -177,10 +177,6 @@ void main() {
     expect(find.text('案内を終了'), findsOneWidget); // 終了ボタンが出る
     expect(find.text('8.5km ・ 約40分'), findsOneWidget); // 上部チップに残り距離・時間
 
-    // 開始時のSnackBarが終了ボタンに被ってタップを邪魔するので、表示時間を消化して消しておく
-    await tester.pump(const Duration(seconds: 5));
-    await tester.pumpAndSettle();
-
     // 案内を終了 → バーが戻り、トリップ終了が記録される
     await tester.tap(find.text('案内を終了'));
     await tester.pumpAndSettle();
