@@ -134,7 +134,6 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
           destinationName: _name,
         );
         _tripId = tripId;
-        _showMessage('案内を開始しました。行ってらっしゃい!');
       } else {
         _showMessage('ログイン情報が取得できないため、走行記録なしで案内します');
       }
@@ -167,7 +166,6 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
       if (tripId != null && userId != null) {
         await _repository.endTrip(userId: userId, tripId: tripId);
         _tripId = null;
-        _showMessage('お疲れさまでした!走行を記録しました');
       } else {
         _showMessage('案内を終了しました');
       }
