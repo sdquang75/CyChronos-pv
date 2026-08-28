@@ -181,11 +181,19 @@ void main() {
     expect(find.text('案内を終了'), findsOneWidget); // 終了ボタンが出る
     expect(find.text('8.5km ・ 約40分'), findsOneWidget); // 上部チップに残り距離・時間
 
-    // 案内を終了 → バーが戻り、トリップ終了が記録される
+    // 案内を終了 → トリップ終了が記録され、トースト通知の代わりに完了画面が出る
     await tester.tap(find.text('案内を終了'));
     await tester.pumpAndSettle();
 
     expect(repository.endedTripId, 42); // 終了APIに開始時のtrip_idが渡っている
+    expect(find.text('お疲れさまでした!'), findsOneWidget); // 完了画面が表示される
+    expect(find.text('8.5km'), findsOneWidget); // 走行距離(実ルートの値)が出る
+    expect(find.text('完了'), findsOneWidget);
+
+    // 「完了」を押すと元の画面(このテストではRouteConfirmScreenが最初の画面)まで戻る
+    await tester.tap(find.text('完了'));
+    await tester.pumpAndSettle();
+
     expect(find.text('案内開始'), findsOneWidget); // バーが戻った
     expect(find.text('案内を終了'), findsNothing);
   });

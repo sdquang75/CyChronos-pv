@@ -19,6 +19,7 @@ import '../auth/domain/auth_state.dart';
 import '../auth/presentation/providers/auth_provider.dart';
 import '../home/data/location_service.dart';
 import 'data/route_repository.dart';
+import 'trip_summary_screen.dart';
 
 /// ルート確認画面が今どの段階にあるか。
 /// 往復(round_trip)モードでは outboundPreview → outboundNavigating →
@@ -78,6 +79,9 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   double? _originLat; // 往路開始時点の現在地(復路のルート取得先に使う)
   double? _originLng;
   double? _lastZoom; // 直前にbboxフィットして実際に落ち着いたズーム値
+  DateTime? _navigationStartedAt; // 案内開始した実時刻(完了画面の経過時間に使う)
+  double? _outboundDistanceM; // 往路の距離(案内開始時点の推定値を確定させて保持)
+  double? _outboundDurationSec;
   StreamSubscription<Position>? _positionSubscription; // 往路の到着監視用
   Timer? _stayTimer; // 滞在時間経過後に自動で復路を用意するタイマー
 
@@ -214,6 +218,11 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
       if (mounted) {
         setState(() {
           _busy = false;
+          // 完了画面用に、往路の距離・時間と開始時刻をここで確定させておく
+          // (この後は復路取得で_routeが上書きされるため、今のうちに控えておく)
+          _navigationStartedAt ??= DateTime.now();
+          _outboundDistanceM ??= _displayDistanceM;
+          _outboundDurationSec ??= _displayDurationSec;
           _stage = _RouteStage.outboundNavigating; // 記録の成否に関わらず案内モードに入る
         });
         if (_isRoundTrip) _startArrivalMonitoring();
@@ -323,6 +332,10 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         authState is AuthAuthenticated ? authState.user.userId : null;
     final tripId = _tripId;
     final endedStage = _stage;
+    // 完了画面用に、復路まで進んでいた場合はその距離も確定させておく
+    // (_stageを戻す前に、_isReturnRouteが有効なうちに読んでおく必要がある)
+    final double? returnDistanceM =
+        _isReturnRoute ? _displayDistanceM : null;
     await _positionSubscription?.cancel();
     _positionSubscription = null;
     _stayTimer?.cancel();
@@ -331,8 +344,6 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
       if (tripId != null && userId != null) {
         await _repository.endTrip(userId: userId, tripId: tripId);
         _tripId = null;
-      } else {
-        _showMessage('案内を終了しました');
       }
     } catch (error) {
       debugPrint('trip end error: $error');
@@ -349,6 +360,34 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         });
       }
     }
+
+    if (!mounted) return;
+
+    // 「案内を終了しました」のトーストの代わりに、達成感のある完了画面へ遷移する。
+    // 距離・時間はすべて推定値(Mapboxのルート距離+実経過時間)。
+    // GPSログを本当に集計するようになったら、ここをその実測値に差し替える
+    final hasDistance = _outboundDistanceM != null || returnDistanceM != null;
+    final totalDistanceM = (_outboundDistanceM ?? 0) + (returnDistanceM ?? 0);
+    final startedAt = _navigationStartedAt;
+    final elapsed =
+        startedAt == null ? null : DateTime.now().difference(startedAt);
+    double? averageSpeedKmh;
+    if (hasDistance && elapsed != null && elapsed.inSeconds > 0) {
+      averageSpeedKmh = (totalDistanceM / 1000) / (elapsed.inSeconds / 3600);
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (_) => TripSummaryScreen(
+              destinationName: _name,
+              isRoundTrip: _isRoundTrip,
+              distanceM: hasDistance ? totalDistanceM : null,
+              duration: elapsed,
+              averageSpeedKmh: averageSpeedKmh,
+            ),
+      ),
+    );
   }
 
   void _showMessage(String message) {
