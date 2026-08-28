@@ -5,19 +5,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_bottom_navigation.dart';
+import '../../../core/widgets/app_card.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
-
-  static const Color backgroundColor = Color(0xFFF8F9FE);
-  static const Color primaryColor = Color(0xFF19005C);
-  static const Color secondaryColor = Color(0xFF484553);
-  static const Color borderColor = Color(0xFFC9C4D5);
-  static const Color accentBackgroundColor = Color(0xFFF1EBFF);
-  static const Color logoutColor = Color(0xFFBA1A1A);
 
   @override
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
@@ -136,13 +133,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: SettingsScreen.logoutColor.withValues(alpha: 0.08),
+              color: AppColors.error.withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.logout_rounded,
               size: 30,
-              color: SettingsScreen.logoutColor,
+              color: AppColors.error,
             ),
           ),
           title: const Text(
@@ -153,7 +150,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               fontFamilyFallback: ['NotoSansJP'],
               fontSize: 21,
               fontWeight: FontWeight.w700,
-              color: SettingsScreen.primaryColor,
+              color: AppColors.primary,
             ),
           ),
           content: const Text(
@@ -163,7 +160,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               fontFamily: 'Inter',
               fontFamilyFallback: ['NotoSansJP'],
               fontSize: 14,
-              color: SettingsScreen.secondaryColor,
+              color: AppColors.textSecondary,
               height: 1.6,
             ),
           ),
@@ -177,9 +174,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       Navigator.of(dialogContext).pop(false);
                     },
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: SettingsScreen.secondaryColor,
+                      foregroundColor: AppColors.textSecondary,
                       side: BorderSide(
-                        color: SettingsScreen.borderColor.withValues(
+                        color: AppColors.border.withValues(
                           alpha: 0.65,
                         ),
                       ),
@@ -207,7 +204,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       Navigator.of(dialogContext).pop(true);
                     },
                     style: FilledButton.styleFrom(
-                      backgroundColor: SettingsScreen.logoutColor,
+                      backgroundColor: AppColors.error,
                       foregroundColor: Colors.white,
                       minimumSize: const Size.fromHeight(48),
                       shape: RoundedRectangleBorder(
@@ -280,7 +277,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ),
         backgroundColor:
-            isError ? SettingsScreen.logoutColor : const Color(0xFF2A0088),
+            isError ? AppColors.error : AppColors.snackbarBg,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -305,7 +302,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     // AppScreenFrame・下部メニューバーはHomeScreen(IndexedStackシェル)側で
     // 一括して描画されるので、ここでは自分の中身だけを組み立てる
     return Scaffold(
-      backgroundColor: SettingsScreen.backgroundColor,
+      backgroundColor: AppColors.bgCool,
       body: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
@@ -321,95 +318,84 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             children: [
               _buildLogo(),
 
-                      const SizedBox(height: 32),
+              const SizedBox(height: AppSpacing.xxxl),
 
-                      const Text(
-                        '設定',
-                        style: TextStyle(
-                          fontFamily: 'HankenGrotesk',
-                          fontFamilyFallback: ['NotoSansJP'],
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
-                          color: SettingsScreen.primaryColor,
-                          height: 1.25,
-                        ),
-                      ),
+              const Text('設定', style: AppTypography.pageTitle),
 
-                      const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
 
-                      const Text(
-                        'アカウントや走行時の設定を管理できます。',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontFamilyFallback: ['NotoSansJP'],
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          color: SettingsScreen.secondaryColor,
-                          height: 1.5,
-                        ),
-                      ),
+              const Text(
+                'アカウントや走行時の設定を管理できます。',
+                style: AppTypography.pageSubtitle,
+              ),
 
-                      const SizedBox(height: 28),
+              const SizedBox(height: AppSpacing.xxl + 4),
 
-                      _buildAccountCard(
-                        userName: userName,
-                        userEmail: userEmail,
-                        photoUrl: photoUrl,
-                        hasPhoto: hasPhoto,
-                      ),
+              _buildAccountCard(
+                userName: userName,
+                userEmail: userEmail,
+                photoUrl: photoUrl,
+                hasPhoto: hasPhoto,
+              ),
 
-                      const SizedBox(height: 28),
+              const SizedBox(height: AppSpacing.xxl + 4),
 
-                      const _SectionTitle(text: 'RIDE SETTINGS'),
+              const Text('RIDE SETTINGS', style: AppTypography.sectionLabel),
 
-                      const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
 
-                      _buildSpeedCard(),
+              _buildSpeedCard(),
 
-                      const SizedBox(height: 28),
+              const SizedBox(height: AppSpacing.xxl + 4),
 
-                      const _SectionTitle(text: 'SUPPORT'),
+              const Text('SUPPORT', style: AppTypography.sectionLabel),
 
-                      const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
 
-                      _SettingsCard(
-                        child: _SettingsMenuRow(
-                          icon: Icons.mail_outline_rounded,
-                          title: 'お問い合わせ',
-                          subtitle: 'ご意見や不具合を送信します',
-                          onTap: () {
-                            context.push('/contact');
-                          },
-                        ),
-                      ),
+              AppCard(
+                padding: EdgeInsets.zero,
+                borderRadius: 24,
+                clipBehavior: Clip.antiAlias,
+                child: _SettingsMenuRow(
+                  icon: Icons.mail_outline_rounded,
+                  title: 'お問い合わせ',
+                  subtitle: 'ご意見や不具合を送信します',
+                  onTap: () {
+                    context.push('/contact');
+                  },
+                ),
+              ),
 
-                      const SizedBox(height: 28),
+              const SizedBox(height: AppSpacing.xxl + 4),
 
-                      const _SectionTitle(text: 'ACCOUNT'),
+              const Text('ACCOUNT', style: AppTypography.sectionLabel),
 
-                      const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
 
-                      _SettingsCard(
-                        child: _SettingsMenuRow(
-                          icon: Icons.logout_rounded,
-                          iconColor: SettingsScreen.logoutColor,
-                          title: 'ログアウト',
-                          titleColor: SettingsScreen.logoutColor,
-                          subtitle: '現在のアカウントからログアウトします',
-                          trailing:
-                              _isLoggingOut
-                                  ? const SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.4,
-                                      color: SettingsScreen.logoutColor,
-                                    ),
-                                  )
-                                  : null,
-                          onTap: _isLoggingOut ? null : _showLogoutDialog,
-                        ),
-                      ),
+              AppCard(
+                padding: EdgeInsets.zero,
+                borderRadius: 24,
+                clipBehavior: Clip.antiAlias,
+                child: _SettingsMenuRow(
+                  icon: Icons.logout_rounded,
+                  iconColor: AppColors.error,
+                  title: 'ログアウト',
+                  titleColor: AppColors.error,
+                  subtitle: '現在のアカウントからログアウトします',
+                  trailing:
+                      _isLoggingOut
+                          ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.4,
+                              color: AppColors.error,
+                            ),
+                          )
+                          : null,
+                  onTap: _isLoggingOut ? null : _showLogoutDialog,
+                ),
+              ),
             ],
           ),
         ),
@@ -433,28 +419,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     required String? photoUrl,
     required bool hasPhoto,
   }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: SettingsScreen.borderColor.withValues(alpha: 0.35),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2E0094).withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+    return AppCard(
+      borderRadius: 24,
       child: Row(
         children: [
           CircleAvatar(
             radius: 34,
-            backgroundColor: SettingsScreen.accentBackgroundColor,
+            backgroundColor: AppColors.accentBg,
             backgroundImage: hasPhoto ? NetworkImage(photoUrl!) : null,
             child:
                 hasPhoto
@@ -462,7 +433,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     : const Icon(
                       Icons.person_rounded,
                       size: 36,
-                      color: SettingsScreen.primaryColor,
+                      color: AppColors.primary,
                     ),
           ),
 
@@ -481,7 +452,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     fontFamilyFallback: ['NotoSansJP'],
                     fontSize: 19,
                     fontWeight: FontWeight.w700,
-                    color: SettingsScreen.primaryColor,
+                    color: AppColors.primary,
                   ),
                 ),
 
@@ -495,7 +466,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       fontFamily: 'Inter',
                       fontFamilyFallback: ['NotoSansJP'],
                       fontSize: 13,
-                      color: SettingsScreen.secondaryColor,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ],
@@ -508,30 +479,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildSpeedCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: SettingsScreen.borderColor.withValues(alpha: 0.35),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2E0094).withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+    return AppCard(
+      borderRadius: 24,
       child:
           _isLoadingSpeed
               ? const SizedBox(
                 height: 150,
                 child: Center(
                   child: CircularProgressIndicator(
-                    color: SettingsScreen.primaryColor,
+                    color: AppColors.primary,
                   ),
                 ),
               )
@@ -544,13 +500,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: SettingsScreen.accentBackgroundColor,
+                          color: AppColors.accentBg,
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: const Icon(
                           Icons.speed_rounded,
                           size: 24,
-                          color: SettingsScreen.primaryColor,
+                          color: AppColors.primary,
                         ),
                       ),
 
@@ -567,7 +523,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 fontFamilyFallback: ['NotoSansJP'],
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
-                                color: SettingsScreen.primaryColor,
+                                color: AppColors.primary,
                               ),
                             ),
                             SizedBox(height: 3),
@@ -577,7 +533,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 fontFamily: 'Inter',
                                 fontFamilyFallback: ['NotoSansJP'],
                                 fontSize: 12,
-                                color: SettingsScreen.secondaryColor,
+                                color: AppColors.textSecondary,
                                 height: 1.4,
                               ),
                             ),
@@ -599,10 +555,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           vertical: 7,
                         ),
                         decoration: BoxDecoration(
-                          color: SettingsScreen.accentBackgroundColor,
+                          color: AppColors.accentBg,
                           borderRadius: BorderRadius.circular(9999),
                           border: Border.all(
-                            color: SettingsScreen.primaryColor.withValues(
+                            color: AppColors.primary.withValues(
                               alpha: 0.15,
                             ),
                           ),
@@ -614,7 +570,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             fontFamilyFallback: ['NotoSansJP'],
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
-                            color: SettingsScreen.primaryColor,
+                            color: AppColors.primary,
                           ),
                         ),
                       ),
@@ -625,7 +581,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           fontFamily: 'JetBrainsMono',
                           fontSize: 21,
                           fontWeight: FontWeight.w800,
-                          color: SettingsScreen.primaryColor,
+                          color: AppColors.primary,
                         ),
                       ),
                     ],
@@ -636,8 +592,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     min: 10.0,
                     max: 30.0,
                     divisions: 40,
-                    activeColor: SettingsScreen.primaryColor,
-                    inactiveColor: SettingsScreen.borderColor.withValues(
+                    activeColor: AppColors.primary,
+                    inactiveColor: AppColors.border.withValues(
                       alpha: 0.55,
                     ),
                     onChanged: (value) {
@@ -657,7 +613,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           style: TextStyle(
                             fontFamily: 'JetBrainsMono',
                             fontSize: 11,
-                            color: SettingsScreen.secondaryColor,
+                            color: AppColors.textSecondary,
                           ),
                         ),
                         Text(
@@ -665,7 +621,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           style: TextStyle(
                             fontFamily: 'JetBrainsMono',
                             fontSize: 11,
-                            color: SettingsScreen.secondaryColor,
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       ],
@@ -680,9 +636,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     child: FilledButton.icon(
                       onPressed: _isSavingSpeed ? null : _saveAverageSpeed,
                       style: FilledButton.styleFrom(
-                        backgroundColor: SettingsScreen.primaryColor,
+                        backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
-                        disabledBackgroundColor: SettingsScreen.primaryColor
+                        disabledBackgroundColor: AppColors.primary
                             .withValues(alpha: 0.55),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
@@ -716,63 +672,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontFamily: 'JetBrainsMono',
-        fontSize: 13,
-        fontWeight: FontWeight.w500,
-        letterSpacing: 0.7,
-        color: SettingsScreen.secondaryColor,
-      ),
-    );
-  }
-}
-
-class _SettingsCard extends StatelessWidget {
-  const _SettingsCard({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: SettingsScreen.borderColor.withValues(alpha: 0.35),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2E0094).withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-}
-
 class _SettingsMenuRow extends StatelessWidget {
   const _SettingsMenuRow({
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.onTap,
-    this.iconColor = SettingsScreen.primaryColor,
-    this.titleColor = SettingsScreen.primaryColor,
+    this.iconColor = AppColors.primary,
+    this.titleColor = AppColors.primary,
     this.trailing,
   });
 
@@ -835,7 +742,7 @@ class _SettingsMenuRow extends StatelessWidget {
                         fontFamily: 'Inter',
                         fontFamilyFallback: ['NotoSansJP'],
                         fontSize: 12,
-                        color: SettingsScreen.secondaryColor,
+                        color: AppColors.textSecondary,
                         height: 1.4,
                       ),
                     ),

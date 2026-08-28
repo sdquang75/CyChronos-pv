@@ -9,6 +9,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_bottom_navigation.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_state_view.dart';
 import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/staggered_entrance.dart';
 import '../../../core/widgets/tap_scale.dart';
@@ -231,7 +232,7 @@ class _DestinationListScreenState
     }
 
     if (state is RecommendationLocationServiceDisabled) {
-      return _DestinationStateView(
+      return AppStateView(
         icon: Icons.location_disabled_rounded,
         title: '位置情報を確認してください',
         message: '位置情報サービスが無効です。端末の設定をご確認ください。',
@@ -240,7 +241,7 @@ class _DestinationListScreenState
     }
 
     if (state is RecommendationPermissionDenied) {
-      return _DestinationStateView(
+      return AppStateView(
         icon: Icons.location_disabled_rounded,
         title: '位置情報の利用を許可してください',
         message: '位置情報を許可すると、現在地周辺のおすすめスポットを検索できます。',
@@ -249,7 +250,7 @@ class _DestinationListScreenState
     }
 
     if (state is RecommendationPermissionDeniedForever) {
-      return _DestinationStateView(
+      return AppStateView(
         icon: Icons.location_disabled_rounded,
         title: '位置情報の利用が拒否されています',
         message: '設定アプリから位置情報の利用を許可してください。',
@@ -258,7 +259,7 @@ class _DestinationListScreenState
     }
 
     if (state is RecommendationError) {
-      return _DestinationStateView(
+      return AppStateView(
         icon: Icons.error_outline_rounded,
         title: '検索に失敗しました',
         message: '通信環境をご確認のうえ、もう一度お試しください。',
@@ -268,7 +269,7 @@ class _DestinationListScreenState
 
     // RecommendationLoaded
     if (_places.isEmpty) {
-      return const _DestinationStateView(
+      return const AppStateView(
         icon: Icons.location_off_rounded,
         title: '目的地が見つかりませんでした',
         message: '時間やジャンルを変更して、もう一度お試しください。',
@@ -567,79 +568,6 @@ class _SearchingIndicator extends StatelessWidget {
         child: CircularProgressIndicator(
           strokeWidth: 2.5,
           color: AppColors.primary,
-        ),
-      ),
-    );
-  }
-}
-
-// 「該当なし」「位置情報エラー」「通信エラー」を1つの見た目で表現する。
-// onRetryを渡すと再検索ボタンが出る(該当なしのときは下の「再提案」ボタンが
-// 既にあるので付けない)
-class _DestinationStateView extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String message;
-  final VoidCallback? onRetry;
-
-  const _DestinationStateView({
-    required this.icon,
-    required this.title,
-    required this.message,
-    this.onRetry,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: AppCard(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.xxl,
-          vertical: 36,
-        ),
-        borderRadius: 24,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 42,
-              color: AppColors.primary,
-            ),
-
-            const SizedBox(height: AppSpacing.lg),
-
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: AppTypography.cardTitle.copyWith(fontSize: 16),
-            ),
-
-            const SizedBox(height: AppSpacing.sm),
-
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: AppTypography.body.copyWith(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
-            ),
-
-            if (onRetry != null) ...[
-              const SizedBox(height: AppSpacing.xl),
-              SizedBox(
-                width: double.infinity,
-                child: AppButton(
-                  label: 'もう一度試す',
-                  icon: Icons.refresh_rounded,
-                  height: 48,
-                  borderRadius: 14,
-                  onPressed: onRetry,
-                ),
-              ),
-            ],
-          ],
         ),
       ),
     );

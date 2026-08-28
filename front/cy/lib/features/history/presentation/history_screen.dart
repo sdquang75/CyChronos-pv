@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_bottom_navigation.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_state_view.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
 import '../data/history_repository.dart';
@@ -77,7 +82,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     // AppScreenFrame・下部メニューバーはHomeScreen(IndexedStackシェル)側で
     // 一括して描画されるので、ここでは自分の中身だけを組み立てる
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE),
+      backgroundColor: AppColors.bgCool,
       body: SafeArea(
         bottom: false,
         child: Padding(
@@ -90,13 +95,15 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xxl,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildHeader(),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: AppSpacing.xl),
 
                       Expanded(child: _buildBody()),
                     ],
@@ -110,12 +117,19 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     );
   }
 
+  // タブのルート画面なので、pushで開く画面(AppTopBar)とは違い
+  // ロゴを直接表示する(戻るボタンは不要なため)
   Widget _buildLogo() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.xxl,
+        AppSpacing.xxl,
+        AppSpacing.xxl,
+        AppSpacing.xl,
+      ),
       child: Center(
-        child: Image.asset(
-          'assets/logo_long.png',
+        child: Image(
+          image: AssetImage('assets/logo_long.png'),
           width: 200,
           fit: BoxFit.contain,
         ),
@@ -127,29 +141,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'アクティビティ履歴',
-          style: TextStyle(
-            fontFamily: 'HankenGrotesk',
-            fontFamilyFallback: ['NotoSansJP'],
-            fontWeight: FontWeight.w700,
-            fontSize: 28,
-            color: Color(0xFF19005C),
-            height: 1.25,
-          ),
-        ),
-        SizedBox(height: 8),
-        Text(
-          'これまでの走行記録',
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontFamilyFallback: ['NotoSansJP'],
-            fontWeight: FontWeight.w400,
-            fontSize: 14,
-            color: Color(0xFF484553),
-            height: 1.5,
-          ),
-        ),
+        Text('アクティビティ履歴', style: AppTypography.pageTitle),
+        SizedBox(height: AppSpacing.sm),
+        Text('これまでの走行記録', style: AppTypography.pageSubtitle),
       ],
     );
   }
@@ -157,22 +151,23 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF19005C)),
+        child: CircularProgressIndicator(color: AppColors.primary),
       );
     }
 
     final errorMessage = _errorMessage;
     if (errorMessage != null) {
-      return _HistoryMessageView(
+      return AppStateView(
         icon: Icons.error_outline_rounded,
         title: '履歴を表示できません',
         message: errorMessage,
+        retryLabel: '再読み込み',
         onRetry: _loadTrips,
       );
     }
 
     if (_trips.isEmpty) {
-      return const _HistoryMessageView(
+      return const AppStateView(
         icon: Icons.directions_bike_rounded,
         title: '走行記録はまだありません',
         message: 'サイクリングに出かけると、ここに走行記録が表示されます。',
@@ -180,7 +175,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     }
 
     return RefreshIndicator(
-      color: const Color(0xFF19005C),
+      color: AppColors.primary,
       onRefresh: () {
         HapticFeedback.lightImpact();
         return _loadTrips();
@@ -252,24 +247,9 @@ class _TripCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
+    return AppCard(
       margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFFC9C4D5).withValues(alpha: 0.35),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2E0094).withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -281,28 +261,21 @@ class _TripCard extends StatelessWidget {
                   _titleText(),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontFamily: 'HankenGrotesk',
-                    fontFamilyFallback: ['NotoSansJP'],
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: Color(0xFF19005C),
-                    height: 1.3,
-                  ),
+                  style: AppTypography.cardTitle,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
               Text(
                 _dateText(),
                 style: TextStyle(
                   fontFamily: 'JetBrainsMono',
                   fontSize: 12,
-                  color: const Color(0xFF484553).withValues(alpha: 0.6),
+                  color: AppColors.textSecondary.withValues(alpha: 0.6),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -326,106 +299,12 @@ class _TripCard extends StatelessWidget {
             fontFamily: 'HankenGrotesk',
             fontFamilyFallback: const ['NotoSansJP'],
             fontSize: 12,
-            color: const Color(0xFF484553).withValues(alpha: 0.6),
+            color: AppColors.textSecondary.withValues(alpha: 0.6),
           ),
         ),
         const SizedBox(height: 2),
-        Text(
-          value,
-          style: const TextStyle(
-            fontFamily: 'JetBrainsMono',
-            fontWeight: FontWeight.w700,
-            fontSize: 15,
-            color: Color(0xFF191C1F),
-          ),
-        ),
+        Text(value, style: AppTypography.stat.copyWith(fontSize: 15)),
       ],
-    );
-  }
-}
-
-/// 空状態・エラー状態の共通表示
-class _HistoryMessageView extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String message;
-  final VoidCallback? onRetry;
-
-  const _HistoryMessageView({
-    required this.icon,
-    required this.title,
-    required this.message,
-    this.onRetry,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: const Color(0xFFC9C4D5).withValues(alpha: 0.35),
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 42, color: const Color(0xFF19005C)),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'HankenGrotesk',
-                fontFamilyFallback: ['NotoSansJP'],
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                color: Color(0xFF19005C),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontFamilyFallback: ['NotoSansJP'],
-                fontWeight: FontWeight.w400,
-                fontSize: 13,
-                color: Color(0xFF484553),
-                height: 1.5,
-              ),
-            ),
-            if (onRetry != null) ...[
-              const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: onRetry,
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF19005C),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text(
-                  '再読み込み',
-                  style: TextStyle(
-                    fontFamily: 'HankenGrotesk',
-                    fontFamilyFallback: ['NotoSansJP'],
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
     );
   }
 }

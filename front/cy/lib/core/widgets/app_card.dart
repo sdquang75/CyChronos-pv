@@ -13,6 +13,7 @@ class AppCard extends StatelessWidget {
     this.padding = const EdgeInsets.all(AppSpacing.md + 2),
     this.margin,
     this.borderRadius = AppSpacing.radiusCard,
+    this.clipBehavior = Clip.none,
   });
 
   final Widget child;
@@ -20,12 +21,16 @@ class AppCard extends StatelessWidget {
   final EdgeInsetsGeometry? margin;
   final double borderRadius;
 
+  /// InkWell等、角丸からはみ出す描画を持つchildを入れるときはClip.antiAliasにする
+  final Clip clipBehavior;
+
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       margin: margin,
       padding: padding,
+      clipBehavior: clipBehavior,
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(borderRadius),
