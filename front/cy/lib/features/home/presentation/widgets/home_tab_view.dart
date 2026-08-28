@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_bottom_navigation.dart';
 import '../../domain/weather_state.dart';
 import '../providers/weather_provider.dart';
@@ -84,7 +87,7 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE),
+      backgroundColor: AppColors.bgCool,
       body: Stack(
         children: [
           // Main Body
@@ -156,17 +159,8 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'DURATION',
-          style: TextStyle(
-            fontFamily: 'JetBrainsMono',
-            fontWeight: FontWeight.w500,
-            fontSize: 14,
-            letterSpacing: 0.7,
-            color: Color(0xFF484553),
-          ),
-        ),
-        const SizedBox(height: 16),
+        const Text('DURATION', style: AppTypography.sectionLabel),
+        const SizedBox(height: AppSpacing.lg),
         Row(
           children: [
             _buildDurationField(controller: _hoursController),
@@ -178,7 +172,7 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
                 fontFamilyFallback: ['NotoSansJP'],
                 fontWeight: FontWeight.w600,
                 fontSize: 18,
-                color: Color(0xFF191C1F),
+                color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(width: 24),
@@ -191,7 +185,7 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
                 fontFamilyFallback: ['NotoSansJP'],
                 fontWeight: FontWeight.w600,
                 fontSize: 18,
-                color: Color(0xFF191C1F),
+                color: AppColors.textPrimary,
               ),
             ),
           ],
@@ -216,7 +210,7 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
           fontFamilyFallback: ['NotoSansJP'],
           fontWeight: FontWeight.w600,
           fontSize: 22,
-          color: Color(0xFF191C1F),
+          color: AppColors.textPrimary,
         ),
         decoration: InputDecoration(
           filled: true,
@@ -228,14 +222,14 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(24),
             borderSide: BorderSide(
-              color: const Color(0xFFC9C4D5).withValues(alpha: 0.5),
+              color: AppColors.border.withValues(alpha: 0.5),
               width: 1.5,
             ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(24),
             borderSide: BorderSide(
-              color: const Color(0xFF19005C).withValues(alpha: 0.8),
+              color: AppColors.primary.withValues(alpha: 0.8),
               width: 1.5,
             ),
           ),
@@ -262,17 +256,8 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'INTEREST',
-          style: TextStyle(
-            fontFamily: 'JetBrainsMono',
-            fontWeight: FontWeight.w500,
-            fontSize: 14,
-            letterSpacing: 0.7,
-            color: Color(0xFF484553),
-          ),
-        ),
-        const SizedBox(height: 16),
+        const Text('INTEREST', style: AppTypography.sectionLabel),
+        const SizedBox(height: AppSpacing.lg),
         Wrap(
           spacing: 12,
           runSpacing: 12,
@@ -300,14 +285,14 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
                     decoration: BoxDecoration(
                       color:
                           isSelected
-                              ? const Color(0xFFF1EBFF)
+                              ? AppColors.accentBg
                               : const Color(0xFFF2F3F8),
                       borderRadius: BorderRadius.circular(9999),
                       border: Border.all(
                         color:
                             isSelected
-                                ? const Color(0xFF19005C).withValues(alpha: 0.3)
-                                : const Color(0xFFC9C4D5),
+                                ? AppColors.primary.withValues(alpha: 0.3)
+                                : AppColors.border,
                         width: 1,
                       ),
                     ),
@@ -320,8 +305,8 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
                           height: 20,
                           colorFilter: ColorFilter.mode(
                             isSelected
-                                ? const Color(0xFF19005C)
-                                : const Color(0xFF484553),
+                                ? AppColors.primary
+                                : AppColors.textSecondary,
                             BlendMode.srcIn,
                           ),
                         ),
@@ -336,8 +321,8 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
                             fontSize: 16,
                             color:
                                 isSelected
-                                    ? const Color(0xFF19005C)
-                                    : const Color(0xFF484553),
+                                    ? AppColors.primary
+                                    : AppColors.textSecondary,
                           ),
                         ),
                       ],
@@ -373,7 +358,7 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
                       fontFamilyFallback: ['NotoSansJP'],
                     ),
                   ),
-                  backgroundColor: const Color(0xFF2A0088),
+                  backgroundColor: AppColors.snackbarBg,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -392,11 +377,11 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
             height: 64,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: const Color(0xFF19005C),
+              color: AppColors.primary,
               borderRadius: BorderRadius.circular(9999),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF19005C).withValues(alpha: 0.2),
+                  color: AppColors.primary.withValues(alpha: 0.2),
                   blurRadius: 30,
                   offset: const Offset(0, 10),
                 ),
