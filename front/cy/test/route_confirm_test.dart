@@ -114,6 +114,7 @@ final _destination = <String, dynamic>{
 Widget _wrap({
   required AuthState authState,
   required _FakeRouteRepository repository,
+  Map<String, dynamic>? destination,
 }) {
   return ProviderScope(
     overrides: [
@@ -121,7 +122,7 @@ Widget _wrap({
     ],
     child: MaterialApp(
       home: RouteConfirmScreen(
-        destination: _destination,
+        destination: destination ?? _destination,
         locationService: _FakeLocationService(),
         repository: repository,
         useMapTiles: false, // テストでは地図タイルの通信ができないので簡易描画にする
@@ -205,5 +206,47 @@ void main() {
     expect(find.textContaining('走行記録なしで案内します'), findsOneWidget); // 案内文言
     await tester.pumpAndSettle();
     expect(find.text('案内を終了'), findsOneWidget); // 案内モード自体には入れる
+  });
+
+  testWidgets('往復モードは往路案内→滞在→帰りのルート表示へ進める',
+      (WidgetTester tester) async {
+    final repository = _FakeRouteRepository();
+    final roundTripDestination = <String, dynamic>{
+      ..._destination,
+      'tripMode': 'round_trip',
+      'plannedStayMinutes': 15,
+      'returnDurationSec': 2100,
+      'returnDistanceM': 6500,
+    };
+
+    await tester.pumpWidget(_wrap(
+      authState: const AuthUnauthenticated(),
+      repository: repository,
+      destination: roundTripDestination,
+    ));
+    await tester.pumpAndSettle();
+
+    // 往路案内開始 → 往復モードなので「到着・滞在を開始」ボタンが出る
+    await tester.tap(find.text('案内開始'));
+    await tester.pumpAndSettle();
+    expect(find.text('到着・滞在を開始'), findsOneWidget);
+
+    // 到着(手動)→ 滞在パネルへ
+    await tester.tap(find.text('到着・滞在を開始'));
+    await tester.pumpAndSettle();
+    expect(find.text('滞在中'), findsOneWidget);
+    expect(find.text('今すぐ折り返す'), findsOneWidget);
+
+    // 今すぐ折り返す → 復路プレビュー(出発地点へ戻る)
+    await tester.tap(find.text('今すぐ折り返す'));
+    await tester.pumpAndSettle();
+    expect(find.text('出発地点へ戻る'), findsOneWidget);
+    expect(find.text('帰りの案内を開始'), findsOneWidget);
+
+    // 帰りの案内を開始 → 上部チップに「復路」の実ルート値が出る
+    await tester.tap(find.text('帰りの案内を開始'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('復路 ・ 8.5km'), findsOneWidget);
+    expect(find.text('案内を終了'), findsOneWidget);
   });
 }
