@@ -4,22 +4,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/widgets/app_bottom_navigation.dart';
-import '../../domain/recommendation_state.dart';
 import '../../domain/weather_state.dart';
-import '../providers/recommendation_provider.dart';
 import '../providers/weather_provider.dart';
 import 'weather_header_card.dart';
 
 /// HOMEタブのルート画面(検索条件を入力しておすすめスポットを探す)。
-/// RideFlowの入れ子Navigatorのルートとして使われ、目的地一覧が見つかったら
-/// onFindDestinationを呼んでRideFlow側でpushしてもらう
-/// (go_routerではなくコールバックにしているのは、この画面自体はIndexedStackの
+/// RideFlowの入れ子Navigatorのルートとして使われ、検索条件が決まったら
+/// すぐにonFindDestinationを呼んでRideFlow側で目的地一覧画面をpushしてもらう
+/// (実際のAPI呼び出し・ローディング/エラー表示は一覧画面側が持つ。
+/// go_routerではなくコールバックにしているのは、この画面自体はIndexedStackの
 /// 中に常駐していてページ遷移しないため)
 class HomeTabView extends ConsumerStatefulWidget {
   const HomeTabView({super.key, required this.onFindDestination});
 
-  final void Function(List<dynamic> places, int minutes, String type)
-  onFindDestination;
+  final void Function(int minutes, String type) onFindDestination;
 
   @override
   ConsumerState<HomeTabView> createState() => _HomeTabViewState();
@@ -83,62 +81,8 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
     super.dispose();
   }
 
-  void _showRecommendationFeedback(RecommendationState state) {
-    if (!mounted) return;
-
-    String? message;
-    switch (state) {
-      case RecommendationLocating():
-        message = '現在地を取得しています...';
-      case RecommendationLoading():
-        message = 'おすすめスポットを検索しています...';
-      case RecommendationLoaded(data: final data):
-        final places = data['places'] as List<dynamic>? ?? [];
-        // 検索に使った空き時間(分)も一覧画面に渡す(一覧ヘッダーの「空き時間」表示に使う)
-        final hours = int.tryParse(_hoursController.text) ?? 0;
-        final minutes = int.tryParse(_minutesController.text) ?? 0;
-        widget.onFindDestination(
-          places,
-          hours * 60 + minutes,
-          _selectedPlacesType(),
-        );
-        message = 'おすすめスポットを取得しました。';
-      case RecommendationLocationServiceDisabled():
-        message = '位置情報サービスが無効です。端末の設定をご確認ください。';
-      case RecommendationPermissionDenied():
-        message = '位置情報の利用を許可してください。';
-      case RecommendationPermissionDeniedForever():
-        message = '位置情報の利用が拒否されています。設定アプリから許可してください。';
-      case RecommendationError(message: final msg):
-        message = 'エラーが発生しました: $msg';
-      case RecommendationInitial():
-        message = null;
-    }
-
-    if (message == null) return;
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(
-            fontFamily: 'HankenGrotesk',
-            fontFamilyFallback: ['NotoSansJP'],
-          ),
-        ),
-        backgroundColor: const Color(0xFF2A0088),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    ref.listen<RecommendationState>(recommendationProvider, (previous, next) {
-      _showRecommendationFeedback(next);
-    });
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FE),
       body: Stack(
@@ -438,12 +382,10 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
               );
               return;
             }
-            ref
-                .read(recommendationProvider.notifier)
-                .fetchForCurrentLocation(
-                  minutes: totalMinutes,
-                  type: _selectedPlacesType(),
-                );
+            // 検索の実行(位置情報取得・API呼び出し・ローディング/エラー表示)は
+            // 目的地一覧画面(DestinationListScreen)側が持つので、
+            // ここではRideFlowにpushしてもらうだけ
+            widget.onFindDestination(totalMinutes, _selectedPlacesType());
           },
           borderRadius: BorderRadius.circular(9999),
           child: Container(

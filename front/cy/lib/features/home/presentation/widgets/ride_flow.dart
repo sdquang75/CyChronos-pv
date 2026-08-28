@@ -18,12 +18,11 @@ class RideFlow extends StatefulWidget {
 class _RideFlowState extends State<RideFlow> {
   final _navigatorKey = GlobalKey<NavigatorState>();
 
-  void _openDestinationList(List<dynamic> places, int minutes, String type) {
+  void _openDestinationList(int minutes, String type) {
     _navigatorKey.currentState?.push(
       MaterialPageRoute(
         builder:
             (_) => DestinationListScreen(
-              places: places,
               minutes: minutes,
               type: type,
             ),

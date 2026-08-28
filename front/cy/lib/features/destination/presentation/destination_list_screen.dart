@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/place_photo.dart';
@@ -6,12 +7,11 @@ import '../../../core/widgets/app_bottom_navigation.dart';
 import '../../../core/widgets/staggered_entrance.dart';
 import '../../../core/widgets/tap_scale.dart';
 import '../../detil/detil.dart';
-import '../../home/data/location_service.dart';
+import '../../home/domain/recommendation_state.dart';
 import '../../home/presentation/providers/recommendation_provider.dart';
 
 class DestinationListScreen extends ConsumerStatefulWidget {
-  final List<dynamic> places;
-  final int? minutes;
+  final int minutes;
 
   // ホーム画面で選択したGoogle Placesの検索タイプ
   // 例：cafe、park、restaurant
@@ -19,9 +19,8 @@ class DestinationListScreen extends ConsumerStatefulWidget {
 
   const DestinationListScreen({
     super.key,
-    required this.places,
+    required this.minutes,
     required this.type,
-    this.minutes,
   });
 
   @override
@@ -31,29 +30,50 @@ class DestinationListScreen extends ConsumerStatefulWidget {
 
 class _DestinationListScreenState
     extends ConsumerState<DestinationListScreen> {
-  // 画面に表示する目的地一覧
-  late List<dynamic> _places;
-
-  // 再提案処理中かどうか
-  bool _isRefreshing = false;
-
   @override
   void initState() {
     super.initState();
 
-    // 最初はホーム画面から渡された目的地一覧を表示する
-    _places = List<dynamic>.from(widget.places);
+    // この画面自体が検索の実行主体になる(reformと同じ構成)。
+    // ホーム画面ではローディング/エラーをトースト表示せず、
+    // ここに来た時点ですぐ検索を始めて、結果はこの画面の中で状態として出す
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _search();
+    });
+  }
+
+  void _search() {
+    ref
+        .read(recommendationProvider.notifier)
+        .fetchForCurrentLocation(minutes: widget.minutes, type: widget.type);
+  }
+
+  void _retry() {
+    HapticFeedback.lightImpact();
+    _search();
+  }
+
+  bool get _isLoading {
+    final state = ref.watch(recommendationProvider);
+    return state is RecommendationInitial ||
+        state is RecommendationLocating ||
+        state is RecommendationLoading;
+  }
+
+  // /api/suggest から取得できた目的地一覧(まだ結果が無ければ空)
+  List<dynamic> get _places {
+    final state = ref.watch(recommendationProvider);
+    if (state is! RecommendationLoaded) return const [];
+    final data = state.data;
+    if (data is! Map) return const [];
+    final rawPlaces = data['places'];
+    if (rawPlaces is! List) return const [];
+    return rawPlaces;
   }
 
   // 空き時間を「X時間YY分」の形にする
-  // 値を受け取れなかった場合は「--」を表示する
   String _freeTimeText() {
     final total = widget.minutes;
-
-    if (total == null) {
-      return '--';
-    }
-
     final hours = total ~/ 60;
     final minutes = (total % 60).toString().padLeft(2, '0');
 
@@ -89,7 +109,7 @@ class _DestinationListScreenState
                       const SizedBox(height: 20),
 
                       Expanded(
-                        child: _buildDestinationList(),
+                        child: _buildBody(),
                       ),
                     ],
                   ),
@@ -117,15 +137,16 @@ class _DestinationListScreenState
 
                     Expanded(
                       child: _ActionButton(
-                        text: _isRefreshing
+                        text: _isLoading
                             ? '検索中...'
                             : '再提案',
-                        icon: _isRefreshing
+                        icon: _isLoading
                             ? Icons.hourglass_top_rounded
                             : Icons.refresh_rounded,
                         isPrimary: true,
                         onPressed: () {
-                          _refreshRecommendations();
+                          if (_isLoading) return;
+                          _retry();
                         },
                       ),
                     ),
@@ -247,9 +268,61 @@ class _DestinationListScreenState
     );
   }
 
-  Widget _buildDestinationList() {
+  // 検索状態に応じて中身を切り替える(ローディング/エラー/空/一覧)。
+  // ホーム画面でトースト表示していた検索中・エラーの案内を、
+  // この画面自体の「状態として作り込まれた表示」に置き換えたもの
+  Widget _buildBody() {
+    final state = ref.watch(recommendationProvider);
+
+    if (state is RecommendationInitial ||
+        state is RecommendationLocating ||
+        state is RecommendationLoading) {
+      return const _SearchingIndicator();
+    }
+
+    if (state is RecommendationLocationServiceDisabled) {
+      return _DestinationStateView(
+        icon: Icons.location_disabled_rounded,
+        title: '位置情報を確認してください',
+        message: '位置情報サービスが無効です。端末の設定をご確認ください。',
+        onRetry: _retry,
+      );
+    }
+
+    if (state is RecommendationPermissionDenied) {
+      return _DestinationStateView(
+        icon: Icons.location_disabled_rounded,
+        title: '位置情報の利用を許可してください',
+        message: '位置情報を許可すると、現在地周辺のおすすめスポットを検索できます。',
+        onRetry: _retry,
+      );
+    }
+
+    if (state is RecommendationPermissionDeniedForever) {
+      return _DestinationStateView(
+        icon: Icons.location_disabled_rounded,
+        title: '位置情報の利用が拒否されています',
+        message: '設定アプリから位置情報の利用を許可してください。',
+        onRetry: _retry,
+      );
+    }
+
+    if (state is RecommendationError) {
+      return _DestinationStateView(
+        icon: Icons.error_outline_rounded,
+        title: '検索に失敗しました',
+        message: '通信環境をご確認のうえ、もう一度お試しください。',
+        onRetry: _retry,
+      );
+    }
+
+    // RecommendationLoaded
     if (_places.isEmpty) {
-      return const _EmptyDestinationView();
+      return const _DestinationStateView(
+        icon: Icons.location_off_rounded,
+        title: '目的地が見つかりませんでした',
+        message: '時間やジャンルを変更して、もう一度お試しください。',
+      );
     }
 
     return ListView.builder(
@@ -289,160 +362,6 @@ class _DestinationListScreenState
     if (navigator.canPop()) {
       navigator.pop();
     }
-  }
-
-  // 「再提案」を押したときの処理
-  Future<void> _refreshRecommendations() async {
-    // 処理中にもう一度押されても二重実行しない
-    if (_isRefreshing) {
-      return;
-    }
-
-    final searchMinutes = widget.minutes;
-
-    // 検索時間を受け取れていない場合
-    if (searchMinutes == null || searchMinutes < 1) {
-      _showMessage(
-        context,
-        '検索条件を確認できませんでした。'
-        '情報変更から条件を設定してください。',
-      );
-      return;
-    }
-
-    setState(() {
-      _isRefreshing = true;
-    });
-
-    _showMessage(
-      context,
-      'おすすめスポットを検索しています。'
-      '少々お待ちください。',
-    );
-
-    try {
-      // 現在地をもう一度取得する
-      final position = await ref
-          .read(locationServiceProvider)
-          .getCurrentPosition();
-
-      // ホーム画面と同じ目的地提案APIを呼び出す
-      final data = await ref
-          .read(recommendationRepositoryProvider)
-          .fetchRecommendations(
-            latitude: position.latitude,
-            longitude: position.longitude,
-            type: widget.type,
-            minutes: searchMinutes,
-          );
-
-      final List<dynamic> newPlaces;
-
-      // APIレスポンスからplacesを取り出す
-      if (data is Map) {
-        final rawPlaces = data['places'];
-
-        if (rawPlaces is List) {
-          newPlaces = List<dynamic>.from(rawPlaces);
-        } else {
-          newPlaces = <dynamic>[];
-        }
-      } else {
-        newPlaces = <dynamic>[];
-      }
-
-      // API通信中に画面が閉じられていた場合は更新しない
-      if (!mounted) {
-        return;
-      }
-
-      // 新しい検索結果へ一覧を差し替える
-      setState(() {
-        _places = newPlaces;
-      });
-
-      if (newPlaces.isEmpty) {
-        _showMessage(
-          context,
-          '条件に合う目的地が見つかりませんでした。',
-        );
-      } else {
-        _showMessage(
-          context,
-          'お待たせしました。'
-          'おすすめスポットを再提案しました。',
-        );
-      }
-    } on LocationServiceDisabledException {
-      if (!mounted) {
-        return;
-      }
-
-      _showMessage(
-        context,
-        '位置情報サービスが無効です。'
-        '端末の設定をご確認ください。',
-      );
-    } on LocationPermissionDeniedForeverException {
-      if (!mounted) {
-        return;
-      }
-
-      _showMessage(
-        context,
-        '位置情報の利用が拒否されています。'
-        '設定アプリから許可してください。',
-      );
-    } on LocationPermissionDeniedException {
-      if (!mounted) {
-        return;
-      }
-
-      _showMessage(
-        context,
-        '位置情報の利用を許可してください。',
-      );
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      _showMessage(
-        context,
-        '再提案に失敗しました。'
-        '通信環境を確認して、もう一度お試しください。',
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isRefreshing = false;
-        });
-      }
-    }
-  }
-
-  void _showMessage(
-    BuildContext context,
-    String message,
-  ) {
-    ScaffoldMessenger.of(context).clearSnackBars();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(
-            fontFamily: 'HankenGrotesk',
-            fontFamilyFallback: ['NotoSansJP'],
-          ),
-        ),
-        backgroundColor: const Color(0xFF2A0088),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-    );
   }
 }
 
@@ -729,8 +648,42 @@ class _DestinationCard extends StatelessWidget {
   }
 }
 
-class _EmptyDestinationView extends StatelessWidget {
-  const _EmptyDestinationView();
+// 検索中は結果エリアの真ん中にスピナーだけを出す
+// (ホームに留まったままトーストで進捗を伝えるのではなく、
+// この画面自体が「検索中」という状態を持つ)
+class _SearchingIndicator extends StatelessWidget {
+  const _SearchingIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: SizedBox(
+        width: 28,
+        height: 28,
+        child: CircularProgressIndicator(
+          strokeWidth: 2.5,
+          color: Color(0xFF19005C),
+        ),
+      ),
+    );
+  }
+}
+
+// 「該当なし」「位置情報エラー」「通信エラー」を1つの見た目で表現する。
+// onRetryを渡すと再検索ボタンが出る(該当なしのときは下の「再提案」ボタンが
+// 既にあるので付けない)
+class _DestinationStateView extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String message;
+  final VoidCallback? onRetry;
+
+  const _DestinationStateView({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.onRetry,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -750,21 +703,21 @@ class _EmptyDestinationView extends StatelessWidget {
             ).withValues(alpha: 0.35),
           ),
         ),
-        child: const Column(
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.location_off_rounded,
+              icon,
               size: 42,
-              color: Color(0xFF19005C),
+              color: const Color(0xFF19005C),
             ),
 
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
 
             Text(
-              '目的地が見つかりませんでした',
+              title,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'HankenGrotesk',
                 fontFamilyFallback: ['NotoSansJP'],
                 fontWeight: FontWeight.w700,
@@ -773,12 +726,12 @@ class _EmptyDestinationView extends StatelessWidget {
               ),
             ),
 
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
 
             Text(
-              '時間やジャンルを変更して、もう一度お試しください。',
+              message,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Inter',
                 fontFamilyFallback: ['NotoSansJP'],
                 fontWeight: FontWeight.w400,
@@ -787,6 +740,30 @@ class _EmptyDestinationView extends StatelessWidget {
                 height: 1.5,
               ),
             ),
+
+            if (onRetry != null) ...[
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: onRetry,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF19005C),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text(
+                  'もう一度試す',
+                  style: TextStyle(
+                    fontFamily: 'HankenGrotesk',
+                    fontFamilyFallback: ['NotoSansJP'],
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
