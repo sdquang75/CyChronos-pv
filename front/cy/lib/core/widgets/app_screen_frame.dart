@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+
 // 各画面のコンテンツを共通の「スマホフレーム」で包む。
 // 実機(幅450 x 高さ943以下)ではそのまま全画面表示し、
 // それより広い/高いビューポート(PCブラウザでのプレビューなど)では
@@ -23,7 +25,7 @@ class AppScreenFrame extends StatelessWidget {
     if (!isLargeScreen) return child;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF191C1F),
+      backgroundColor: AppColors.frameBackground,
       body: Center(
         child: Container(
           width: width,

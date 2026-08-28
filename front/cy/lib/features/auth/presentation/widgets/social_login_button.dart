@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/theme/app_colors.dart';
+
 class SocialLoginButton extends StatefulWidget {
   final Widget icon;
   final String label;
@@ -55,13 +57,13 @@ class _SocialLoginButtonState extends State<SocialLoginButton> {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: _hovered
-                    ? const Color(0xFF19005C)
-                    : const Color(0xFFC9C4D5).withValues(alpha: 0.3),
+                    ? AppColors.primary
+                    : AppColors.border.withValues(alpha: 0.3),
                 width: 2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF2E0094).withValues(alpha: 0.05),
+                  color: AppColors.glow.withValues(alpha: 0.05),
                   blurRadius: 30,
                   offset: const Offset(0, 10),
                 ),
@@ -78,7 +80,7 @@ class _SocialLoginButtonState extends State<SocialLoginButton> {
                         ? const CircularProgressIndicator(
                             strokeWidth: 2.5,
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              Color(0xFF6049C5),
+                              AppColors.primaryMuted,
                             ),
                           )
                         : widget.icon,
@@ -96,7 +98,7 @@ class _SocialLoginButtonState extends State<SocialLoginButton> {
                           fontFamilyFallback: ['NotoSansJP'],
                           fontSize: 20,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF191C1F),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                     ),

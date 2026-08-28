@@ -31,4 +31,7 @@ class AppColors {
   static const error = Color(0xFFBA1A1A);
   static const warningBg = Color(0xFFFFF3E0); // ルート取得失敗時などの注意バナー
   static const starGold = Color(0xFFFFB300); // 評価の星
+
+  // --- AppScreenFrame(PCブラウザ等の大画面プレビュー用) ---
+  static const frameBackground = Color(0xFF191C1F);
 }
