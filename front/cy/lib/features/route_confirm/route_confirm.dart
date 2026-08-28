@@ -7,6 +7,7 @@ import '../../core/network/place_photo.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
+import '../../core/widgets/app_bottom_navigation.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_top_bar.dart';
 import '../auth/domain/auth_state.dart';
@@ -190,8 +191,12 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         content: Text(message),
         backgroundColor: AppColors.snackbarBg,
         behavior: SnackBarBehavior.floating,
-        // 下部の「案内を終了」ボタンに被らないよう、少し上に出す
-        margin: const EdgeInsets.only(bottom: 90, left: 16, right: 16),
+        // 下部の情報バー/ボタン(+画面下部メニューバー)に被らないよう、少し上に出す
+        margin: EdgeInsets.only(
+          bottom: 90 + AppBottomNavigation.barHeightFor(context),
+          left: 16,
+          right: 16,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
@@ -296,11 +301,13 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
               ),
 
             // 下部: 通常時は情報バー、案内モード中は「案内を終了」ボタンだけ。
-            // AnimatedSwitcherで切り替え時にスッと入れ替わる
+            // AnimatedSwitcherで切り替え時にスッと入れ替わる。
+            // この画面はHomeScreen側の画面下部メニューバー(常に最前面に被さる)の
+            // 上に重なって描画されるので、そのぶんだけ持ち上げてボタンが隠れないようにする
             Positioned(
               left: 0,
               right: 0,
-              bottom: 0,
+              bottom: AppBottomNavigation.barHeightFor(context),
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
                 // 下からスライドしてくる切り替えアニメーション
@@ -386,8 +393,12 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     return GoogleMap(
       initialCameraPosition:
           CameraPosition(target: routePoints.first, zoom: 13),
-      // 下の情報バー・上のチップに隠れないよう、地図の見える中心を上下にずらす
-      padding: const EdgeInsets.only(top: 100, bottom: 260),
+      // 下の情報バー・画面下部メニューバー・上のチップに隠れないよう、
+      // 地図の見える中心を上下にずらす
+      padding: EdgeInsets.only(
+        top: 100,
+        bottom: 260 + AppBottomNavigation.barHeightFor(context),
+      ),
       onMapCreated: (controller) async {
         // 地図のレイアウト確定前にbounds指定すると失敗することがあるので少し待つ
         await Future.delayed(const Duration(milliseconds: 100));
