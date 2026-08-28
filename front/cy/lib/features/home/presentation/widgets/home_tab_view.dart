@@ -21,7 +21,8 @@ import 'weather_header_card.dart';
 class HomeTabView extends ConsumerStatefulWidget {
   const HomeTabView({super.key, required this.onFindDestination});
 
-  final void Function(int minutes, String type) onFindDestination;
+  final void Function(int minutes, String type, String tripMode, int stayMinutes)
+  onFindDestination;
 
   @override
   ConsumerState<HomeTabView> createState() => _HomeTabViewState();
@@ -38,7 +39,11 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
   final TextEditingController _minutesController = TextEditingController(
     text: '45',
   );
+  final TextEditingController _stayMinutesController = TextEditingController(
+    text: '15',
+  );
   final Set<String> _selectedGenres = {'Cafe'}; // default Cafe selected
+  String _tripMode = 'one_way'; // 'one_way' | 'round_trip'
 
   @override
   void initState() {
@@ -82,6 +87,7 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
     _scrollController.dispose();
     _hoursController.dispose();
     _minutesController.dispose();
+    _stayMinutesController.dispose();
     super.dispose();
   }
 
@@ -126,6 +132,8 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
         children: [
           _buildHeroHeader(),
           const SizedBox(height: 36),
+          _buildTripModeSection(),
+          const SizedBox(height: 28),
           _buildDurationSection(),
           const SizedBox(height: 36),
           _buildGenreSection(),
@@ -156,6 +164,59 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
         const SizedBox(height: 24),
         const WeatherHeaderCard(),
       ],
+    );
+  }
+
+  // Trip Mode Selector (one-way / round-trip)
+  Widget _buildTripModeSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '移動方法',
+          style: AppTypography.sectionLabel.copyWith(
+            fontFamilyFallback: const ['NotoSansJP'],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Row(
+          children: [
+            Expanded(child: _buildTripModeButton('one_way', '片道')),
+            const SizedBox(width: 12),
+            Expanded(child: _buildTripModeButton('round_trip', '往復')),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTripModeButton(String value, String label) {
+    final isSelected = _tripMode == value;
+    return GestureDetector(
+      onTap: () => setState(() => _tripMode = value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: 52,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.accentBg : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.border,
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'HankenGrotesk',
+            fontFamilyFallback: const ['NotoSansJP'],
+            fontWeight: FontWeight.w600,
+            fontSize: 17,
+            color: isSelected ? AppColors.primary : AppColors.textSecondary,
+          ),
+        ),
+      ),
     );
   }
 
@@ -200,6 +261,35 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
             ),
           ],
         ),
+        if (_tripMode == 'round_trip') ...[
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              _buildDurationField(controller: _stayMinutesController),
+              const SizedBox(width: 8),
+              const Text(
+                '分 滞在',
+                style: TextStyle(
+                  fontFamily: 'HankenGrotesk',
+                  fontFamilyFallback: ['NotoSansJP'],
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '所要時間には、往路・滞在・復路をすべて含みます。',
+            style: TextStyle(
+              fontFamily: 'HankenGrotesk',
+              fontFamilyFallback: ['NotoSansJP'],
+              fontSize: 13,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -362,14 +452,31 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
             final hours = int.tryParse(_hoursController.text) ?? 0;
             final minutes = int.tryParse(_minutesController.text) ?? 0;
             final totalMinutes = hours * 60 + minutes;
+            final stayMinutes =
+                _tripMode == 'round_trip'
+                    ? int.tryParse(_stayMinutesController.text) ?? 0
+                    : 0;
             if (totalMinutes < 1) {
               AppToast.show(context, '時間を入力してください。', isError: true);
+              return;
+            }
+            if (_tripMode == 'round_trip' && totalMinutes - stayMinutes < 2) {
+              AppToast.show(
+                context,
+                '滞在時間を除いて、移動時間を2分以上確保してください。',
+                isError: true,
+              );
               return;
             }
             // 検索の実行(位置情報取得・API呼び出し・ローディング/エラー表示)は
             // 目的地一覧画面(DestinationListScreen)側が持つので、
             // ここではRideFlowにpushしてもらうだけ
-            widget.onFindDestination(totalMinutes, _selectedPlacesType());
+            widget.onFindDestination(
+              totalMinutes,
+              _selectedPlacesType(),
+              _tripMode,
+              stayMinutes,
+            );
           },
           borderRadius: BorderRadius.circular(9999),
           child: Container(

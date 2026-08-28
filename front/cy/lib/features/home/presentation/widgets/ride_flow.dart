@@ -24,13 +24,20 @@ class _RideFlowState extends State<RideFlow> {
   late final GlobalKey<NavigatorState> _navigatorKey =
       widget.navigatorKey ?? GlobalKey<NavigatorState>();
 
-  void _openDestinationList(int minutes, String type) {
+  void _openDestinationList(
+    int minutes,
+    String type,
+    String tripMode,
+    int stayMinutes,
+  ) {
     _navigatorKey.currentState?.push(
       MaterialPageRoute(
         builder:
             (_) => DestinationListScreen(
               minutes: minutes,
               type: type,
+              tripMode: tripMode,
+              stayMinutes: stayMinutes,
             ),
       ),
     );

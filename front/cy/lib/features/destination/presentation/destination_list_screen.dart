@@ -24,10 +24,18 @@ class DestinationListScreen extends ConsumerStatefulWidget {
   // 例：cafe、park、restaurant
   final String type;
 
+  // 'one_way'(片道) | 'round_trip'(往復)
+  final String tripMode;
+
+  // 往復時の滞在時間(分)。片道のときは0
+  final int stayMinutes;
+
   const DestinationListScreen({
     super.key,
     required this.minutes,
     required this.type,
+    this.tripMode = 'one_way',
+    this.stayMinutes = 0,
   });
 
   @override
@@ -52,7 +60,12 @@ class _DestinationListScreenState
   void _search() {
     ref
         .read(recommendationProvider.notifier)
-        .fetchForCurrentLocation(minutes: widget.minutes, type: widget.type);
+        .fetchForCurrentLocation(
+          minutes: widget.minutes,
+          type: widget.type,
+          mode: widget.tripMode,
+          stayMinutes: widget.stayMinutes,
+        );
   }
 
   void _retry() {
@@ -215,6 +228,17 @@ class _DestinationListScreenState
             ],
           ),
         ),
+        if (widget.tripMode == 'round_trip') ...[
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            '往復・滞在${widget.stayMinutes}分',
+            style: AppTypography.label.copyWith(
+              fontFamily: 'HankenGrotesk',
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -290,9 +314,11 @@ class _DestinationListScreenState
           return const SizedBox.shrink();
         }
 
-        final destination = Map<String, dynamic>.from(
-          rawDestination,
-        );
+        final destination =
+            Map<String, dynamic>.from(rawDestination)
+              ..['tripMode'] = widget.tripMode
+              ..['plannedTotalMinutes'] = widget.minutes
+              ..['plannedStayMinutes'] = widget.stayMinutes;
 
         return StaggeredEntrance(
           key: ValueKey(destination['id'] ?? destination['name'] ?? index),
@@ -355,10 +381,14 @@ class _DestinationCard extends StatelessWidget {
     );
   }
 
+  bool get _isRoundTrip => destination['tripMode'] == 'round_trip';
+
   @override
   Widget build(BuildContext context) {
     final dynamic rawDuration =
-        destination['durationMinutes'];
+        _isRoundTrip
+            ? destination['totalDurationMinutes']
+            : destination['durationMinutes'];
 
     final int? durationMinutes = rawDuration is num
         ? rawDuration.round()
@@ -366,9 +396,12 @@ class _DestinationCard extends StatelessWidget {
             rawDuration?.toString() ?? '',
           );
 
-    final String durationText = durationMinutes != null
-        ? '約$durationMinutes分'
-        : '所要時間不明';
+    final String durationText =
+        durationMinutes == null
+            ? '所要時間不明'
+            : _isRoundTrip
+            ? '往復 約$durationMinutes分'
+            : '約$durationMinutes分';
 
     // カード全体をタップして詳細画面へ移動できる(押下時に軽く縮小+触覚フィードバック)
     return TapScale(

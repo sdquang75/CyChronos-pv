@@ -55,6 +55,8 @@ class _FakeRecommendationNotifier extends RecommendationNotifier {
   Future<void> fetchForCurrentLocation({
     required int minutes,
     required String type,
+    required String mode,
+    required int stayMinutes,
   }) async {
     state = RecommendationLoaded({'places': _places});
   }
