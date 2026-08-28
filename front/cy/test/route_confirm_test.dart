@@ -31,6 +31,9 @@ class _FakeLocationService implements LocationService {
       speedAccuracy: 1,
     );
   }
+
+  @override
+  Stream<Position> getPositionStream() => const Stream.empty();
 }
 
 // テスト用の偽リポジトリ。決め打ちのルートを返すか、わざと失敗させる
