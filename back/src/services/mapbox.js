@@ -102,6 +102,33 @@ async function getTravelTimesBatch(from, destinations) {
   return { durations: destinationDurations, distances: destinationDistances };
 }
 
+async function getReturnTravelTimesBatch(from, destinations) {
+  const token = process.env.MAPBOX_ACCESS_TOKEN;
+  const coords = [from, ...destinations].map((point) => `${point.lng},${point.lat}`).join(";");
+  const url = new URL(`${BASE_URL}/directions-matrix/v1/mapbox/cycling/${coords}`);
+  url.searchParams.set("access_token", token);
+  url.searchParams.set("sources", destinations.map((_, index) => index + 1).join(";"));
+  url.searchParams.set("destinations", "0");
+  url.searchParams.set("annotations", "duration,distance");
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Mapbox API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  const durations = data.durations?.map((row) => row?.[0]);
+  const distances = data.distances?.map((row) => row?.[0]);
+  if (!Array.isArray(durations) || !Array.isArray(distances)) {
+    throw new Error("Mapbox API error: 復路のMatrixが取得できませんでした");
+  }
+  if (durations.length !== destinations.length || distances.length !== destinations.length) {
+    throw new Error("Mapbox API error: 復路の件数が目的地の数と一致しません");
+  }
+
+  return { durations, distances };
+}
+
 // 候補が24件を超えても切り捨てず、Matrixの上限ごとに分割して全件の時間を調べる。
 async function getTravelTimes(from, destinations) {
   if (!Array.isArray(destinations)) {
@@ -125,4 +152,41 @@ async function getTravelTimes(from, destinations) {
   };
 }
 
-module.exports = { getIsochrone, getCyclingRoute, getTravelTimes };
+async function getRoundTripTravelTimes(from, destinations) {
+  if (!Array.isArray(destinations)) {
+    throw new TypeError("destinations は配列で指定してください");
+  }
+  if (destinations.length === 0) {
+    return {
+      outboundDurations: [],
+      outboundDistances: [],
+      returnDurations: [],
+      returnDistances: [],
+    };
+  }
+
+  const batches = [];
+  for (let index = 0; index < destinations.length; index += MAX_MATRIX_DESTINATIONS) {
+    batches.push(destinations.slice(index, index + MAX_MATRIX_DESTINATIONS));
+  }
+
+  // 復路は向きで時間が変わるため別計算。
+  const results = await Promise.all(
+    batches.map(async (batch) => {
+      const [outbound, returning] = await Promise.all([
+        getTravelTimesBatch(from, batch),
+        getReturnTravelTimesBatch(from, batch),
+      ]);
+      return { outbound, returning };
+    })
+  );
+
+  return {
+    outboundDurations: results.flatMap((result) => result.outbound.durations),
+    outboundDistances: results.flatMap((result) => result.outbound.distances),
+    returnDurations: results.flatMap((result) => result.returning.durations),
+    returnDistances: results.flatMap((result) => result.returning.distances),
+  };
+}
+
+module.exports = { getIsochrone, getCyclingRoute, getTravelTimes, getRoundTripTravelTimes };

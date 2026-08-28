@@ -293,6 +293,46 @@ function filterWithinMinutes(places, minutes) {
   );
 }
 
+function attachRoundTripMetrics(places, travelTimes, stayMinutes) {
+  return places.map((place, index) => {
+    const outboundDurationSec = travelTimes.outboundDurations[index] ?? null;
+    const returnDurationSec = travelTimes.returnDurations[index] ?? null;
+    const outboundDistanceM = travelTimes.outboundDistances[index] ?? null;
+    const returnDistanceM = travelTimes.returnDistances[index] ?? null;
+    const roundTripDurationSec = Number.isFinite(outboundDurationSec) && Number.isFinite(returnDurationSec)
+      ? outboundDurationSec + returnDurationSec
+      : null;
+    const roundTripDistanceM = Number.isFinite(outboundDistanceM) && Number.isFinite(returnDistanceM)
+      ? outboundDistanceM + returnDistanceM
+      : null;
+    const stayDurationSec = stayMinutes * 60;
+
+    return {
+      ...place,
+      durationSec: outboundDurationSec,
+      distanceM: outboundDistanceM,
+      outboundDurationSec,
+      returnDurationSec,
+      roundTripDurationSec,
+      stayDurationSec,
+      totalDurationSec: roundTripDurationSec == null ? null : roundTripDurationSec + stayDurationSec,
+      outboundDistanceM,
+      returnDistanceM,
+      roundTripDistanceM,
+    };
+  });
+}
+
+function filterWithinRoundTripMinutes(places, minutes) {
+  const minDurationSec = Math.max(0, minutes - sabunminutes) * 60;
+  const maxDurationSec = (minutes + sabunminutes) * 60;
+  return places.filter((place) =>
+    Number.isFinite(place.totalDurationSec) &&
+    place.totalDurationSec >= minDurationSec &&
+    place.totalDurationSec <= maxDurationSec
+  );
+}
 
 
-module.exports = { getNearbyPlaces, getPlacePhoto, applyPlaceSearchFilter, normalizePlace, normalizePlacesResponse, mergeNormalizedPlaceGroups, getBoundarySearchPoints, shufflePlaces, pickSuggestions, attachDurations, filterWithinMinutes };
+
+module.exports = { getNearbyPlaces, getPlacePhoto, applyPlaceSearchFilter, normalizePlace, normalizePlacesResponse, mergeNormalizedPlaceGroups, getBoundarySearchPoints, shufflePlaces, pickSuggestions, attachDurations, filterWithinMinutes, attachRoundTripMetrics, filterWithinRoundTripMinutes };

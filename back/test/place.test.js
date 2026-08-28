@@ -1,7 +1,7 @@
 // pickSuggestions(訪問済み除外+補充)などのテスト。外部API不要で `node --test` で実行できる
 const test = require("node:test");
 const assert = require("node:assert");
-const { applyPlaceSearchFilter, mergeNormalizedPlaceGroups, getBoundarySearchPoints, pickSuggestions, attachDurations, filterWithinMinutes } = require("../src/services/place");
+const { applyPlaceSearchFilter, mergeNormalizedPlaceGroups, getBoundarySearchPoints, pickSuggestions, attachDurations, filterWithinMinutes, attachRoundTripMetrics, filterWithinRoundTripMinutes } = require("../src/services/place");
 
 // テスト用のダミー候補を n 件作る(idは p1, p2, ...)
 function makePlaces(n) {
@@ -92,6 +92,46 @@ test("±10分より近い候補へフォールバックせず、時間条件を�
 test("durationSec が無い place は時間条件を保証できないため除外する", () => {
   const result = filterWithinMinutes(makePlaces(3), 30); // attachDurations を通していない
   assert.strictEqual(result.length, 0);
+});
+
+test("往復時間・滞在時間・往復距離を候補へ付与する", () => {
+  const result = attachRoundTripMetrics(makePlaces(2), {
+    outboundDurations: [600, 900],
+    returnDurations: [720, null],
+    outboundDistances: [2000, 3000],
+    returnDistances: [2200, null],
+  }, 15);
+
+  assert.deepStrictEqual(result[0], {
+    ...makePlaces(1)[0],
+    durationSec: 600,
+    distanceM: 2000,
+    outboundDurationSec: 600,
+    returnDurationSec: 720,
+    roundTripDurationSec: 1320,
+    stayDurationSec: 900,
+    totalDurationSec: 2220,
+    outboundDistanceM: 2000,
+    returnDistanceM: 2200,
+    roundTripDistanceM: 4200,
+  });
+  assert.strictEqual(result[1].roundTripDurationSec, null);
+  assert.strictEqual(result[1].totalDurationSec, null);
+});
+
+test("往復は滞在込みの合計時間で±10分を判定する", () => {
+  const places = [
+    { id: "short", totalDurationSec: 1199 },
+    { id: "min", totalDurationSec: 1200 },
+    { id: "center", totalDurationSec: 1800 },
+    { id: "max", totalDurationSec: 2400 },
+    { id: "long", totalDurationSec: 2401 },
+  ];
+
+  assert.deepStrictEqual(
+    filterWithinRoundTripMinutes(places, 30).map((place) => place.id),
+    ["min", "center", "max"]
+  );
 });
 
 // --- applyPlaceSearchFilter(Google Nearby Searchの検索条件) ---
