@@ -23,9 +23,12 @@ class AppColors {
 
   // --- Surfaces / borders ---
   static const bgCool = Color(0xFFF8F9FE);
+  static const surface = Colors.white; // カードなどの前面サーフェス
   static const border = Color(0xFFC9C4D5);
 
   // --- Semantic ---
   static const danger = Color(0xFFD93A2A); // 案内終了ボタン等
   static const error = Color(0xFFBA1A1A);
+  static const warningBg = Color(0xFFFFF3E0); // ルート取得失敗時などの注意バナー
+  static const starGold = Color(0xFFFFB300); // 評価の星
 }
