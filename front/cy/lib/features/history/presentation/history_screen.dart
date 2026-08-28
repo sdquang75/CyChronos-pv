@@ -91,12 +91,13 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           ),
           child: Column(
             children: [
-              _buildLogo(),
-
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.xxl,
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xxl,
+                    AppSpacing.xxl,
+                    AppSpacing.xxl,
+                    0,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -112,26 +113,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  // タブのルート画面なので、pushで開く画面(AppTopBar)とは違い
-  // ロゴを直接表示する(戻るボタンは不要なため)
-  Widget _buildLogo() {
-    return const Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.xxl,
-        AppSpacing.xxl,
-        AppSpacing.xxl,
-        AppSpacing.xl,
-      ),
-      child: Center(
-        child: Image(
-          image: AssetImage('assets/logo_long.png'),
-          width: 200,
-          fit: BoxFit.contain,
         ),
       ),
     );

@@ -141,14 +141,18 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Center(
-          child: Image.asset(
-            'assets/logo_long.png',
-            width: 200,
-            fit: BoxFit.contain,
+        const Text(
+          'CyChronos',
+          style: TextStyle(
+            fontFamily: 'HankenGrotesk',
+            fontFamilyFallback: ['NotoSansJP'],
+            fontWeight: FontWeight.w800,
+            fontSize: 32,
+            letterSpacing: -0.8,
+            color: AppColors.primary,
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 24),
         const WeatherHeaderCard(),
       ],
     );

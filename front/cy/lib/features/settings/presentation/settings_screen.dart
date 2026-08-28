@@ -316,10 +316,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildLogo(),
-
-              const SizedBox(height: AppSpacing.xxxl),
-
               const Text('設定', style: AppTypography.pageTitle),
 
               const SizedBox(height: AppSpacing.sm),
@@ -399,16 +395,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildLogo() {
-    return Center(
-      child: Image.asset(
-        'assets/logo_long.png',
-        width: 200,
-        fit: BoxFit.contain,
       ),
     );
   }
