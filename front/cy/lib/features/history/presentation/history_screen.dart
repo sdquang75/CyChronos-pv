@@ -8,77 +8,20 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_bottom_navigation.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_state_view.dart';
-import '../../auth/domain/auth_state.dart';
-import '../../auth/presentation/providers/auth_provider.dart';
-import '../data/history_repository.dart';
+import '../domain/history_state.dart';
+import 'providers/history_provider.dart';
 
 /// 走行履歴画面。
 /// back/docs/API.md「2. ログ全件取得」(GET /api/trips)の実データを表示する。
-class HistoryScreen extends ConsumerStatefulWidget {
+/// 取得状態はhistoryProviderが持つ(HomeScreenのIndexedStackで裏に常駐していても、
+/// ルート確認画面でトリップを終えた直後にhistoryProvider側から再取得できるようにするため)
+class HistoryScreen extends ConsumerWidget {
   const HistoryScreen({super.key});
 
   @override
-  ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final historyState = ref.watch(historyProvider);
 
-class _HistoryScreenState extends ConsumerState<HistoryScreen> {
-  final HistoryRepository _repository = HistoryRepository();
-
-  bool _isLoading = true;
-  String? _errorMessage;
-  List<Map<String, dynamic>> _trips = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadTrips();
-  }
-
-  /// ログイン中ユーザーの user_id(バックエンド users テーブルのID)を取り出す
-  int? _currentUserId() {
-    final authState = ref.read(authProvider);
-    if (authState is! AuthAuthenticated) return null;
-    return authState.user.userId;
-  }
-
-  Future<void> _loadTrips() async {
-    final userId = _currentUserId();
-
-    if (userId == null) {
-      // 未ログイン、またはバックエンド未接続で user_id が取れていない
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'ユーザー情報を取得できませんでした。再度ログインしてください。';
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final trips = await _repository.fetchTrips(userId: userId);
-
-      if (!mounted) return;
-
-      setState(() {
-        _trips = trips;
-        _isLoading = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-
-      setState(() {
-        _isLoading = false;
-        _errorMessage = '履歴を取得できませんでした。通信環境をご確認のうえ、もう一度お試しください。';
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
     // AppScreenFrame・下部メニューバーはHomeScreen(IndexedStackシェル)側で
     // 一括して描画されるので、ここでは自分の中身だけを組み立てる
     return Scaffold(
@@ -106,7 +49,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
                       const SizedBox(height: AppSpacing.xl),
 
-                      Expanded(child: _buildBody()),
+                      Expanded(child: _buildBody(ref, historyState)),
                     ],
                   ),
                 ),
@@ -129,25 +72,25 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     );
   }
 
-  Widget _buildBody() {
-    if (_isLoading) {
+  Widget _buildBody(WidgetRef ref, HistoryState state) {
+    if (state is HistoryLoading) {
       return const Center(
         child: CircularProgressIndicator(color: AppColors.primary),
       );
     }
 
-    final errorMessage = _errorMessage;
-    if (errorMessage != null) {
+    if (state is HistoryError) {
       return AppStateView(
         icon: Icons.error_outline_rounded,
         title: '履歴を表示できません',
-        message: errorMessage,
+        message: state.message,
         retryLabel: '再読み込み',
-        onRetry: _loadTrips,
+        onRetry: () => ref.read(historyProvider.notifier).loadTrips(),
       );
     }
 
-    if (_trips.isEmpty) {
+    final trips = state is HistoryLoaded ? state.trips : const [];
+    if (trips.isEmpty) {
       return const AppStateView(
         icon: Icons.directions_bike_rounded,
         title: '走行記録はまだありません',
@@ -159,16 +102,16 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       color: AppColors.primary,
       onRefresh: () {
         HapticFeedback.lightImpact();
-        return _loadTrips();
+        return ref.read(historyProvider.notifier).loadTrips();
       },
       child: ListView.builder(
         padding: const EdgeInsets.only(top: 4, bottom: 16),
         physics: const AlwaysScrollableScrollPhysics(
           parent: BouncingScrollPhysics(),
         ),
-        itemCount: _trips.length,
+        itemCount: trips.length,
         itemBuilder: (context, index) {
-          return _TripCard(trip: _trips[index]);
+          return _TripCard(trip: trips[index] as Map<String, dynamic>);
         },
       ),
     );

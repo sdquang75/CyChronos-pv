@@ -10,9 +10,20 @@ import 'package:geolocator/geolocator.dart';
 import 'package:cy/features/auth/data/auth_repository.dart';
 import 'package:cy/features/auth/domain/auth_state.dart';
 import 'package:cy/features/auth/presentation/providers/auth_provider.dart';
+import 'package:cy/features/history/data/history_repository.dart';
+import 'package:cy/features/history/presentation/providers/history_provider.dart';
 import 'package:cy/features/home/data/location_service.dart';
 import 'package:cy/features/route_confirm/data/route_repository.dart';
 import 'package:cy/features/route_confirm/route_confirm.dart';
+
+// テスト用の偽履歴リポジトリ。トリップ終了時にhistoryProviderが叩く
+// GET /api/tripsが実ネットワークに飛ばないようにするためだけの空実装
+class _FakeHistoryRepository implements HistoryRepository {
+  @override
+  Future<List<Map<String, dynamic>>> fetchTrips({required int userId}) async {
+    return [];
+  }
+}
 
 // テスト用の偽位置情報。東京駅の座標を即返す
 class _FakeLocationService implements LocationService {
@@ -119,6 +130,7 @@ Widget _wrap({
   return ProviderScope(
     overrides: [
       authProvider.overrideWith((ref) => _FakeAuthNotifier(authState)),
+      historyRepositoryProvider.overrideWithValue(_FakeHistoryRepository()),
     ],
     child: MaterialApp(
       home: RouteConfirmScreen(

@@ -17,6 +17,7 @@ import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/app_top_bar.dart';
 import '../auth/domain/auth_state.dart';
 import '../auth/presentation/providers/auth_provider.dart';
+import '../history/presentation/providers/history_provider.dart';
 import '../home/data/location_service.dart';
 import 'data/route_repository.dart';
 import 'trip_summary_screen.dart';
@@ -344,6 +345,9 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
       if (tripId != null && userId != null) {
         await _repository.endTrip(userId: userId, tripId: tripId);
         _tripId = null;
+        // サーバー側に記録が確定したので、HISTORYタブを裏で最新化しておく
+        // (ローカルに書き足すのではなく、必ずGET /api/tripsを取り直す)
+        ref.read(historyProvider.notifier).loadTrips();
       }
     } catch (error) {
       debugPrint('trip end error: $error');
