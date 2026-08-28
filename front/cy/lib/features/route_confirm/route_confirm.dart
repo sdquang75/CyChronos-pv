@@ -211,22 +211,52 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     return '約$hours時間$minutes分';
   }
 
+  // 他画面と同じロゴヘッダー(AppBarは使わない: 白背景+影が付いて
+  // 他画面のロゴ表示と見た目が揃わないため)。pushで来た画面なので
+  // 左上に戻るボタンだけ自前で置く
+  PreferredSizeWidget _buildHeader(BuildContext context) {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(56),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 12, 24, 12),
+          child: Row(
+            children: [
+              IconButton(
+                onPressed: () => Navigator.of(context).maybePop(),
+                icon: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 20,
+                  color: Color(0xFF19005C),
+                ),
+              ),
+              const Expanded(
+                child: Center(
+                  child: Image(
+                    image: AssetImage('assets/logo_long.png'),
+                    height: 32,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              // 戻るボタンと横幅を揃えて、ロゴを正しく中央寄せにする
+              const SizedBox(width: 48),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // AppScreenFrameはHomeScreen(IndexedStackシェル)側で一括して描画されるので、
     // ここでは自分の中身だけを組み立てる
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FE),
       // 案内モード中はロゴバーも消して全画面にする
-      appBar:
-          _navigating
-              ? null
-              : AppBar(
-                title: const Image(
-                  image: AssetImage('assets/logo_long.png'),
-                  height: 40,
-                  fit: BoxFit.contain,
-                ),
-              ),
+      appBar: _navigating ? null : _buildHeader(context),
       body: Stack(
           children: [
             // マップ代わりのルート表示(常に全画面。バーはこの上に被さる)
@@ -444,9 +474,11 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
             maxLines: 1, // 長い名前は1行に収めて…で省略する
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
+              fontFamily: 'HankenGrotesk',
+              fontFamilyFallback: ['NotoSansJP'],
               fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF19005C),
             ),
           ),
           // 住所(あるときだけ)
@@ -455,7 +487,12 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
               _address,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 14, color: Colors.black54),
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontFamilyFallback: ['NotoSansJP'],
+                fontSize: 14,
+                color: Color(0xFF484553),
+              ),
             ),
           const SizedBox(height: 10),
 
@@ -497,8 +534,8 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(0, 50),
                     side: const BorderSide(
-                      color: Color.fromARGB(255, 3, 11, 59),
-                      width: 2,
+                      color: Color(0xFF19005C),
+                      width: 1.5,
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -506,7 +543,13 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                   ),
                   child: const Text(
                     'ルートを変更',
-                    style: TextStyle(fontSize: 16, color: Colors.black),
+                    style: TextStyle(
+                      fontFamily: 'HankenGrotesk',
+                      fontFamilyFallback: ['NotoSansJP'],
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: Color(0xFF19005C),
+                    ),
                   ),
                 ),
               ),
@@ -516,14 +559,20 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                   onPressed: _busy ? null : _startNavigation,
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(0, 50),
-                    backgroundColor: const Color.fromARGB(255, 9, 31, 156),
+                    backgroundColor: const Color(0xFF19005C),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   child: const Text(
                     '案内開始',
-                    style: TextStyle(fontSize: 16, color: Colors.white),
+                    style: TextStyle(
+                      fontFamily: 'HankenGrotesk',
+                      fontFamilyFallback: ['NotoSansJP'],
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),

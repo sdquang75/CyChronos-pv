@@ -88,42 +88,59 @@ class DetilScreen extends StatelessWidget {
     );
   }
 
+  // 他画面と同じロゴヘッダー(AppBarは使わない: 白背景+影が付いて
+  // 他画面のロゴ表示と見た目が揃わないため)。pushで来た画面なので
+  // 左上に戻るボタンだけ自前で置く
+  Widget _buildHeader(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 12, 24, 12),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              size: 20,
+              color: Color(0xFF19005C),
+            ),
+          ),
+          const Expanded(
+            child: Center(
+              child: Image(
+                image: AssetImage('assets/logo_long.png'),
+                height: 32,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          // 戻るボタンと横幅を揃えて、ロゴを正しく中央寄せにする
+          const SizedBox(width: 48),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // AppScreenFrame・下部メニューバーはHomeScreen(IndexedStackシェル)側で
     // 一括して描画されるので、ここでは自分の中身だけを組み立てる。
     // 共有の浮動メニューバーに本文が隠れないよう、下端の余白だけ確保しておく
     return Scaffold(
-      // 戻る操作は左上の戻るマークのみ
-      // (一覧からpushで来たときはAppBarが自動で戻るボタンを表示する)
-      appBar: AppBar(
-        title: const Image(
-          image: AssetImage('assets/logo_long.png'),
-          height: 40, // 高度制限
-          fit: BoxFit.contain,
-        ),
-      ),
-      body: SingleChildScrollView(
-        // 縦に長い画面なので、小さい端末でもスクロールして全部見られるようにする
-        padding: EdgeInsets.only(
-          bottom: AppBottomNavigation.barHeightFor(context),
-        ),
-        child: Column(
+      backgroundColor: const Color(0xFFF8F9FE),
+      body: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
+          // 縦に長い画面なので、小さい端末でもスクロールして全部見られるようにする
+          padding: EdgeInsets.only(
+            bottom: AppBottomNavigation.barHeightFor(context),
+          ),
+          child: Column(
             children: [
-              SizedBox(
-                width: double.infinity, // 横幅を画面いっぱいに広げる
-                height: 10,
-              ),
-              /*Image(
-              image: AssetImage('assets/testimage.png'),
-              width: 500,
-              height: 100, 
-              fit: BoxFit.contain,
-            ),*/
+              _buildHeader(context),
               Container(
                 width: double.infinity, // 横幅を画面いっぱいに広げる
                 height: 250,
-                margin: EdgeInsets.all(8),
+                margin: const EdgeInsets.all(8),
                 clipBehavior: Clip.antiAlias, // 角丸から画像がはみ出さないよう切り抜く
                 decoration: BoxDecoration(
                   color: const Color(0xFFF1EBFF), // 画像読み込み中の背景色
@@ -134,83 +151,89 @@ class DetilScreen extends StatelessWidget {
               Container(
                 width: double.infinity, // 横幅を画面の半分に設定
                 height: 70,
-                margin: EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: const Color.fromARGB(255, 255, 255, 255), // 背景色
+                margin: const EdgeInsets.all(5),
+                decoration: const BoxDecoration(
+                  color: Colors.white, // 背景色
                 ),
                 child: Column(
                   children: [
                     Container(
                       width: double.infinity, // 横幅を画面の半分に設定
                       height: 30,
-                      padding: EdgeInsets.only(left: 16), // 上部の余白を追加
-                      margin: EdgeInsets.all(1),
-                      decoration: BoxDecoration(
-                        color: const Color.fromARGB(255, 255, 255, 255), // 背景色
+                      padding: const EdgeInsets.only(left: 16), // 上部の余白を追加
+                      margin: const EdgeInsets.all(1),
+                      decoration: const BoxDecoration(
+                        color: Colors.white, // 背景色
                       ),
                       child: Text(
                         name.isNotEmpty ? name : '観光地名',
                         maxLines: 1, // 長い名前は1行に収めて…で省略する
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 25,
-                          color: Colors.black,
-                        ), // 文字サイズと色
+                        style: const TextStyle(
+                          fontFamily: 'HankenGrotesk',
+                          fontFamilyFallback: ['NotoSansJP'],
+                          fontWeight: FontWeight.w700,
+                          fontSize: 22,
+                          color: Color(0xFF19005C),
+                        ),
                       ),
                     ),
                     Container(
                       width: double.infinity, // 横幅を画面の半分に設定
                       height: 35,
-                      padding: EdgeInsets.only(left: 20), // 上部の余白を追加
-                      margin: EdgeInsets.all(1),
-                      decoration: BoxDecoration(
-                        color: const Color.fromARGB(255, 255, 255, 255), // 背景色
+                      padding: const EdgeInsets.only(left: 20), // 上部の余白を追加
+                      margin: const EdgeInsets.all(1),
+                      decoration: const BoxDecoration(
+                        color: Colors.white, // 背景色
                       ),
                       child: Row(
                         children: [
                           Container(
                             height: 35,
-                            padding: EdgeInsets.symmetric(
+                            padding: const EdgeInsets.symmetric(
                               horizontal: 12,
                             ), // 左右の余白を追加(ジャンル名の長さに合わせて幅が伸びる)
-                            margin: EdgeInsets.all(5),
+                            margin: const EdgeInsets.all(5),
                             decoration: BoxDecoration(
+                              color: const Color(0xFFF1EBFF),
                               borderRadius: BorderRadius.circular(12), // 圓角]
                               border: Border.all(
-                                color: const Color.fromARGB(
-                                  255,
-                                  185,
-                                  185,
-                                  185,
-                                ), // 枠線の色
+                                color: const Color(
+                                  0xFF19005C,
+                                ).withValues(alpha: 0.15), // 枠線の色
                                 width: 1.0, // 枠線の太さ
                               ),
                             ),
                             child: Center(
                               child: Text(
                                 _genreLabel(), // ジャンルを日本語で表示
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  color: Colors.black,
+                                style: const TextStyle(
+                                  fontFamily: 'HankenGrotesk',
+                                  fontFamilyFallback: ['NotoSansJP'],
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  color: Color(0xFF19005C),
                                 ), // 文字サイズと色
                               ),
                             ),
                           ),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           // Googleの星評価。評価が無いスポットは「評価なし」と表示する
-                          Icon(
+                          const Icon(
                             Icons.star_rounded,
                             size: 20,
-                            color: const Color(0xFFFFB300), // 星は金色
+                            color: Color(0xFFFFB300), // 星は金色
                           ),
-                          SizedBox(width: 4),
+                          const SizedBox(width: 4),
                           Text(
                             rating != null
                                 ? rating!.toStringAsFixed(1)
                                 : '評価なし',
-                            style: TextStyle(
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontFamilyFallback: ['NotoSansJP'],
                               fontSize: 15,
-                              color: Colors.black,
+                              color: Color(0xFF191C1F),
                             ), // 文字サイズと色
                           ),
                         ],
@@ -222,9 +245,9 @@ class DetilScreen extends StatelessWidget {
               Container(
                 width: double.infinity, // 横幅を画面の半分に設定
                 height: 220, // 場所紹介の削除に合わせて 400 から詰めた
-                margin: EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: const Color.fromARGB(255, 255, 255, 255), // 背景色
+                margin: const EdgeInsets.all(5),
+                decoration: const BoxDecoration(
+                  color: Colors.white, // 背景色
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -232,55 +255,52 @@ class DetilScreen extends StatelessWidget {
                     Container(
                       width: double.infinity, // 横幅を画面の半分に設定
                       height: 80,
-                      margin: EdgeInsets.all(1),
-                      decoration: BoxDecoration(
-                        color: const Color.fromARGB(255, 255, 255, 255), // 背景色
+                      margin: const EdgeInsets.all(1),
+                      decoration: const BoxDecoration(
+                        color: Colors.white, // 背景色
                       ),
                       child: Column(
                         children: [
                           Container(
                             width: double.infinity,
                             height: 25,
-                            padding: EdgeInsets.symmetric(
+                            padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                             ), // 左右の余白を追加vertical: 1.5
-                            margin: EdgeInsets.all(5),
+                            margin: const EdgeInsets.all(5),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12), // 圓角]
                               border: Border.all(
-                                color: const Color.fromARGB(
-                                  255,
-                                  255,
-                                  255,
-                                  255,
-                                ), // 枠線の色
+                                color: const Color(
+                                  0xFFC9C4D5,
+                                ).withValues(alpha: 0.5), // 枠線の色
                                 width: 1.0, // 枠線の太さ
                               ),
                             ),
-                            child: Text(
+                            child: const Text(
                               '住所',
                               style: TextStyle(
-                                fontSize: 15,
-                                color: Colors.black,
+                                fontFamily: 'HankenGrotesk',
+                                fontFamilyFallback: ['NotoSansJP'],
+                                fontWeight: FontWeight.w500,
+                                fontSize: 13,
+                                color: Color(0xFF484553),
                               ), // 文字サイズと色
                             ),
                           ),
                           Container(
                             width: double.infinity,
                             height: 30,
-                            padding: EdgeInsets.symmetric(
+                            padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                             ), // 左右の余白を追加
-                            margin: EdgeInsets.all(5),
+                            margin: const EdgeInsets.all(5),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12), // 圓角
                               border: Border.all(
-                                color: const Color.fromARGB(
-                                  255,
-                                  255,
-                                  255,
-                                  255,
-                                ), // 枠線の色
+                                color: const Color(
+                                  0xFFC9C4D5,
+                                ).withValues(alpha: 0.5), // 枠線の色
                                 width: 1.0, // 枠線の太さ
                               ),
                             ),
@@ -288,9 +308,11 @@ class DetilScreen extends StatelessWidget {
                               address.isNotEmpty ? address : '住所',
                               maxLines: 1, // 長い住所は1行に収めて…で省略する(枠からのはみ出し防止)
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontFamilyFallback: ['NotoSansJP'],
                                 fontSize: 15,
-                                color: Colors.black,
+                                color: Color(0xFF191C1F),
                               ), // 文字サイズと色
                             ),
                           ),
@@ -300,10 +322,13 @@ class DetilScreen extends StatelessWidget {
                     Container(
                       width: double.infinity, // 横幅を画面の半分に設定
                       height: 35,
-                      padding: EdgeInsets.only(left: 20, right: 20), // 上部の余白を追加
-                      margin: EdgeInsets.all(1),
-                      decoration: BoxDecoration(
-                        color: const Color.fromARGB(255, 255, 255, 255), // 背景色
+                      padding: const EdgeInsets.only(
+                        left: 20,
+                        right: 20,
+                      ), // 上部の余白を追加
+                      margin: const EdgeInsets.all(1),
+                      decoration: const BoxDecoration(
+                        color: Colors.white, // 背景色
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -311,46 +336,43 @@ class DetilScreen extends StatelessWidget {
                           Container(
                             width: 120,
                             height: 35,
-                            padding: EdgeInsets.symmetric(
+                            padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                             ), // 左右の余白を追加vertical: 1.5
-                            margin: EdgeInsets.all(5),
+                            margin: const EdgeInsets.all(5),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12), // 圓角]
                               border: Border.all(
-                                color: const Color.fromARGB(
-                                  255,
-                                  255,
-                                  255,
-                                  255,
-                                ), // 枠線の色
+                                color: const Color(
+                                  0xFFC9C4D5,
+                                ).withValues(alpha: 0.5), // 枠線の色
                                 width: 1.0, // 枠線の太さ
                               ),
                             ),
-                            child: Text(
+                            child: const Text(
                               '距離',
                               style: TextStyle(
-                                fontSize: 15,
-                                color: Colors.black,
+                                fontFamily: 'HankenGrotesk',
+                                fontFamilyFallback: ['NotoSansJP'],
+                                fontWeight: FontWeight.w500,
+                                fontSize: 13,
+                                color: Color(0xFF484553),
                               ), // 文字サイズと色
                             ),
                           ),
                           Container(
                             width: 140,
                             height: 35,
-                            padding: EdgeInsets.symmetric(
+                            padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                             ), // 左右の余白を追加
-                            margin: EdgeInsets.all(5),
+                            margin: const EdgeInsets.all(5),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12), // 圓角
                               border: Border.all(
-                                color: const Color.fromARGB(
-                                  255,
-                                  255,
-                                  255,
-                                  255,
-                                ), // 枠線の色
+                                color: const Color(
+                                  0xFFC9C4D5,
+                                ).withValues(alpha: 0.5), // 枠線の色
                                 width: 1.0, // 枠線の太さ
                               ),
                             ),
@@ -360,25 +382,29 @@ class DetilScreen extends StatelessWidget {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.location_on,
                                     size: 15,
-                                    color: Colors.black,
+                                    color: Color(0xFF19005C),
                                   ),
-                                  SizedBox(width: 4), // アイコンとテキストの間にスペースを追加
+                                  const SizedBox(width: 4), // アイコンとテキストの間にスペースを追加
                                   Text(
                                     _distanceText(), // 距離をkmで表示(不明なら「--」)
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      color: Colors.black,
+                                    style: const TextStyle(
+                                      fontFamily: 'JetBrainsMono',
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                      color: Color(0xFF191C1F),
                                     ), // 文字サイズと色
                                   ),
-                                  SizedBox(width: 5), // アイコンとテキストの間にスペースを追加
-                                  Text(
+                                  const SizedBox(width: 5), // アイコンとテキストの間にスペースを追加
+                                  const Text(
                                     'km',
                                     style: TextStyle(
-                                      fontSize: 15,
-                                      color: Colors.black,
+                                      fontFamily: 'Inter',
+                                      fontFamilyFallback: ['NotoSansJP'],
+                                      fontSize: 13,
+                                      color: Color(0xFF484553),
                                     ), // 文字サイズと色
                                   ),
                                 ],
@@ -391,10 +417,13 @@ class DetilScreen extends StatelessWidget {
                     Container(
                       width: double.infinity, // 横幅を画面の半分に設定
                       height: 35,
-                      padding: EdgeInsets.only(left: 20, right: 20), // 上部の余白を追加
-                      margin: EdgeInsets.all(1),
-                      decoration: BoxDecoration(
-                        color: const Color.fromARGB(255, 255, 255, 255), // 背景色
+                      padding: const EdgeInsets.only(
+                        left: 20,
+                        right: 20,
+                      ), // 上部の余白を追加
+                      margin: const EdgeInsets.all(1),
+                      decoration: const BoxDecoration(
+                        color: Colors.white, // 背景色
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -402,46 +431,43 @@ class DetilScreen extends StatelessWidget {
                           Container(
                             width: 120,
                             height: 35,
-                            padding: EdgeInsets.symmetric(
+                            padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                             ), // 左右の余白を追加vertical: 1.5
-                            margin: EdgeInsets.all(5),
+                            margin: const EdgeInsets.all(5),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12), // 圓角]
                               border: Border.all(
-                                color: const Color.fromARGB(
-                                  255,
-                                  255,
-                                  255,
-                                  255,
-                                ), // 枠線の色
+                                color: const Color(
+                                  0xFFC9C4D5,
+                                ).withValues(alpha: 0.5), // 枠線の色
                                 width: 1.0, // 枠線の太さ
                               ),
                             ),
-                            child: Text(
+                            child: const Text(
                               '所要時間',
                               style: TextStyle(
-                                fontSize: 15,
-                                color: Colors.black,
+                                fontFamily: 'HankenGrotesk',
+                                fontFamilyFallback: ['NotoSansJP'],
+                                fontWeight: FontWeight.w500,
+                                fontSize: 13,
+                                color: Color(0xFF484553),
                               ), // 文字サイズと色
                             ),
                           ),
                           Container(
                             width: 140,
                             height: 35,
-                            padding: EdgeInsets.symmetric(
+                            padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                             ), // 左右の余白を追加
-                            margin: EdgeInsets.all(5),
+                            margin: const EdgeInsets.all(5),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12), // 圓角
                               border: Border.all(
-                                color: const Color.fromARGB(
-                                  255,
-                                  255,
-                                  255,
-                                  255,
-                                ), // 枠線の色
+                                color: const Color(
+                                  0xFFC9C4D5,
+                                ).withValues(alpha: 0.5), // 枠線の色
                                 width: 1.0, // 枠線の太さ
                               ),
                             ),
@@ -451,41 +477,49 @@ class DetilScreen extends StatelessWidget {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.access_time,
                                     size: 15,
-                                    color: Colors.black,
+                                    color: Color(0xFF19005C),
                                   ),
-                                  SizedBox(width: 4), // アイコンとテキストの間にスペースを追加
+                                  const SizedBox(width: 4), // アイコンとテキストの間にスペースを追加
                                   Text(
                                     _durationHoursText(), // 所要時間の「時間」部分(不明なら「--」)
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      color: Colors.black,
+                                    style: const TextStyle(
+                                      fontFamily: 'JetBrainsMono',
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                      color: Color(0xFF191C1F),
                                     ), // 文字サイズと色
                                   ),
-                                  SizedBox(width: 5),
-                                  Text(
+                                  const SizedBox(width: 5),
+                                  const Text(
                                     '時間',
                                     style: TextStyle(
-                                      fontSize: 15,
-                                      color: Colors.black,
+                                      fontFamily: 'Inter',
+                                      fontFamilyFallback: ['NotoSansJP'],
+                                      fontSize: 13,
+                                      color: Color(0xFF484553),
                                     ), // 文字サイズと色
                                   ),
-                                  SizedBox(width: 5),
+                                  const SizedBox(width: 5),
                                   Text(
                                     _durationMinutesText(), // 所要時間の「分」部分(不明なら「--」)
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      color: Colors.black,
+                                    style: const TextStyle(
+                                      fontFamily: 'JetBrainsMono',
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                      color: Color(0xFF191C1F),
                                     ), // 文字サイズと色
                                   ),
-                                  SizedBox(width: 5),
-                                  Text(
+                                  const SizedBox(width: 5),
+                                  const Text(
                                     '分',
                                     style: TextStyle(
-                                      fontSize: 15,
-                                      color: Colors.black,
+                                      fontFamily: 'Inter',
+                                      fontFamilyFallback: ['NotoSansJP'],
+                                      fontSize: 13,
+                                      color: Color(0xFF484553),
                                     ), // 文字サイズと色
                                   ),
                                 ],
@@ -502,7 +536,7 @@ class DetilScreen extends StatelessWidget {
               Container(
                 width: double.infinity, // 横幅を画面の半分に設定
                 height: 125, // ボタン2つ(55+50)が収まる高さにする(100だとはみ出す)
-                margin: EdgeInsets.all(5),
+                margin: const EdgeInsets.all(5),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
@@ -521,30 +555,19 @@ class DetilScreen extends StatelessWidget {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        minimumSize: Size(250, 55), // 幅を50に設定
-                        backgroundColor: const Color.fromARGB(
-                          255,
-                          9,
-                          31,
-                          156,
-                        ), // 背景色
+                        minimumSize: const Size(250, 55), // 幅を50に設定
+                        backgroundColor: const Color(0xFF19005C), // 背景色
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12), // 圓角
-                          side: BorderSide(
-                            color: const Color.fromARGB(
-                              255,
-                              218,
-                              218,
-                              218,
-                            ), // 影の色
-                            width: 2,
-                          ),
                         ),
                       ),
                       child: const Text(
                         'ルートを見る',
                         style: TextStyle(
-                          fontSize: 25,
+                          fontFamily: 'HankenGrotesk',
+                          fontFamilyFallback: ['NotoSansJP'],
+                          fontWeight: FontWeight.w600,
+                          fontSize: 18,
                           color: Colors.white,
                         ), // 文字サイズと色
                       ),
@@ -552,31 +575,29 @@ class DetilScreen extends StatelessWidget {
                     ElevatedButton(
                       onPressed: () {
                         // ボタンが押されたときの処理
-                        /*Navigator.of(context).push(MaterialPageRoute(builder: (context) { 
-                      return const RouteConfirmScreen(); 
+                        /*Navigator.of(context).push(MaterialPageRoute(builder: (context) {
+                      return const RouteConfirmScreen();
                       }));*/
                       },
                       style: ElevatedButton.styleFrom(
-                        minimumSize: Size(250, 50), // 幅を50に設定
-                        backgroundColor: const Color.fromARGB(
-                          255,
-                          255,
-                          255,
-                          255,
-                        ), // 背景色
+                        minimumSize: const Size(250, 50), // 幅を50に設定
+                        backgroundColor: Colors.white, // 背景色
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12), // 圓角
-                          side: BorderSide(
-                            color: const Color.fromARGB(255, 3, 11, 59), // 影の色
-                            width: 2,
+                          side: const BorderSide(
+                            color: Color(0xFF19005C), // 枠線の色
+                            width: 1.5,
                           ),
                         ),
                       ),
                       child: const Text(
                         'お気に入り登録',
                         style: TextStyle(
-                          fontSize: 25,
-                          color: Colors.black,
+                          fontFamily: 'HankenGrotesk',
+                          fontFamilyFallback: ['NotoSansJP'],
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          color: Color(0xFF19005C),
                         ), // 文字サイズと色
                       ),
                     ),
@@ -586,7 +607,7 @@ class DetilScreen extends StatelessWidget {
             ],
           ),
         ),
+      ),
     );
   }
 }
-
