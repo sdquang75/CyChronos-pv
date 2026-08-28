@@ -7,7 +7,11 @@ import '../theme/app_spacing.dart';
 /// ヘッダー: 丸い戻るボタン + 太字タイトル + 下端の薄い区切り線。
 /// タブのルート画面(HOME/HISTORY/SETTINGS)は代わりにロゴを直接表示するので
 /// このウィジェットは使わない(戻るボタンが不要なため)。
-/// fea/reformのAppTopBarと同じ構成をnative-ux-polishの配色に合わせて移植
+/// fea/reformのAppTopBarと同じ構成をnative-ux-polishの配色に合わせて移植。
+/// 上端のセーフエリアは自前で確保するので、Columnの子として置くだけでも、
+/// (RouteConfirmScreenのように)Scaffold.appBarにPreferredSizeで包んで
+/// 渡す使い方でも正しく表示される。preferredSizeが必要な場合は
+/// [AppTopBar.heightFor] を使う(内部SafeAreaと同じ高さになる)
 class AppTopBar extends StatelessWidget {
   const AppTopBar({super.key, required this.title, this.onBack});
 
@@ -17,21 +21,33 @@ class AppTopBar extends StatelessWidget {
   /// (RideFlow等の入れ子Navigatorでも正しく動く)
   final VoidCallback? onBack;
 
+  /// コンテンツ自体の高さ(上端セーフエリアは含まない)
+  static const double _contentHeight = 80;
+
+  /// Scaffold.appBarに渡すときのpreferredSize用。実機の上端インセットを
+  /// 含めた高さを返す(このウィジェット自身のSafeAreaと一致させる)
+  static double heightFor(BuildContext context) =>
+      _contentHeight + MediaQuery.of(context).padding.top;
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.xl,
-        AppSpacing.xl,
-        AppSpacing.xl,
-        AppSpacing.lg,
-      ),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: AppColors.border.withValues(alpha: 0.3)),
+    return SafeArea(
+      bottom: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xl,
+          AppSpacing.xl,
+          AppSpacing.xl,
+          AppSpacing.lg,
         ),
-      ),
-      child: Row(
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: AppColors.border.withValues(alpha: 0.3),
+            ),
+          ),
+        ),
+        child: Row(
         children: [
           Material(
             // 丸い塗りつぶし背景にすることで、一目でタップ可能だとわかるようにする
@@ -52,20 +68,21 @@ class AppTopBar extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: AppSpacing.md),
-          Text(
-            title,
-            style: const TextStyle(
-              fontFamily: 'HankenGrotesk',
-              fontFamilyFallback: ['NotoSansJP'],
-              fontWeight: FontWeight.w700,
-              fontSize: 22,
-              letterSpacing: -0.55,
-              color: AppColors.primary,
-              height: 28 / 22,
+            const SizedBox(width: AppSpacing.md),
+            Text(
+              title,
+              style: const TextStyle(
+                fontFamily: 'HankenGrotesk',
+                fontFamilyFallback: ['NotoSansJP'],
+                fontWeight: FontWeight.w700,
+                fontSize: 22,
+                letterSpacing: -0.55,
+                color: AppColors.primary,
+                height: 28 / 22,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

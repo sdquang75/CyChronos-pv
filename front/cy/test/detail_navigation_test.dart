@@ -143,9 +143,8 @@ void main() {
     expect(find.text('東京都千代田区丸の内1-1'), findsOneWidget); // 住所
     expect(find.text('カフェ'), findsOneWidget); // ジャンル(日本語)
     expect(find.text('4.5'), findsOneWidget); // 評価
-    expect(find.text('8.8'), findsOneWidget); // 距離(km)
-    expect(find.text('0'), findsOneWidget); // 所要時間の「時間」
-    expect(find.text('30'), findsOneWidget); // 所要時間の「分」
+    expect(find.text('8.8km'), findsOneWidget); // 距離(km)
+    expect(find.text('30分'), findsOneWidget); // 所要時間(60分未満なので「0時間」は付かない)
 
     // さらに「ルートを見る」でルート確認画面へ。
     // テスト環境では位置情報が取れない=ルート取得は失敗するので、

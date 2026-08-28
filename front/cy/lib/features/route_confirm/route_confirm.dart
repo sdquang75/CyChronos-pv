@@ -4,6 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../core/network/place_photo.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_typography.dart';
+import '../../core/widgets/app_button.dart';
+import '../../core/widgets/app_top_bar.dart';
 import '../auth/domain/auth_state.dart';
 import '../auth/presentation/providers/auth_provider.dart';
 import '../home/data/location_service.dart';
@@ -183,7 +188,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: const Color(0xFF2A0088),
+        backgroundColor: AppColors.snackbarBg,
         behavior: SnackBarBehavior.floating,
         // 下部の「案内を終了」ボタンに被らないよう、少し上に出す
         margin: const EdgeInsets.only(bottom: 90, left: 16, right: 16),
@@ -211,52 +216,20 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     return '約$hours時間$minutes分';
   }
 
-  // 他画面と同じロゴヘッダー(AppBarは使わない: 白背景+影が付いて
-  // 他画面のロゴ表示と見た目が揃わないため)。pushで来た画面なので
-  // 左上に戻るボタンだけ自前で置く
-  PreferredSizeWidget _buildHeader(BuildContext context) {
-    return PreferredSize(
-      preferredSize: const Size.fromHeight(56),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 12, 24, 12),
-          child: Row(
-            children: [
-              IconButton(
-                onPressed: () => Navigator.of(context).maybePop(),
-                icon: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  size: 20,
-                  color: Color(0xFF19005C),
-                ),
-              ),
-              const Expanded(
-                child: Center(
-                  child: Image(
-                    image: AssetImage('assets/logo_long.png'),
-                    height: 32,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-              // 戻るボタンと横幅を揃えて、ロゴを正しく中央寄せにする
-              const SizedBox(width: 48),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     // AppScreenFrameはHomeScreen(IndexedStackシェル)側で一括して描画されるので、
     // ここでは自分の中身だけを組み立てる
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE),
-      // 案内モード中はロゴバーも消して全画面にする
-      appBar: _navigating ? null : _buildHeader(context),
+      backgroundColor: AppColors.bgCool,
+      // 案内モード中はヘッダーも消して全画面にする
+      appBar:
+          _navigating
+              ? null
+              : PreferredSize(
+                preferredSize: Size.fromHeight(AppTopBar.heightFor(context)),
+                child: const AppTopBar(title: 'ルート確認'),
+              ),
       body: Stack(
           children: [
             // マップ代わりのルート表示(常に全画面。バーはこの上に被さる)
@@ -271,12 +244,15 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF3E0),
+                    color: AppColors.warningBg,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     _errorMessage!,
-                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
               ),
@@ -311,7 +287,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF19005C),
+                          color: AppColors.primary,
                         ),
                       ),
                     ),
@@ -348,7 +324,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   Widget _buildRoutePreview() {
     if (_loading) {
       return Container(
-        color: const Color(0xFFF1EBFF),
+        color: AppColors.accentBg,
         child: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -361,7 +337,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         return _buildMap(route);
       }
       return Container(
-        color: const Color(0xFFF8F9FE), // マップの下地の色
+        color: AppColors.bgCool, // マップの下地の色
         child: CustomPaint(
           painter: _RoutePreviewPainter(points: route.points),
           child: const SizedBox.expand(),
@@ -426,7 +402,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
           polylineId: const PolylineId('route'),
           points: routePoints,
           width: 5,
-          color: const Color(0xFF19005C),
+          color: AppColors.primary,
         ),
       },
       // 出発地(青)と目的地(赤=デフォルト)のマーカー
@@ -473,13 +449,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
             _name,
             maxLines: 1, // 長い名前は1行に収めて…で省略する
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontFamily: 'HankenGrotesk',
-              fontFamilyFallback: ['NotoSansJP'],
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF19005C),
-            ),
+            style: AppTypography.cardTitle.copyWith(fontSize: 22),
           ),
           // 住所(あるときだけ)
           if (_address.isNotEmpty)
@@ -487,14 +457,11 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
               _address,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontFamilyFallback: ['NotoSansJP'],
-                fontSize: 14,
-                color: Color(0xFF484553),
+              style: AppTypography.body.copyWith(
+                color: AppColors.textSecondary,
               ),
             ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.sm),
 
           // 距離と所要時間を1行で
           Row(
@@ -502,26 +469,29 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
               const Icon(
                 Icons.directions_bike,
                 size: 18,
-                color: Color(0xFF19005C),
+                color: AppColors.primary,
               ),
               const SizedBox(width: 6),
               Text(
                 '${_distanceText()} ・ ${_durationText()}',
-                style: const TextStyle(
+                style: AppTypography.stat.copyWith(
                   fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF19005C),
+                  color: AppColors.primary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
 
           // ボタン: 左=ルートを変更(戻る) / 右=案内開始
           Row(
             children: [
               Expanded(
-                child: OutlinedButton(
+                child: AppButton(
+                  label: 'ルートを変更',
+                  variant: AppButtonVariant.secondary,
+                  height: 50,
+                  borderRadius: AppSpacing.radiusInput,
                   onPressed: () {
                     // 詳細画面に戻って選び直せるようにする
                     // (RideFlowの入れ子Navigatorでpushされてきた画面なので、
@@ -531,49 +501,15 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                       navigator.pop();
                     }
                   },
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(0, 50),
-                    side: const BorderSide(
-                      color: Color(0xFF19005C),
-                      width: 1.5,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'ルートを変更',
-                    style: TextStyle(
-                      fontFamily: 'HankenGrotesk',
-                      fontFamilyFallback: ['NotoSansJP'],
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                      color: Color(0xFF19005C),
-                    ),
-                  ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
-                child: ElevatedButton(
+                child: AppButton(
+                  label: '案内開始',
+                  height: 50,
+                  borderRadius: AppSpacing.radiusInput,
                   onPressed: _busy ? null : _startNavigation,
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(0, 50),
-                    backgroundColor: const Color(0xFF19005C),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    '案内開始',
-                    style: TextStyle(
-                      fontFamily: 'HankenGrotesk',
-                      fontFamilyFallback: ['NotoSansJP'],
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                      color: Colors.white,
-                    ),
-                  ),
                 ),
               ),
             ],
@@ -597,7 +533,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
             style: TextStyle(fontSize: 16, color: Colors.white),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFD93A2A), // Googleマップの終了ボタンと同じ赤系
+            backgroundColor: AppColors.danger, // Googleマップの終了ボタンと同じ赤系
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(9999),
@@ -662,7 +598,7 @@ class _RoutePreviewPainter extends CustomPainter {
     }
     final linePaint =
         Paint()
-          ..color = const Color(0xFF19005C)
+          ..color = AppColors.primary
           ..style = PaintingStyle.stroke
           ..strokeWidth = 5
           ..strokeCap = StrokeCap.round
@@ -678,7 +614,7 @@ class _RoutePreviewPainter extends CustomPainter {
 
     // 目的地(最後の点)は赤丸+白抜きでピンっぽく
     final goal = toOffset(points.last);
-    canvas.drawCircle(goal, 10, Paint()..color = const Color(0xFFD93A2A));
+    canvas.drawCircle(goal, 10, Paint()..color = AppColors.danger);
     canvas.drawCircle(goal, 4.5, Paint()..color = Colors.white);
   }
 

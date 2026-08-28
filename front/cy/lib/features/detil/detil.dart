@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_typography.dart';
 import '../../core/widgets/app_bottom_navigation.dart';
+import '../../core/widgets/app_button.dart';
+import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_top_bar.dart';
 import '../route_confirm/route_confirm.dart';
 
 // Google Placesの英語ジャンル(type) → 画面表示用の日本語ラベルの変換表
@@ -53,18 +59,14 @@ class DetilScreen extends StatelessWidget {
     return (meters / 1000).toStringAsFixed(3).replaceAll(RegExp(r'\.?0+$'), '');
   }
 
-  // 所要時間の「時間」部分の文字列。不明なら「--」
-  String _durationHoursText() {
+  // 所要時間の文字列(例: 1時間15分 / 30分)。不明なら「--」
+  String _durationText() {
     final sec = durationSec;
     if (sec == null) return '--';
-    return (sec ~/ 3600).toString();
-  }
-
-  // 所要時間の「分」部分の文字列。不明なら「--」
-  String _durationMinutesText() {
-    final sec = durationSec;
-    if (sec == null) return '--';
-    return ((sec % 3600) ~/ 60).toString();
+    final hours = sec ~/ 3600;
+    final minutes = (sec % 3600) ~/ 60;
+    if (hours == 0) return '$minutes分';
+    return '$hours時間$minutes分';
   }
 
   // スポット写真を表示する。URLが無いとき・読み込みに失敗したときは仮画像に切り替える
@@ -88,459 +90,136 @@ class DetilScreen extends StatelessWidget {
     );
   }
 
-  // 他画面と同じロゴヘッダー(AppBarは使わない: 白背景+影が付いて
-  // 他画面のロゴ表示と見た目が揃わないため)。pushで来た画面なので
-  // 左上に戻るボタンだけ自前で置く
-  Widget _buildHeader(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 12, 24, 12),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            icon: const Icon(
-              Icons.arrow_back_ios_new_rounded,
-              size: 20,
-              color: Color(0xFF19005C),
-            ),
-          ),
-          const Expanded(
-            child: Center(
-              child: Image(
-                image: AssetImage('assets/logo_long.png'),
-                height: 32,
-                fit: BoxFit.contain,
-              ),
-            ),
-          ),
-          // 戻るボタンと横幅を揃えて、ロゴを正しく中央寄せにする
-          const SizedBox(width: 48),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     // AppScreenFrame・下部メニューバーはHomeScreen(IndexedStackシェル)側で
     // 一括して描画されるので、ここでは自分の中身だけを組み立てる。
     // 共有の浮動メニューバーに本文が隠れないよう、下端の余白だけ確保しておく
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE),
+      backgroundColor: AppColors.bgCool,
       body: SafeArea(
         bottom: false,
-        child: SingleChildScrollView(
-          // 縦に長い画面なので、小さい端末でもスクロールして全部見られるようにする
-          padding: EdgeInsets.only(
-            bottom: AppBottomNavigation.barHeightFor(context),
-          ),
-          child: Column(
-            children: [
-              _buildHeader(context),
-              Container(
-                width: double.infinity, // 横幅を画面いっぱいに広げる
-                height: 250,
-                margin: const EdgeInsets.all(8),
-                clipBehavior: Clip.antiAlias, // 角丸から画像がはみ出さないよう切り抜く
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1EBFF), // 画像読み込み中の背景色
-                  borderRadius: BorderRadius.circular(12), // 圓角
-                ),
-                child: _buildPhoto(), // スポット写真(URLなし・失敗時は仮画像)
-              ),
-              Container(
-                width: double.infinity, // 横幅を画面の半分に設定
-                height: 70,
-                margin: const EdgeInsets.all(5),
-                decoration: const BoxDecoration(
-                  color: Colors.white, // 背景色
+        child: Column(
+          children: [
+            const AppTopBar(title: 'スポット詳細'),
+            Expanded(
+              child: SingleChildScrollView(
+                // 縦に長い画面なので、小さい端末でもスクロールして全部見られるようにする
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.xxl,
+                  AppSpacing.lg,
+                  AppSpacing.xxl,
+                  AppSpacing.lg + AppBottomNavigation.barHeightFor(context),
                 ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: double.infinity, // 横幅を画面の半分に設定
-                      height: 30,
-                      padding: const EdgeInsets.only(left: 16), // 上部の余白を追加
-                      margin: const EdgeInsets.all(1),
-                      decoration: const BoxDecoration(
-                        color: Colors.white, // 背景色
+                    // スポット写真
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(
+                        AppSpacing.radiusCard,
                       ),
-                      child: Text(
-                        name.isNotEmpty ? name : '観光地名',
-                        maxLines: 1, // 長い名前は1行に収めて…で省略する
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: 'HankenGrotesk',
-                          fontFamilyFallback: ['NotoSansJP'],
-                          fontWeight: FontWeight.w700,
-                          fontSize: 22,
-                          color: Color(0xFF19005C),
-                        ),
+                      child: Container(
+                        width: double.infinity,
+                        height: 220,
+                        color: AppColors.accentBg, // 画像読み込み中の背景色
+                        child: _buildPhoto(),
                       ),
                     ),
-                    Container(
-                      width: double.infinity, // 横幅を画面の半分に設定
-                      height: 35,
-                      padding: const EdgeInsets.only(left: 20), // 上部の余白を追加
-                      margin: const EdgeInsets.all(1),
-                      decoration: const BoxDecoration(
-                        color: Colors.white, // 背景色
-                      ),
-                      child: Row(
+
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // 名前・ジャンル・評価
+                    AppCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            height: 35,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                            ), // 左右の余白を追加(ジャンル名の長さに合わせて幅が伸びる)
-                            margin: const EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF1EBFF),
-                              borderRadius: BorderRadius.circular(12), // 圓角]
-                              border: Border.all(
-                                color: const Color(
-                                  0xFF19005C,
-                                ).withValues(alpha: 0.15), // 枠線の色
-                                width: 1.0, // 枠線の太さ
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                _genreLabel(), // ジャンルを日本語で表示
-                                style: const TextStyle(
-                                  fontFamily: 'HankenGrotesk',
-                                  fontFamilyFallback: ['NotoSansJP'],
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                  color: Color(0xFF19005C),
-                                ), // 文字サイズと色
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          // Googleの星評価。評価が無いスポットは「評価なし」と表示する
-                          const Icon(
-                            Icons.star_rounded,
-                            size: 20,
-                            color: Color(0xFFFFB300), // 星は金色
-                          ),
-                          const SizedBox(width: 4),
                           Text(
-                            rating != null
-                                ? rating!.toStringAsFixed(1)
-                                : '評価なし',
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              fontFamilyFallback: ['NotoSansJP'],
-                              fontSize: 15,
-                              color: Color(0xFF191C1F),
-                            ), // 文字サイズと色
+                            name.isNotEmpty ? name : '観光地名',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.cardTitle.copyWith(
+                              fontSize: 20,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.accentBg,
+                                  borderRadius: BorderRadius.circular(
+                                    AppSpacing.radiusPill,
+                                  ),
+                                  border: Border.all(
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.15,
+                                    ),
+                                  ),
+                                ),
+                                child: Text(
+                                  _genreLabel(),
+                                  style: AppTypography.label.copyWith(
+                                    fontFamily: 'HankenGrotesk',
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              const Icon(
+                                Icons.star_rounded,
+                                size: 18,
+                                color: AppColors.starGold,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                rating != null
+                                    ? rating!.toStringAsFixed(1)
+                                    : '評価なし',
+                                style: AppTypography.body,
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-              Container(
-                width: double.infinity, // 横幅を画面の半分に設定
-                height: 220, // 場所紹介の削除に合わせて 400 から詰めた
-                margin: const EdgeInsets.all(5),
-                decoration: const BoxDecoration(
-                  color: Colors.white, // 背景色
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    Container(
-                      width: double.infinity, // 横幅を画面の半分に設定
-                      height: 80,
-                      margin: const EdgeInsets.all(1),
-                      decoration: const BoxDecoration(
-                        color: Colors.white, // 背景色
-                      ),
+
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // 住所・距離・所要時間
+                    AppCard(
                       child: Column(
                         children: [
-                          Container(
-                            width: double.infinity,
-                            height: 25,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                            ), // 左右の余白を追加vertical: 1.5
-                            margin: const EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12), // 圓角]
-                              border: Border.all(
-                                color: const Color(
-                                  0xFFC9C4D5,
-                                ).withValues(alpha: 0.5), // 枠線の色
-                                width: 1.0, // 枠線の太さ
-                              ),
-                            ),
-                            child: const Text(
-                              '住所',
-                              style: TextStyle(
-                                fontFamily: 'HankenGrotesk',
-                                fontFamilyFallback: ['NotoSansJP'],
-                                fontWeight: FontWeight.w500,
-                                fontSize: 13,
-                                color: Color(0xFF484553),
-                              ), // 文字サイズと色
-                            ),
+                          _InfoRow(
+                            icon: Icons.location_on_outlined,
+                            label: '住所',
+                            value: address.isNotEmpty ? address : '住所不明',
                           ),
-                          Container(
-                            width: double.infinity,
-                            height: 30,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                            ), // 左右の余白を追加
-                            margin: const EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12), // 圓角
-                              border: Border.all(
-                                color: const Color(
-                                  0xFFC9C4D5,
-                                ).withValues(alpha: 0.5), // 枠線の色
-                                width: 1.0, // 枠線の太さ
-                              ),
-                            ),
-                            child: Text(
-                              address.isNotEmpty ? address : '住所',
-                              maxLines: 1, // 長い住所は1行に収めて…で省略する(枠からのはみ出し防止)
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontFamily: 'Inter',
-                                fontFamilyFallback: ['NotoSansJP'],
-                                fontSize: 15,
-                                color: Color(0xFF191C1F),
-                              ), // 文字サイズと色
-                            ),
+                          const SizedBox(height: AppSpacing.md),
+                          _InfoRow(
+                            icon: Icons.directions_bike_rounded,
+                            label: '距離',
+                            value: '${_distanceText()}km',
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          _InfoRow(
+                            icon: Icons.access_time_rounded,
+                            label: '所要時間',
+                            value: _durationText(),
                           ),
                         ],
                       ),
                     ),
-                    Container(
-                      width: double.infinity, // 横幅を画面の半分に設定
-                      height: 35,
-                      padding: const EdgeInsets.only(
-                        left: 20,
-                        right: 20,
-                      ), // 上部の余白を追加
-                      margin: const EdgeInsets.all(1),
-                      decoration: const BoxDecoration(
-                        color: Colors.white, // 背景色
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          Container(
-                            width: 120,
-                            height: 35,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                            ), // 左右の余白を追加vertical: 1.5
-                            margin: const EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12), // 圓角]
-                              border: Border.all(
-                                color: const Color(
-                                  0xFFC9C4D5,
-                                ).withValues(alpha: 0.5), // 枠線の色
-                                width: 1.0, // 枠線の太さ
-                              ),
-                            ),
-                            child: const Text(
-                              '距離',
-                              style: TextStyle(
-                                fontFamily: 'HankenGrotesk',
-                                fontFamilyFallback: ['NotoSansJP'],
-                                fontWeight: FontWeight.w500,
-                                fontSize: 13,
-                                color: Color(0xFF484553),
-                              ), // 文字サイズと色
-                            ),
-                          ),
-                          Container(
-                            width: 140,
-                            height: 35,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                            ), // 左右の余白を追加
-                            margin: const EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12), // 圓角
-                              border: Border.all(
-                                color: const Color(
-                                  0xFFC9C4D5,
-                                ).withValues(alpha: 0.5), // 枠線の色
-                                width: 1.0, // 枠線の太さ
-                              ),
-                            ),
-                            // 枠より中身が長くても、縮小して収める(はみ出し防止)
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.location_on,
-                                    size: 15,
-                                    color: Color(0xFF19005C),
-                                  ),
-                                  const SizedBox(width: 4), // アイコンとテキストの間にスペースを追加
-                                  Text(
-                                    _distanceText(), // 距離をkmで表示(不明なら「--」)
-                                    style: const TextStyle(
-                                      fontFamily: 'JetBrainsMono',
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
-                                      color: Color(0xFF191C1F),
-                                    ), // 文字サイズと色
-                                  ),
-                                  const SizedBox(width: 5), // アイコンとテキストの間にスペースを追加
-                                  const Text(
-                                    'km',
-                                    style: TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontFamilyFallback: ['NotoSansJP'],
-                                      fontSize: 13,
-                                      color: Color(0xFF484553),
-                                    ), // 文字サイズと色
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      width: double.infinity, // 横幅を画面の半分に設定
-                      height: 35,
-                      padding: const EdgeInsets.only(
-                        left: 20,
-                        right: 20,
-                      ), // 上部の余白を追加
-                      margin: const EdgeInsets.all(1),
-                      decoration: const BoxDecoration(
-                        color: Colors.white, // 背景色
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          Container(
-                            width: 120,
-                            height: 35,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                            ), // 左右の余白を追加vertical: 1.5
-                            margin: const EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12), // 圓角]
-                              border: Border.all(
-                                color: const Color(
-                                  0xFFC9C4D5,
-                                ).withValues(alpha: 0.5), // 枠線の色
-                                width: 1.0, // 枠線の太さ
-                              ),
-                            ),
-                            child: const Text(
-                              '所要時間',
-                              style: TextStyle(
-                                fontFamily: 'HankenGrotesk',
-                                fontFamilyFallback: ['NotoSansJP'],
-                                fontWeight: FontWeight.w500,
-                                fontSize: 13,
-                                color: Color(0xFF484553),
-                              ), // 文字サイズと色
-                            ),
-                          ),
-                          Container(
-                            width: 140,
-                            height: 35,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                            ), // 左右の余白を追加
-                            margin: const EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12), // 圓角
-                              border: Border.all(
-                                color: const Color(
-                                  0xFFC9C4D5,
-                                ).withValues(alpha: 0.5), // 枠線の色
-                                width: 1.0, // 枠線の太さ
-                              ),
-                            ),
-                            // 枠より中身が長くても、縮小して収める(はみ出し防止)
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.access_time,
-                                    size: 15,
-                                    color: Color(0xFF19005C),
-                                  ),
-                                  const SizedBox(width: 4), // アイコンとテキストの間にスペースを追加
-                                  Text(
-                                    _durationHoursText(), // 所要時間の「時間」部分(不明なら「--」)
-                                    style: const TextStyle(
-                                      fontFamily: 'JetBrainsMono',
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
-                                      color: Color(0xFF191C1F),
-                                    ), // 文字サイズと色
-                                  ),
-                                  const SizedBox(width: 5),
-                                  const Text(
-                                    '時間',
-                                    style: TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontFamilyFallback: ['NotoSansJP'],
-                                      fontSize: 13,
-                                      color: Color(0xFF484553),
-                                    ), // 文字サイズと色
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    _durationMinutesText(), // 所要時間の「分」部分(不明なら「--」)
-                                    style: const TextStyle(
-                                      fontFamily: 'JetBrainsMono',
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
-                                      color: Color(0xFF191C1F),
-                                    ), // 文字サイズと色
-                                  ),
-                                  const SizedBox(width: 5),
-                                  const Text(
-                                    '分',
-                                    style: TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontFamilyFallback: ['NotoSansJP'],
-                                      fontSize: 13,
-                                      color: Color(0xFF484553),
-                                    ), // 文字サイズと色
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // 「場所紹介」はAPIから取得できるデータが無いため削除した(2026-07-12)
-                  ],
-                ),
-              ),
-              Container(
-                width: double.infinity, // 横幅を画面の半分に設定
-                height: 125, // ボタン2つ(55+50)が収まる高さにする(100だとはみ出す)
-                margin: const EdgeInsets.all(5),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    ElevatedButton(
+
+                    const SizedBox(height: AppSpacing.xl),
+
+                    AppButton(
+                      label: 'ルートを見る',
                       onPressed: () {
                         HapticFeedback.lightImpact();
                         // 目的地データを丸ごと渡してルート確認画面へ
@@ -554,60 +233,61 @@ class DetilScreen extends StatelessWidget {
                           ),
                         );
                       },
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(250, 55), // 幅を50に設定
-                        backgroundColor: const Color(0xFF19005C), // 背景色
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12), // 圓角
-                        ),
-                      ),
-                      child: const Text(
-                        'ルートを見る',
-                        style: TextStyle(
-                          fontFamily: 'HankenGrotesk',
-                          fontFamilyFallback: ['NotoSansJP'],
-                          fontWeight: FontWeight.w600,
-                          fontSize: 18,
-                          color: Colors.white,
-                        ), // 文字サイズと色
-                      ),
                     ),
-                    ElevatedButton(
-                      onPressed: () {
-                        // ボタンが押されたときの処理
-                        /*Navigator.of(context).push(MaterialPageRoute(builder: (context) {
-                      return const RouteConfirmScreen();
-                      }));*/
-                      },
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(250, 50), // 幅を50に設定
-                        backgroundColor: Colors.white, // 背景色
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12), // 圓角
-                          side: const BorderSide(
-                            color: Color(0xFF19005C), // 枠線の色
-                            width: 1.5,
-                          ),
-                        ),
-                      ),
-                      child: const Text(
-                        'お気に入り登録',
-                        style: TextStyle(
-                          fontFamily: 'HankenGrotesk',
-                          fontFamilyFallback: ['NotoSansJP'],
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                          color: Color(0xFF19005C),
-                        ), // 文字サイズと色
-                      ),
+
+                    const SizedBox(height: AppSpacing.md),
+
+                    AppButton(
+                      label: 'お気に入り登録',
+                      variant: AppButtonVariant.secondary,
+                      icon: Icons.favorite_border_rounded,
+                      // TODO: お気に入り機能は未実装
+                      onPressed: null,
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+}
+
+// 住所・距離・所要時間の1行分(アイコン + ラベル + 値)
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: AppColors.primary),
+        const SizedBox(width: AppSpacing.sm),
+        SizedBox(
+          width: 72,
+          child: Text(label, style: AppTypography.label),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: AppTypography.body.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

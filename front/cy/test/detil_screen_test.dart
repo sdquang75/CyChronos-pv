@@ -27,9 +27,8 @@ void main() {
     expect(find.text('東京都千代田区丸の内1-1'), findsOneWidget); // 住所
     expect(find.text('カフェ'), findsOneWidget); // 英語ジャンルが日本語になる
     expect(find.text('4.2'), findsOneWidget); // 評価
-    expect(find.text('8.8'), findsOneWidget); // 距離(km)
-    expect(find.text('1'), findsOneWidget); // 所要時間の「時間」
-    expect(find.text('15'), findsOneWidget); // 所要時間の「分」
+    expect(find.text('8.8km'), findsOneWidget); // 距離(km)
+    expect(find.text('1時間15分'), findsOneWidget); // 所要時間
   });
 
   testWidgets('データが欠けているとき: 仮の文言や「--」で表示され、画面が壊れない',
@@ -44,7 +43,9 @@ void main() {
     expect(find.text('観光地名'), findsOneWidget); // 名前なしは仮の名前
     expect(find.text('ジャンル'), findsOneWidget); // ジャンルなしは仮ラベル
     expect(find.text('評価なし'), findsOneWidget); // 評価なし表示
-    expect(find.text('--'), findsNWidgets(3)); // 距離・時間・分の3箇所が「--」
+    expect(find.text('住所不明'), findsOneWidget); // 住所なしは仮の文言
+    expect(find.text('--km'), findsOneWidget); // 距離不明
+    expect(find.text('--'), findsOneWidget); // 所要時間不明
 
     // 写真URLが無いときは仮画像(アセット)が使われている
     final image = tester.widget<Image>(find.byType(Image).last);
@@ -61,7 +62,7 @@ void main() {
     expect(find.text('aquarium'), findsOneWidget);
   });
 
-  testWidgets('距離の末尾の0は削られる(3000m → 3)', (WidgetTester tester) async {
+  testWidgets('距離の末尾の0は削られる(3000m → 3km)', (WidgetTester tester) async {
     await tester.pumpWidget(_wrap(const DetilScreen(
       name: 'テスト',
       address: '住所',
@@ -69,10 +70,10 @@ void main() {
       distanceMeter: 3000,
     )));
 
-    expect(find.text('3'), findsOneWidget); // 「3.000」ではなく「3」
+    expect(find.text('3km'), findsOneWidget); // 「3.000km」ではなく「3km」
   });
 
-  testWidgets('所要時間が60分未満のときは0時間◯分になる(1800秒 → 0時間30分)',
+  testWidgets('所要時間が60分未満のときは「0時間」を付けずに◯分だけになる(1800秒 → 30分)',
       (WidgetTester tester) async {
     await tester.pumpWidget(_wrap(const DetilScreen(
       name: 'テスト',
@@ -81,7 +82,6 @@ void main() {
       durationSec: 1800,
     )));
 
-    expect(find.text('0'), findsOneWidget); // 「時間」部分
-    expect(find.text('30'), findsOneWidget); // 「分」部分
+    expect(find.text('30分'), findsOneWidget);
   });
 }
