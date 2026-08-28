@@ -26,9 +26,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   double _mouseX = 0.0;
   double _mouseY = 0.0;
 
-  // ローディング中のスピナーを押されたボタンだけに出すための識別子
-  _AuthAction? _pendingAction;
-
   @override
   void initState() {
     super.initState();
@@ -82,9 +79,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   @override
   Widget build(BuildContext context) {
     ref.listen<AuthState>(authProvider, (_, next) {
-      if (next is! AuthLoading) {
-        setState(() => _pendingAction = null);
-      }
       if (next is AuthAuthenticated) {
         context.go('/home');
       } else if (next is AuthError) {
@@ -283,49 +277,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // サードパーティログインでログイン/新規登録を別ボタンに分けるのは不自然
+              // (Google自身が初回かどうかを知っている)なので、ボタンは1つだけ。
+              // バックエンド未登録なら自動でアカウントが作られる
               SocialLoginButton(
                 icon: SvgPicture.string(_kGoogleSvg),
                 label: 'Googleでログイン',
-                isLoading: isLoading && _pendingAction == _AuthAction.login,
+                isLoading: isLoading,
                 onPressed:
                     isLoading
                         ? null
                         : () {
-                          setState(() => _pendingAction = _AuthAction.login);
                           ref.read(authProvider.notifier).signInWithGoogle();
-                        },
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  const Expanded(child: Divider(color: Color(0x4DC9C4D5))),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      'はじめての方',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontFamilyFallback: ['NotoSansJP'],
-                        fontSize: 13,
-                        color: Color(0x99484553),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const Expanded(child: Divider(color: Color(0x4DC9C4D5))),
-                ],
-              ),
-              const SizedBox(height: 24),
-              SocialLoginButton(
-                icon: SvgPicture.string(_kGoogleSvg),
-                label: 'Googleでアカウント作成',
-                isLoading: isLoading && _pendingAction == _AuthAction.register,
-                onPressed:
-                    isLoading
-                        ? null
-                        : () {
-                          setState(() => _pendingAction = _AuthAction.register);
-                          ref.read(authProvider.notifier).registerWithGoogle();
                         },
               ),
             ],
@@ -335,8 +298,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 }
-
-enum _AuthAction { login, register }
 
 class _GlowBlob extends StatelessWidget {
   final double? top, left, bottom, right;

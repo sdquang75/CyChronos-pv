@@ -40,9 +40,6 @@ class _FakeAuthNotifier extends StateNotifier<AuthState>
   Future<void> signInWithGoogle() async {}
 
   @override
-  Future<void> registerWithGoogle() async {}
-
-  @override
   Future<void> signOut() async {}
 }
 

@@ -29,42 +29,28 @@ class AuthUser {
       );
 }
 
-/// ログイン時: バックエンド users に未登録(404)
-class AccountNotRegisteredException implements Exception {}
-
 class AuthRepository {
   final _auth = FirebaseAuth.instance;
   final _googleSignIn = GoogleSignIn();
   final Dio _dio = ApiClient.instance;
 
-  /// ログイン: Googleサインイン → POST /api/auth/login
-  /// 未登録なら [AccountNotRegisteredException] を投げる
+  /// Googleサインイン → バックエンドと連携する。
+  /// サードパーティログインでログイン/新規登録をユーザーに選ばせるのは不自然なので、
+  /// ボタンは1つだけ: バックエンド未登録(404)ならその場で自動的に
+  /// /api/auth/register を叩いてアカウントを作る(reformと同じ設計)
   Future<AuthUser> signInWithGoogle() async {
     final user = await _signInWithGoogleFirebase();
+    return _linkBackend(user);
+  }
+
+  Future<AuthUser> _linkBackend(User user) async {
     final idToken = await _requireIdToken(user);
     try {
       final data = await _postAuth('/api/auth/login', idToken);
       return AuthUser.fromFirebase(user, userId: data['user_id'] as int?);
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
-        await signOut();
-        throw AccountNotRegisteredException();
-      }
-      rethrow;
-    }
-  }
-
-  /// アカウント作成: Googleサインイン → POST /api/auth/register
-  /// 登録済み(409)の場合はそのままログインに切り替える
-  Future<AuthUser> registerWithGoogle() async {
-    final user = await _signInWithGoogleFirebase();
-    final idToken = await _requireIdToken(user);
-    try {
-      final data = await _postAuth('/api/auth/register', idToken);
-      return AuthUser.fromFirebase(user, userId: data['user_id'] as int?);
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 409) {
-        final data = await _postAuth('/api/auth/login', idToken);
+        final data = await _postAuth('/api/auth/register', idToken);
         return AuthUser.fromFirebase(user, userId: data['user_id'] as int?);
       }
       rethrow;
