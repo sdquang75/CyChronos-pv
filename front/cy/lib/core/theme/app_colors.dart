@@ -13,7 +13,6 @@ class AppColors {
   static const primaryMuted = Color(0xFF6049C5);
   static const seed = Color(0xFF6750A4); // ThemeData.colorScheme.fromSeedの種
   static const glow = Color(0xFF2E0094); // ボタン等のシャドウ/グロー用
-  static const snackbarBg = Color(0xFF2A0088);
   static const accentBg = Color(0xFFF1EBFF); // 選択中チップ・アクセント背景
   static const gradientStart = Color(0xFFE6DEFF); // ログイン画面の背景グラデーション
 

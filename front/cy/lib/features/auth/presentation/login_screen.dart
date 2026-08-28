@@ -9,6 +9,7 @@ import 'widgets/social_login_button.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_aurora_background.dart';
 import '../../../core/widgets/app_screen_frame.dart';
+import '../../../core/widgets/app_toast.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -84,19 +85,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       if (next is AuthAuthenticated) {
         context.go('/home');
       } else if (next is AuthError) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              next.message,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontFamilyFallback: ['NotoSansJP'],
-              ),
-            ),
-            backgroundColor: AppColors.snackbarBg,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        AppToast.show(context, next.message, isError: true);
       }
     });
 

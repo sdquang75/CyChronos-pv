@@ -10,6 +10,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_bottom_navigation.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_toast.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
 
@@ -265,23 +266,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showMessage(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).clearSnackBars();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(
-            fontFamily: 'HankenGrotesk',
-            fontFamilyFallback: ['NotoSansJP'],
-          ),
-        ),
-        backgroundColor:
-            isError ? AppColors.error : AppColors.snackbarBg,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
+    AppToast.show(context, message, isError: isError);
   }
 
   @override

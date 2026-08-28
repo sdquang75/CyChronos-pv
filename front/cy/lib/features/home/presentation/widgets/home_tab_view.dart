@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_bottom_navigation.dart';
+import '../../../../core/widgets/app_toast.dart';
 import '../../domain/weather_state.dart';
 import '../providers/weather_provider.dart';
 import 'weather_header_card.dart';
@@ -352,23 +353,7 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
             final minutes = int.tryParse(_minutesController.text) ?? 0;
             final totalMinutes = hours * 60 + minutes;
             if (totalMinutes < 1) {
-              ScaffoldMessenger.of(context).clearSnackBars();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text(
-                    '時間を入力してください。',
-                    style: TextStyle(
-                      fontFamily: 'HankenGrotesk',
-                      fontFamilyFallback: ['NotoSansJP'],
-                    ),
-                  ),
-                  backgroundColor: AppColors.snackbarBg,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              );
+              AppToast.show(context, '時間を入力してください。', isError: true);
               return;
             }
             // 検索の実行(位置情報取得・API呼び出し・ローディング/エラー表示)は

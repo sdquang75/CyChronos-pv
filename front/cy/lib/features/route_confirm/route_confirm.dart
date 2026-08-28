@@ -9,6 +9,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/widgets/app_bottom_navigation.dart';
 import '../../core/widgets/app_button.dart';
+import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/app_top_bar.dart';
 import '../auth/domain/auth_state.dart';
 import '../auth/presentation/providers/auth_provider.dart';
@@ -185,21 +186,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.snackbarBg,
-        behavior: SnackBarBehavior.floating,
-        // 下部の情報バー/ボタン(+画面下部メニューバー)に被らないよう、少し上に出す
-        margin: EdgeInsets.only(
-          bottom: 90 + AppBottomNavigation.barHeightFor(context),
-          left: 16,
-          right: 16,
-        ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
+    AppToast.show(context, message);
   }
 
   // ---- 表示用の文字列ヘルパー ----
