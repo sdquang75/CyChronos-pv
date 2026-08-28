@@ -52,11 +52,14 @@ class DetilScreen extends StatelessWidget {
     return _genreLabels[genre] ?? genre;
   }
 
-  // 距離をkm表示用の文字列にする(小数3桁まで・末尾の0は削る)。不明なら「--」
+  // 距離をkm表示用の文字列にする(小数1桁・末尾が.0なら削る)。不明なら「--」
+  // route_confirm.dartの距離表記(例: 8.5km)と同じ精度に揃えている。
+  // 以前は小数3桁(例: 4.502km)まで出しており、桁区切りのカンマと
+  // 誤読されやすかった
   String _distanceText() {
     final meters = distanceMeter;
     if (meters == null) return '--';
-    return (meters / 1000).toStringAsFixed(3).replaceAll(RegExp(r'\.?0+$'), '');
+    return (meters / 1000).toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '');
   }
 
   // 所要時間の文字列(例: 1時間15分 / 30分)。不明なら「--」
