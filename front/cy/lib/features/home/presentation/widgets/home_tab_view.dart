@@ -164,7 +164,12 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('DURATION', style: AppTypography.sectionLabel),
+        Text(
+          '所要時間',
+          style: AppTypography.sectionLabel.copyWith(
+            fontFamilyFallback: const ['NotoSansJP'],
+          ),
+        ),
         const SizedBox(height: AppSpacing.lg),
         Row(
           children: [
@@ -261,7 +266,12 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('INTEREST', style: AppTypography.sectionLabel),
+        Text(
+          'ジャンル',
+          style: AppTypography.sectionLabel.copyWith(
+            fontFamilyFallback: const ['NotoSansJP'],
+          ),
+        ),
         const SizedBox(height: AppSpacing.lg),
         Wrap(
           spacing: 12,
