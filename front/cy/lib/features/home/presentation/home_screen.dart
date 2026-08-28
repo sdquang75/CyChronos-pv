@@ -22,6 +22,23 @@ class _HomeScreenState extends State<HomeScreen> {
   // 0: HOME(RideFlow), 1: HISTORY, 2: SETTINGS
   int _currentTab = 0;
 
+  // RideFlowの入れ子Navigatorを外(このシェル)から操作するためのキー。
+  // HOMEタブ再タップ時に、目的地一覧/詳細/ルート確認を全部閉じて
+  // プランナー画面まで一気に戻すのに使う
+  final GlobalKey<NavigatorState> _rideFlowNavigatorKey =
+      GlobalKey<NavigatorState>();
+
+  void _handleTabTap(int index) {
+    // 既にHOMEタブを表示中に、もう一度HOMEを押した場合。
+    // 目的地一覧/詳細/ルート確認まで何段階pushしていても、
+    // 都度「戻る」を連打させずに一気にプランナー画面まで戻す
+    if (index == 0 && _currentTab == 0) {
+      _rideFlowNavigatorKey.currentState?.popUntil((route) => route.isFirst);
+      return;
+    }
+    setState(() => _currentTab = index);
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScreenFrame(
@@ -32,12 +49,12 @@ class _HomeScreenState extends State<HomeScreen> {
             Positioned.fill(
               child: IndexedStack(
                 index: _currentTab,
-                children: const [
+                children: [
                   // 自前の入れ子Navigatorを持つので、目的地一覧/詳細/ルート確認を
                   // 開いた状態のまま他のタブへ切り替えて戻ってきても維持される
-                  RideFlow(),
-                  HistoryScreen(),
-                  SettingsScreen(),
+                  RideFlow(navigatorKey: _rideFlowNavigatorKey),
+                  const HistoryScreen(),
+                  const SettingsScreen(),
                 ],
               ),
             ),
@@ -52,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
               height: AppBottomNavigation.barHeightFor(context),
               child: AppBottomNavigation(
                 currentIndex: _currentTab,
-                onTap: (index) => setState(() => _currentTab = index),
+                onTap: _handleTabTap,
               ),
             ),
           ],

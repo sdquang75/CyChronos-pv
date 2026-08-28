@@ -43,7 +43,8 @@ class AppBottomNavigation extends StatelessWidget {
   });
 
   void _handleTap(int index) {
-    if (index == currentIndex) return;
+    // 既に選択中のタブを再タップした場合も呼び出し側に通知する
+    // (例: HOMEタブ再タップで目的地一覧/詳細を閉じてトップまで戻す用)
     HapticFeedback.selectionClick();
     onTap(index);
   }
