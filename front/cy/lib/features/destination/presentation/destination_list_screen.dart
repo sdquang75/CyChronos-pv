@@ -3,7 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/place_photo.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_bottom_navigation.dart';
+import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_top_bar.dart';
 import '../../../core/widgets/staggered_entrance.dart';
 import '../../../core/widgets/tap_scale.dart';
 import '../../detil/detil.dart';
@@ -80,12 +86,22 @@ class _DestinationListScreenState
     return '$hours時間$minutes分';
   }
 
+  // 「情報変更」を押したときの処理
+  // RideFlow(HOMEタブ専用の入れ子Navigator)からpushされてきた画面なので、
+  // popすればHOMEタブのプランナー画面(入力した時間やジャンルはそのまま)に戻る
+  void _goBackToHome() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // AppScreenFrame・下部メニューバーはHomeScreen(IndexedStackシェル)側で
     // 一括して描画されるので、ここでは自分の中身だけを組み立てる
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE),
+      backgroundColor: AppColors.bgCool,
       body: SafeArea(
         bottom: false,
         child: Padding(
@@ -94,56 +110,51 @@ class _DestinationListScreenState
           ),
           child: Column(
             children: [
-              _buildLogo(),
+              const AppTopBar(title: 'おすすめスポット'),
 
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
+                    horizontal: AppSpacing.xxl,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeader(),
-
-                      const SizedBox(height: 20),
-
-                      Expanded(
-                        child: _buildBody(),
-                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      _buildSubHeader(),
+                      const SizedBox(height: AppSpacing.xl),
+                      Expanded(child: _buildBody()),
                     ],
                   ),
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
 
               Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
+                  horizontal: AppSpacing.xxl,
                 ),
                 child: Row(
                   children: [
                     Expanded(
-                      child: _ActionButton(
-                        text: '情報変更',
+                      child: AppButton(
+                        label: '情報変更',
                         icon: Icons.tune_rounded,
-                        isPrimary: false,
+                        variant: AppButtonVariant.secondary,
                         onPressed: _goBackToHome,
                       ),
                     ),
 
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.md),
 
                     Expanded(
-                      child: _ActionButton(
-                        text: _isLoading
-                            ? '検索中...'
-                            : '再提案',
-                        icon: _isLoading
-                            ? Icons.hourglass_top_rounded
-                            : Icons.refresh_rounded,
-                        isPrimary: true,
+                      child: AppButton(
+                        label: _isLoading ? '検索中...' : '再提案',
+                        icon:
+                            _isLoading
+                                ? Icons.hourglass_top_rounded
+                                : Icons.refresh_rounded,
                         onPressed: () {
                           if (_isLoading) return;
                           _retry();
@@ -154,7 +165,7 @@ class _DestinationListScreenState
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
             ],
           ),
         ),
@@ -162,56 +173,14 @@ class _DestinationListScreenState
     );
   }
 
-
-  Widget _buildLogo() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        24,
-        24,
-        24,
-        20,
-      ),
-      child: Center(
-        child: Image.asset(
-          'assets/logo_long.png',
-          width: 200,
-          fit: BoxFit.contain,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
+  // タイトルはAppTopBarが表示するので、ここでは説明文+空き時間バッジのみ
+  Widget _buildSubHeader() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'おすすめスポット',
-          style: TextStyle(
-            fontFamily: 'HankenGrotesk',
-            fontFamilyFallback: ['NotoSansJP'],
-            fontWeight: FontWeight.w700,
-            fontSize: 28,
-            color: Color(0xFF19005C),
-            height: 1.25,
-          ),
-        ),
+        const Text('条件に合った目的地を選びましょう。', style: AppTypography.pageSubtitle),
 
-        const SizedBox(height: 8),
-
-        const Text(
-          '条件に合った目的地を選びましょう。',
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontFamilyFallback: ['NotoSansJP'],
-            fontWeight: FontWeight.w400,
-            fontSize: 14,
-            color: Color(0xFF484553),
-            height: 1.5,
-          ),
-        ),
-
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
 
         Container(
           padding: const EdgeInsets.symmetric(
@@ -219,12 +188,10 @@ class _DestinationListScreenState
             vertical: 9,
           ),
           decoration: BoxDecoration(
-            color: const Color(0xFFF1EBFF),
-            borderRadius: BorderRadius.circular(9999),
+            color: AppColors.accentBg,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
             border: Border.all(
-              color: const Color(
-                0xFF19005C,
-              ).withValues(alpha: 0.18),
+              color: AppColors.primary.withValues(alpha: 0.18),
               width: 1,
             ),
           ),
@@ -234,33 +201,16 @@ class _DestinationListScreenState
               const Icon(
                 Icons.schedule_rounded,
                 size: 18,
-                color: Color(0xFF19005C),
+                color: AppColors.primary,
               ),
 
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
 
-              const Text(
-                '空き時間',
-                style: TextStyle(
-                  fontFamily: 'HankenGrotesk',
-                  fontFamilyFallback: ['NotoSansJP'],
-                  fontWeight: FontWeight.w500,
-                  fontSize: 13,
-                  color: Color(0xFF484553),
-                ),
-              ),
+              const Text('空き時間', style: AppTypography.label),
 
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
 
-              Text(
-                _freeTimeText(),
-                style: const TextStyle(
-                  fontFamily: 'JetBrainsMono',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  color: Color(0xFF19005C),
-                ),
-              ),
+              Text(_freeTimeText(), style: AppTypography.stat),
             ],
           ),
         ),
@@ -352,16 +302,6 @@ class _DestinationListScreenState
         );
       },
     );
-  }
-
-  // 「情報変更」を押したときの処理
-  // RideFlow(HOMEタブ専用の入れ子Navigator)からpushされてきた画面なので、
-  // popすればHOMEタブのプランナー画面(入力した時間やジャンルはそのまま)に戻る
-  void _goBackToHome() {
-    final navigator = Navigator.of(context);
-    if (navigator.canPop()) {
-      navigator.pop();
-    }
   }
 }
 
@@ -479,31 +419,9 @@ class _DestinationCard extends StatelessWidget {
     final String name =
         destination['name']?.toString() ?? '名称不明';
 
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(
-        bottom: 14,
-      ),
+    return AppCard(
+      margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(
-            0xFFC9C4D5,
-          ).withValues(alpha: 0.35),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(
-              0xFF2E0094,
-            ).withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -512,12 +430,10 @@ class _DestinationCard extends StatelessWidget {
             height: 72,
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color: const Color(0xFFF1EBFF),
+              color: AppColors.accentBg,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: const Color(
-                  0xFFC9C4D5,
-                ).withValues(alpha: 0.35),
+                color: AppColors.border.withValues(alpha: 0.35),
               ),
             ),
             child: _buildThumbnail(),
@@ -533,14 +449,7 @@ class _DestinationCard extends StatelessWidget {
                   name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontFamily: 'HankenGrotesk',
-                    fontFamilyFallback: ['NotoSansJP'],
-                    fontWeight: FontWeight.w700,
-                    fontSize: 17,
-                    color: Color(0xFF19005C),
-                    height: 1.25,
-                  ),
+                  style: AppTypography.cardTitle,
                 ),
 
                 const SizedBox(height: 10),
@@ -554,14 +463,12 @@ class _DestinationCard extends StatelessWidget {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF1EBFF),
+                          color: AppColors.accentBg,
                           borderRadius: BorderRadius.circular(
-                            9999,
+                            AppSpacing.radiusPill,
                           ),
                           border: Border.all(
-                            color: const Color(
-                              0xFF19005C,
-                            ).withValues(alpha: 0.15),
+                            color: AppColors.primary.withValues(alpha: 0.15),
                           ),
                         ),
                         child: Row(
@@ -570,7 +477,7 @@ class _DestinationCard extends StatelessWidget {
                             const Icon(
                               Icons.directions_bike_rounded,
                               size: 15,
-                              color: Color(0xFF19005C),
+                              color: AppColors.primary,
                             ),
 
                             const SizedBox(width: 5),
@@ -580,11 +487,8 @@ class _DestinationCard extends StatelessWidget {
                                 durationText,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontFamily: 'JetBrainsMono',
-                                  fontWeight: FontWeight.w700,
+                                style: AppTypography.stat.copyWith(
                                   fontSize: 11,
-                                  color: Color(0xFF19005C),
                                 ),
                               ),
                             ),
@@ -602,7 +506,7 @@ class _DestinationCard extends StatelessWidget {
                           _openDetail(context);
                         },
                         borderRadius: BorderRadius.circular(
-                          9999,
+                          AppSpacing.radiusPill,
                         ),
                         child: const Padding(
                           padding: EdgeInsets.symmetric(
@@ -621,7 +525,7 @@ class _DestinationCard extends StatelessWidget {
                                   ],
                                   fontWeight: FontWeight.w600,
                                   fontSize: 12,
-                                  color: Color(0xFF19005C),
+                                  color: AppColors.primary,
                                 ),
                               ),
 
@@ -630,7 +534,7 @@ class _DestinationCard extends StatelessWidget {
                               Icon(
                                 Icons.arrow_forward_ios_rounded,
                                 size: 12,
-                                color: Color(0xFF19005C),
+                                color: AppColors.primary,
                               ),
                             ],
                           ),
@@ -662,7 +566,7 @@ class _SearchingIndicator extends StatelessWidget {
         height: 28,
         child: CircularProgressIndicator(
           strokeWidth: 2.5,
-          color: Color(0xFF19005C),
+          color: AppColors.primary,
         ),
       ),
     );
@@ -688,163 +592,54 @@ class _DestinationStateView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Container(
-        width: double.infinity,
+      child: AppCard(
         padding: const EdgeInsets.symmetric(
-          horizontal: 24,
+          horizontal: AppSpacing.xxl,
           vertical: 36,
         ),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: const Color(
-              0xFFC9C4D5,
-            ).withValues(alpha: 0.35),
-          ),
-        ),
+        borderRadius: 24,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
               size: 42,
-              color: const Color(0xFF19005C),
+              color: AppColors.primary,
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
 
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'HankenGrotesk',
-                fontFamilyFallback: ['NotoSansJP'],
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                color: Color(0xFF19005C),
-              ),
+              style: AppTypography.cardTitle.copyWith(fontSize: 16),
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
 
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontFamilyFallback: ['NotoSansJP'],
-                fontWeight: FontWeight.w400,
+              style: AppTypography.body.copyWith(
                 fontSize: 13,
-                color: Color(0xFF484553),
-                height: 1.5,
+                color: AppColors.textSecondary,
               ),
             ),
 
             if (onRetry != null) ...[
-              const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: onRetry,
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF19005C),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text(
-                  'もう一度試す',
-                  style: TextStyle(
-                    fontFamily: 'HankenGrotesk',
-                    fontFamilyFallback: ['NotoSansJP'],
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
+              const SizedBox(height: AppSpacing.xl),
+              SizedBox(
+                width: double.infinity,
+                child: AppButton(
+                  label: 'もう一度試す',
+                  icon: Icons.refresh_rounded,
+                  height: 48,
+                  borderRadius: 14,
+                  onPressed: onRetry,
                 ),
               ),
             ],
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  final String text;
-  final IconData icon;
-  final bool isPrimary;
-  final VoidCallback onPressed;
-
-  const _ActionButton({
-    required this.text,
-    required this.icon,
-    required this.isPrimary,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final backgroundColor = isPrimary
-        ? const Color(0xFF19005C)
-        : Colors.white;
-
-    final foregroundColor = isPrimary
-        ? Colors.white
-        : const Color(0xFF19005C);
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(9999),
-        child: Container(
-          height: 52,
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.circular(9999),
-            border: Border.all(
-              color: const Color(0xFF19005C),
-              width: 1.5,
-            ),
-            boxShadow: isPrimary
-                ? [
-                    BoxShadow(
-                      color: const Color(
-                        0xFF19005C,
-                      ).withValues(alpha: 0.18),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 18,
-                color: foregroundColor,
-              ),
-
-              const SizedBox(width: 7),
-
-              Text(
-                text,
-                style: TextStyle(
-                  fontFamily: 'HankenGrotesk',
-                  fontFamilyFallback: const [
-                    'NotoSansJP',
-                  ],
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                  color: foregroundColor,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
