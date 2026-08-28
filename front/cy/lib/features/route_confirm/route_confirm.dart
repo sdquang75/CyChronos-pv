@@ -312,6 +312,18 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
             bottom: AppBottomNavigation.barHeightFor(context),
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
+              // デフォルトのlayoutBuilderはAlignment.centerで重ねるため、
+              // 情報バー(高さ大)から案内終了ボタン(高さ小)に切り替わった瞬間に
+              // 縦方向の基準がずれて「ボタンが下にカクッと落ちる」ように見えていた。
+              // 常に下端基準で重ねるようにして、高さが違っても位置が揃うようにする
+              layoutBuilder:
+                  (currentChild, previousChildren) => Stack(
+                    alignment: Alignment.bottomCenter,
+                    children: [
+                      ...previousChildren,
+                      if (currentChild != null) currentChild,
+                    ],
+                  ),
               // 下からスライドしてくる切り替えアニメーション
               transitionBuilder:
                   (child, animation) => SlideTransition(
