@@ -383,6 +383,15 @@ class _DestinationCard extends StatelessWidget {
 
   bool get _isRoundTrip => destination['tripMode'] == 'round_trip';
 
+  // 分を「◯時間◯分」の文字列にする(1時間未満は「◯分」)。
+  // detil.dart・route_confirm.dartの所要時間表記と揃えている
+  String _formatMinutes(int totalMinutes) {
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+    if (hours == 0) return '$minutes分';
+    return '$hours時間$minutes分';
+  }
+
   @override
   Widget build(BuildContext context) {
     final dynamic rawDuration =
@@ -400,8 +409,8 @@ class _DestinationCard extends StatelessWidget {
         durationMinutes == null
             ? '所要時間不明'
             : _isRoundTrip
-            ? '往復 約$durationMinutes分'
-            : '約$durationMinutes分';
+            ? '往復 約${_formatMinutes(durationMinutes)}'
+            : '約${_formatMinutes(durationMinutes)}';
 
     // カード全体をタップして詳細画面へ移動できる(押下時に軽く縮小+触覚フィードバック)
     return TapScale(
