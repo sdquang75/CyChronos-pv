@@ -55,6 +55,15 @@ class RouteConfirmScreen extends ConsumerStatefulWidget {
 }
 
 class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
+  // ルートのbbox(南西・北東の対角線)がこれより小さいときは、
+  // 出発地と目的地がほぼ同じ地点とみなしてbboxフィットをやめる
+  // (例: 復路の起点が出発地点にほぼ重なる場合。実機ならまず起きないが、
+  // GPSを動かせないエミュレータでは毎回起きるので、その時にGoogleMapsが
+  // 最大ズームまで寄ってしまうのを防ぐ)
+  static const double _minBoundsSpanMeters = 150;
+  // 直前にbboxフィットした実績が無いときのズームの初期値
+  static const double _fallbackZoom = 15;
+
   late final LocationService _locationService =
       widget.locationService ?? LocationService();
   late final RouteRepository _repository =
@@ -68,6 +77,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   _RouteStage _stage = _RouteStage.outboundPreview;
   double? _originLat; // 往路開始時点の現在地(復路のルート取得先に使う)
   double? _originLng;
+  double? _lastZoom; // 直前にbboxフィットして実際に落ち着いたズーム値
   StreamSubscription<Position>? _positionSubscription; // 往路の到着監視用
   Timer? _stayTimer; // 滞在時間経過後に自動で復路を用意するタイマー
 
@@ -609,8 +619,31 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         await Future.delayed(const Duration(milliseconds: 100));
         // 待っている間に画面が閉じられていたら、破棄済みの地図を触らない
         if (!mounted) return;
-        // ルート全体が画面に収まるようにカメラを合わせる
+
+        // bboxの対角線距離が極端に短い(出発地と目的地がほぼ同じ地点)ときは、
+        // newLatLngBoundsに任せると最大ズームまで寄ってしまうため、
+        // 直前にフィットしたズーム(無ければ既定値)でその場を映すだけにする
+        final spanMeters = Geolocator.distanceBetween(
+          bounds.southwest.latitude,
+          bounds.southwest.longitude,
+          bounds.northeast.latitude,
+          bounds.northeast.longitude,
+        );
+        if (spanMeters < _minBoundsSpanMeters) {
+          await controller.moveCamera(
+            CameraUpdate.newLatLngZoom(
+              routePoints.first,
+              _lastZoom ?? _fallbackZoom,
+            ),
+          );
+          return;
+        }
+
+        // ルート全体が画面に収まるようにカメラを合わせ、
+        // 実際に落ち着いたズームを次回(復路など)のフォールバック用に覚えておく
         await controller.moveCamera(CameraUpdate.newLatLngBounds(bounds, 48));
+        if (!mounted) return;
+        _lastZoom = await controller.getZoomLevel();
       },
       // ルートの線
       polylines: {
