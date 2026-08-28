@@ -264,6 +264,22 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
               ),
             ),
 
+          // 案内モード中はヘッダーごと消えるが、ステータスバー(時刻・バッテリー等)の
+          // 裏がマップそのままだと見えにくいので、そこだけ通常時と同じすりガラスを敷いておく
+          if (_navigating)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: MediaQuery.of(context).padding.top,
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: Container(color: AppColors.bgCool.withValues(alpha: 0.8)),
+                ),
+              ),
+            ),
+
           // 案内モード中だけ上に出る「残り距離・時間」のチップ(Googleマップのあの表示)
           if (_navigating)
             Positioned(
