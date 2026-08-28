@@ -218,114 +218,114 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
       // マップの表示領域が伸縮してズレて見える原因になっていた)ではなく、
       // マップの上に被さるオーバーレイとして出す。案内モード中はこれごと消して全画面にする
       body: Stack(
-          children: [
-            // マップ代わりのルート表示(常に全画面・常に同じ大きさ。バーはこの上に被さる)
-            Positioned.fill(child: _buildRoutePreview()),
+        children: [
+          // マップ代わりのルート表示(常に全画面・常に同じ大きさ。バーはこの上に被さる)
+          Positioned.fill(child: _buildRoutePreview()),
 
-            // 通常時だけ上に出るヘッダー(戻るボタン+タイトル)。
-            // マップに直に重ねると文字が読みにくいので、下部メニューバーと
-            // 同じすりガラス調の背景を敷いて視認性を確保する
-            if (!_navigating)
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                height: AppTopBar.heightFor(context),
-                child: ClipRect(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                    child: Container(
-                      color: AppColors.bgCool.withValues(alpha: 0.8),
-                      child: const AppTopBar(title: 'ルート確認'),
-                    ),
-                  ),
-                ),
-              ),
-
-            // ルート取得に失敗したときだけ、概算値表示であることを上部に知らせる
-            if (_errorMessage != null && !_navigating)
-              Positioned(
-                top: AppTopBar.heightFor(context) + 8,
-                left: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.warningBg,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    _errorMessage!,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-              ),
-
-            // 案内モード中だけ上に出る「残り距離・時間」のチップ(Googleマップのあの表示)
-            if (_navigating)
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: SafeArea(
-                  child: Center(
-                    child: Container(
-                      margin: const EdgeInsets.only(top: 12),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(9999),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        '${_distanceText()} ・ ${_durationText()}',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-            // 下部: 通常時は情報バー、案内モード中は「案内を終了」ボタンだけ。
-            // AnimatedSwitcherで切り替え時にスッと入れ替わる。
-            // この画面はHomeScreen側の画面下部メニューバー(常に最前面に被さる)の
-            // 上に重なって描画されるので、そのぶんだけ持ち上げてボタンが隠れないようにする
+          // 通常時だけ上に出るヘッダー(戻るボタン+タイトル)。
+          // マップに直に重ねると文字が読みにくいので、下部メニューバーと
+          // 同じすりガラス調の背景を敷いて視認性を確保する
+          if (!_navigating)
             Positioned(
+              top: 0,
               left: 0,
               right: 0,
-              bottom: AppBottomNavigation.barHeightFor(context),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                // 下からスライドしてくる切り替えアニメーション
-                transitionBuilder:
-                    (child, animation) => SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0, 1),
-                        end: Offset.zero,
-                      ).animate(animation),
-                      child: child,
-                    ),
-                child: _navigating ? _buildEndButton() : _buildInfoPanel(),
+              height: AppTopBar.heightFor(context),
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: Container(
+                    color: AppColors.bgCool.withValues(alpha: 0.8),
+                    child: const AppTopBar(title: 'ルート確認'),
+                  ),
+                ),
               ),
             ),
-          ],
-        ),
+
+          // ルート取得に失敗したときだけ、概算値表示であることを上部に知らせる
+          if (_errorMessage != null && !_navigating)
+            Positioned(
+              top: AppTopBar.heightFor(context) + 8,
+              left: 8,
+              right: 8,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.warningBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _errorMessage!,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ),
+
+          // 案内モード中だけ上に出る「残り距離・時間」のチップ(Googleマップのあの表示)
+          if (_navigating)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                child: Center(
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(9999),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      '${_distanceText()} ・ ${_durationText()}',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // 下部: 通常時は情報バー、案内モード中は「案内を終了」ボタンだけ。
+          // AnimatedSwitcherで切り替え時にスッと入れ替わる。
+          // この画面はHomeScreen側の画面下部メニューバー(常に最前面に被さる)の
+          // 上に重なって描画されるので、そのぶんだけ持ち上げてボタンが隠れないようにする
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: AppBottomNavigation.barHeightFor(context),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              // 下からスライドしてくる切り替えアニメーション
+              transitionBuilder:
+                  (child, animation) => SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 1),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+              child: _navigating ? _buildEndButton() : _buildInfoPanel(),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -393,8 +393,10 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     );
 
     return GoogleMap(
-      initialCameraPosition:
-          CameraPosition(target: routePoints.first, zoom: 13),
+      initialCameraPosition: CameraPosition(
+        target: routePoints.first,
+        zoom: 13,
+      ),
       // 下の情報バー・画面下部メニューバー・上のチップに隠れないよう、
       // 地図の見える中心を上下にずらす
       padding: EdgeInsets.only(
@@ -424,7 +426,8 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
           markerId: const MarkerId('start'),
           position: routePoints.first,
           icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueAzure),
+            BitmapDescriptor.hueAzure,
+          ),
         ),
         Marker(
           markerId: const MarkerId('destination'),
@@ -501,7 +504,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
             children: [
               Expanded(
                 child: AppButton(
-                  label: 'ルートを変更',
+                  label: '戻る',
                   variant: AppButtonVariant.secondary,
                   height: 50,
                   borderRadius: AppSpacing.radiusInput,
