@@ -31,6 +31,9 @@ class _FakeLocationService implements LocationService {
       speedAccuracy: 1,
     );
   }
+
+  @override
+  Stream<Position> getPositionStream() => const Stream.empty();
 }
 
 // テスト用の偽リポジトリ。決め打ちのルートを返すか、わざと失敗させる
@@ -73,10 +76,7 @@ class _FakeRouteRepository implements RouteRepository {
   }
 
   @override
-  Future<void> endTrip({
-    required int userId,
-    required int tripId,
-  }) async {
+  Future<void> endTrip({required int userId, required int tripId}) async {
     endedTripId = tripId;
   }
 }
@@ -114,6 +114,7 @@ final _destination = <String, dynamic>{
 Widget _wrap({
   required AuthState authState,
   required _FakeRouteRepository repository,
+  Map<String, dynamic>? destination,
 }) {
   return ProviderScope(
     overrides: [
@@ -121,7 +122,7 @@ Widget _wrap({
     ],
     child: MaterialApp(
       home: RouteConfirmScreen(
-        destination: _destination,
+        destination: destination ?? _destination,
         locationService: _FakeLocationService(),
         repository: repository,
         useMapTiles: false, // テストでは地図タイルの通信ができないので簡易描画にする
@@ -131,12 +132,15 @@ Widget _wrap({
 }
 
 void main() {
-  testWidgets('ルートが取れたとき: 下部バーに実ルートの距離・所要時間とルートの絵が表示される',
-      (WidgetTester tester) async {
-    await tester.pumpWidget(_wrap(
-      authState: const AuthUnauthenticated(),
-      repository: _FakeRouteRepository(),
-    ));
+  testWidgets('ルートが取れたとき: 下部バーに実ルートの距離・所要時間とルートの絵が表示される', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(
+        authState: const AuthUnauthenticated(),
+        repository: _FakeRouteRepository(),
+      ),
+    );
     await tester.pumpAndSettle(); // ルート取得(非同期)の完了待ち
 
     expect(find.text('テストカフェ'), findsOneWidget); // 目的地名
@@ -146,27 +150,38 @@ void main() {
     expect(find.textContaining('取得できませんでした'), findsNothing); // エラー表示なし
   });
 
-  testWidgets('ルート取得に失敗したとき: 概算値にフォールバックしてエラー文言を出す',
-      (WidgetTester tester) async {
-    await tester.pumpWidget(_wrap(
-      authState: const AuthUnauthenticated(),
-      repository: _FakeRouteRepository(shouldFail: true),
-    ));
+  testWidgets('ルート取得に失敗したとき: 概算値にフォールバックしてエラー文言を出す', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(
+        authState: const AuthUnauthenticated(),
+        repository: _FakeRouteRepository(shouldFail: true),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('6.0km ・ 約30分'), findsOneWidget); // 概算値が出る
     expect(find.textContaining('取得できませんでした'), findsOneWidget); // エラー文言
   });
 
-  testWidgets('ログイン済みで案内開始→終了: バーが消えて全画面になり、開始/終了が記録される',
-      (WidgetTester tester) async {
+  testWidgets('ログイン済みで案内開始→終了: バーが消えて全画面になり、開始/終了が記録される', (
+    WidgetTester tester,
+  ) async {
     final repository = _FakeRouteRepository();
-    await tester.pumpWidget(_wrap(
-      authState: const AuthAuthenticated(
-        user: AuthUser(userId: 7, uid: 'u1', name: 'テスト', email: 't@example.com'),
+    await tester.pumpWidget(
+      _wrap(
+        authState: const AuthAuthenticated(
+          user: AuthUser(
+            userId: 7,
+            uid: 'u1',
+            name: 'テスト',
+            email: 't@example.com',
+          ),
+        ),
+        repository: repository,
       ),
-      repository: repository,
-    ));
+    );
     await tester.pumpAndSettle();
 
     // 案内開始 → バーが消えて案内モードへ
@@ -174,7 +189,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.startedUserId, 7); // user_id が渡っている
-    expect(repository.startedPlaceId, 'test-place-1'); // place_id が渡っている(訪問済み除外用)
+    expect(
+      repository.startedPlaceId,
+      'test-place-1',
+    ); // place_id が渡っている(訪問済み除外用)
     expect(find.text('案内開始'), findsNothing); // 下部バーは消えた(全画面)
     expect(find.text('テストカフェ'), findsNothing); // バーの中身ごと消えている
     expect(find.text('案内を終了'), findsOneWidget); // 終了ボタンが出る
@@ -193,13 +211,11 @@ void main() {
     expect(find.text('案内を終了'), findsNothing);
   });
 
-  testWidgets('未ログインで案内開始: 記録APIは呼ばず、案内モードには入れる',
-      (WidgetTester tester) async {
+  testWidgets('未ログインで案内開始: 記録APIは呼ばず、案内モードには入れる', (WidgetTester tester) async {
     final repository = _FakeRouteRepository();
-    await tester.pumpWidget(_wrap(
-      authState: const AuthUnauthenticated(),
-      repository: repository,
-    ));
+    await tester.pumpWidget(
+      _wrap(authState: const AuthUnauthenticated(), repository: repository),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('案内開始'));
@@ -209,5 +225,44 @@ void main() {
     expect(find.textContaining('走行記録なしで案内します'), findsOneWidget); // 案内文言
     await tester.pumpAndSettle();
     expect(find.text('案内を終了'), findsOneWidget); // 案内モード自体には入れる
+  });
+
+  testWidgets('往復モードは往路案内→滞在→帰りのルート表示へ進める', (WidgetTester tester) async {
+    final repository = _FakeRouteRepository();
+    final roundTripDestination = <String, dynamic>{
+      ..._destination,
+      'tripMode': 'round_trip',
+      'plannedStayMinutes': 15,
+      'returnDurationSec': 2100,
+      'returnDistanceM': 6500,
+    };
+
+    await tester.pumpWidget(
+      _wrap(
+        authState: const AuthUnauthenticated(),
+        repository: repository,
+        destination: roundTripDestination,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('案内開始'));
+    await tester.pumpAndSettle();
+    expect(find.text('到着・滞在を開始'), findsOneWidget);
+
+    await tester.tap(find.text('到着・滞在を開始'));
+    await tester.pumpAndSettle();
+    expect(find.text('滞在中'), findsOneWidget);
+    expect(find.text('今すぐ折り返す'), findsOneWidget);
+
+    await tester.tap(find.text('今すぐ折り返す'));
+    await tester.pumpAndSettle();
+    expect(find.text('出発地点へ戻る'), findsOneWidget);
+    expect(find.text('帰りの案内を開始'), findsOneWidget);
+
+    await tester.tap(find.text('帰りの案内を開始'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('復路 ・ 8.5km'), findsOneWidget);
+    expect(find.text('案内を終了'), findsOneWidget);
   });
 }

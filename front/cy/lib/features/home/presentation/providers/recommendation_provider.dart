@@ -30,6 +30,8 @@ class RecommendationNotifier extends StateNotifier<RecommendationState> {
   Future<void> fetchForCurrentLocation({
     required int minutes,
     required String type,
+    required String mode,
+    required int stayMinutes,
   }) async {
     state = const RecommendationLocating();
     try {
@@ -44,6 +46,8 @@ class RecommendationNotifier extends StateNotifier<RecommendationState> {
         longitude: position.longitude,
         type: type,
         minutes: minutes,
+        mode: mode,
+        stayMinutes: stayMinutes,
       );
       state = RecommendationLoaded(data);
     } on LocationServiceDisabledException {

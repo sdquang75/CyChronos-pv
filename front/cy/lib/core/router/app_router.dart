@@ -150,10 +150,18 @@ final routerProvider = Provider<GoRouter>((ref) {
 
           final minutes = extraMap['minutes'] as int?;
           final type = extraMap['type']?.toString() ?? 'cafe';
+          final tripMode = extraMap['tripMode']?.toString() ?? 'one_way';
+          final stayMinutes = (extraMap['stayMinutes'] as num?)?.round() ?? 0;
 
           return NoTransitionPage(
             key: state.pageKey,
-            child: DestinationListScreen(places: places, minutes: minutes, type: type),
+            child: DestinationListScreen(
+              places: places,
+              minutes: minutes,
+              type: type,
+              tripMode: tripMode,
+              stayMinutes: stayMinutes,
+            ),
           );
         },
       ),

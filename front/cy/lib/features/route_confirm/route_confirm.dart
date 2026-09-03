@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -9,6 +12,14 @@ import '../auth/domain/auth_state.dart';
 import '../auth/presentation/providers/auth_provider.dart';
 import '../home/data/location_service.dart';
 import 'data/route_repository.dart';
+
+enum _RouteStage {
+  outboundPreview,
+  outboundNavigating,
+  staying,
+  returnPreview,
+  returnNavigating,
+}
 
 /// ルート確認・案内画面(Googleマップ風)。
 /// 開くと全画面にルートが出て、下に情報バー(目的地・距離・時間・案内開始)が被さる。
@@ -41,9 +52,13 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   CyclingRoute? _route; // 取得できた実ルート(null = 取得前 or 失敗)
   bool _loading = true; // ルート取得中かどうか
   String? _errorMessage; // 取得失敗時にユーザーへ見せる文言
-  bool _navigating = false; // 案内モード中か(trueで下のバーが消えて全画面になる)
   bool _busy = false; // 開始/終了APIの二度押し防止
   int? _tripId; // 記録中トリップのID(null = 記録なし)
+  _RouteStage _stage = _RouteStage.outboundPreview;
+  double? _originLat;
+  double? _originLng;
+  StreamSubscription<Position>? _positionSubscription;
+  Timer? _stayTimer;
 
   // ---- destination(Map)から表示用の値を取り出すヘルパーたち ----
 
@@ -55,19 +70,43 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
 
   double? get _destLng => (widget.destination['lng'] as num?)?.toDouble();
 
+  bool get _isRoundTrip => widget.destination['tripMode'] == 'round_trip';
+
+  int get _plannedStayMinutes =>
+      (widget.destination['plannedStayMinutes'] as num?)?.round() ?? 0;
+
+  bool get _isNavigating =>
+      _stage == _RouteStage.outboundNavigating ||
+      _stage == _RouteStage.returnNavigating;
+
+  bool get _isReturnRoute =>
+      _stage == _RouteStage.returnPreview ||
+      _stage == _RouteStage.returnNavigating;
+
   // 実ルートが取れなかったときは、候補一覧時点の概算値(Matrix API)で代用する
   double? get _displayDistanceM =>
       _route?.distanceM ??
-      (widget.destination['distanceM'] as num?)?.toDouble();
+      (widget.destination[_isReturnRoute ? 'returnDistanceM' : 'distanceM']
+              as num?)
+          ?.toDouble();
 
   double? get _displayDurationSec =>
       _route?.durationSec ??
-      (widget.destination['durationSec'] as num?)?.toDouble();
+      (widget.destination[_isReturnRoute ? 'returnDurationSec' : 'durationSec']
+              as num?)
+          ?.toDouble();
 
   @override
   void initState() {
     super.initState();
     _loadRoute();
+  }
+
+  @override
+  void dispose() {
+    _positionSubscription?.cancel();
+    _stayTimer?.cancel();
+    super.dispose();
   }
 
   /// 現在地を取得して、バックの /api/maps/route で実際の走行ルートを取りに行く
@@ -86,6 +125,8 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
 
     try {
       final position = await _locationService.getCurrentPosition();
+      _originLat = position.latitude;
+      _originLng = position.longitude;
       final route = await _repository.fetchCyclingRoute(
         fromLat: position.latitude,
         fromLng: position.longitude,
@@ -112,6 +153,13 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   /// ログイン済みならトリップ開始も記録する(訪問済み除外が効くようになる)
   Future<void> _startNavigation() async {
     if (_busy) return; // 二度押しガード
+
+    if (_stage == _RouteStage.returnPreview) {
+      setState(() => _stage = _RouteStage.returnNavigating);
+      _showMessage('帰りの案内を開始しました。');
+      return;
+    }
+
     setState(() => _busy = true);
 
     // ログイン済みユーザーの user_id を取る(取れなければ記録なしで案内だけする)
@@ -139,9 +187,98 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
       if (mounted) {
         setState(() {
           _busy = false;
-          _navigating = true; // 記録の成否に関わらず案内モードに入る
+          _stage = _RouteStage.outboundNavigating;
         });
+        if (_isRoundTrip) _startArrivalMonitoring();
       }
+    }
+  }
+
+  void _startArrivalMonitoring() {
+    _positionSubscription?.cancel();
+    _positionSubscription = _locationService.getPositionStream().listen(
+      (position) {
+        if (!mounted || _stage != _RouteStage.outboundNavigating) return;
+        final toLat = _destLat;
+        final toLng = _destLng;
+        if (toLat == null || toLng == null) return;
+
+        final distance = Geolocator.distanceBetween(
+          position.latitude,
+          position.longitude,
+          toLat,
+          toLng,
+        );
+        if (distance <= 100) _beginStay();
+      },
+      onError: (Object error) {
+        debugPrint('arrival monitoring error: $error');
+      },
+    );
+  }
+
+  Future<void> _beginStay() async {
+    if (!_isRoundTrip || _stage != _RouteStage.outboundNavigating) return;
+    if (!mounted) return;
+    setState(() => _stage = _RouteStage.staying);
+
+    await _positionSubscription?.cancel();
+    _positionSubscription = null;
+    _stayTimer?.cancel();
+
+    if (!mounted) return;
+    _showMessage('案内を一時停止しました。滞在を開始します。');
+
+    if (_plannedStayMinutes == 0) {
+      await _prepareReturnRoute();
+      return;
+    }
+    _stayTimer = Timer(
+      Duration(minutes: _plannedStayMinutes),
+      _prepareReturnRoute,
+    );
+  }
+
+  Future<void> _prepareReturnRoute() async {
+    if (_busy || !mounted) return;
+    final originLat = _originLat;
+    final originLng = _originLng;
+    if (originLat == null || originLng == null) {
+      _showMessage('出発地点を確認できないため、帰りのルートを表示できませんでした。');
+      return;
+    }
+
+    _stayTimer?.cancel();
+    setState(() {
+      _busy = true;
+      _loading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final position = await _locationService.getCurrentPosition();
+      final route = await _repository.fetchCyclingRoute(
+        fromLat: position.latitude,
+        fromLng: position.longitude,
+        toLat: originLat,
+        toLng: originLng,
+      );
+      if (!mounted) return;
+      setState(() {
+        _route = route;
+        _stage = _RouteStage.returnPreview;
+        _loading = false;
+        _busy = false;
+      });
+      _showMessage('帰りのルートを表示しました。');
+    } catch (error) {
+      debugPrint('return route load error: $error');
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _busy = false;
+        _errorMessage = '帰りのルートを取得できませんでした。もう一度お試しください。';
+      });
     }
   }
 
@@ -154,6 +291,10 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     final userId =
         authState is AuthAuthenticated ? authState.user.userId : null;
     final tripId = _tripId;
+    final endedStage = _stage;
+    await _positionSubscription?.cancel();
+    _positionSubscription = null;
+    _stayTimer?.cancel();
 
     try {
       if (tripId != null && userId != null) {
@@ -170,7 +311,10 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
       if (mounted) {
         setState(() {
           _busy = false;
-          _navigating = false; // バーを戻す
+          _stage =
+              endedStage == _RouteStage.returnNavigating
+                  ? _RouteStage.returnPreview
+                  : _RouteStage.outboundPreview;
         });
       }
     }
@@ -216,7 +360,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
       child: Scaffold(
         // 案内モード中はロゴバーも消して全画面にする
         appBar:
-            _navigating
+            _isNavigating
                 ? null
                 : AppBar(
                   title: const Image(
@@ -231,7 +375,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
             Positioned.fill(child: _buildRoutePreview()),
 
             // ルート取得に失敗したときだけ、概算値表示であることを上部に知らせる
-            if (_errorMessage != null && !_navigating)
+            if (_errorMessage != null && !_isNavigating)
               Positioned(
                 top: 8,
                 left: 8,
@@ -250,7 +394,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
               ),
 
             // 案内モード中だけ上に出る「残り距離・時間」のチップ(Googleマップのあの表示)
-            if (_navigating)
+            if (_isNavigating)
               Positioned(
                 top: 0,
                 left: 0,
@@ -275,7 +419,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                         ],
                       ),
                       child: Text(
-                        '${_distanceText()} ・ ${_durationText()}',
+                        '${_isRoundTrip ? (_isReturnRoute ? '復路 ・ ' : '往路 ・ ') : ''}${_distanceText()} ・ ${_durationText()}',
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
@@ -304,7 +448,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                       ).animate(animation),
                       child: child,
                     ),
-                child: _navigating ? _buildEndButton() : _buildInfoPanel(),
+                child: _buildBottomPanel(),
               ),
             ),
           ],
@@ -377,8 +521,10 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     );
 
     return GoogleMap(
-      initialCameraPosition:
-          CameraPosition(target: routePoints.first, zoom: 13),
+      initialCameraPosition: CameraPosition(
+        target: routePoints.first,
+        zoom: 13,
+      ),
       // 下の情報バー・上のチップに隠れないよう、地図の見える中心を上下にずらす
       padding: const EdgeInsets.only(top: 100, bottom: 260),
       onMapCreated: (controller) async {
@@ -404,7 +550,8 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
           markerId: const MarkerId('start'),
           position: routePoints.first,
           icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueAzure),
+            BitmapDescriptor.hueAzure,
+          ),
         ),
         Marker(
           markerId: const MarkerId('destination'),
@@ -418,6 +565,22 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   }
 
   /// 通常時の下部バー: 目的地情報+距離・時間+ボタン(Googleマップの検索結果バー風)
+  Widget _buildBottomPanel() {
+    switch (_stage) {
+      case _RouteStage.outboundNavigating:
+        return _isRoundTrip
+            ? _buildOutboundNavigationButtons()
+            : _buildEndButton();
+      case _RouteStage.returnNavigating:
+        return _buildEndButton();
+      case _RouteStage.staying:
+        return _buildStayPanel();
+      case _RouteStage.outboundPreview:
+      case _RouteStage.returnPreview:
+        return _buildInfoPanel();
+    }
+  }
+
   Widget _buildInfoPanel() {
     return Container(
       key: const ValueKey('info-panel'), // AnimatedSwitcherが切り替えを認識するための目印
@@ -439,7 +602,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         children: [
           // 目的地の名前
           Text(
-            _name,
+            _isReturnRoute ? '出発地点へ戻る' : _name,
             maxLines: 1, // 長い名前は1行に収めて…で省略する
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
@@ -449,7 +612,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
             ),
           ),
           // 住所(あるときだけ)
-          if (_address.isNotEmpty)
+          if (!_isReturnRoute && _address.isNotEmpty)
             Text(
               _address,
               maxLines: 1,
@@ -519,9 +682,131 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
+                  child: Text(
+                    _isReturnRoute ? '帰りの案内を開始' : '案内開始',
+                    style: const TextStyle(fontSize: 16, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOutboundNavigationButtons() {
+    return Container(
+      key: const ValueKey('outbound-buttons'),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      color: Colors.white,
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _busy ? null : _endNavigation,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, 52),
+                side: const BorderSide(color: Color(0xFFD93A2A), width: 2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                '案内を終了',
+                style: TextStyle(fontSize: 15, color: Color(0xFFD93A2A)),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 2,
+            child: ElevatedButton.icon(
+              onPressed: _busy ? null : _beginStay,
+              icon: const Icon(Icons.flag_rounded, color: Colors.white),
+              label: const Text(
+                '到着・滞在を開始',
+                style: TextStyle(fontSize: 16, color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(0, 52),
+                backgroundColor: const Color.fromARGB(255, 9, 31, 156),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStayPanel() {
+    return Container(
+      key: const ValueKey('stay-panel'),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '滞在中',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF19005C),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '案内を停止しています。$_plannedStayMinutes分後に帰りのルートを表示します。',
+            style: const TextStyle(fontSize: 14, color: Colors.black54),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _busy ? null : _endNavigation,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 50),
+                    side: const BorderSide(color: Color(0xFFD93A2A), width: 2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                   child: const Text(
-                    '案内開始',
-                    style: TextStyle(fontSize: 16, color: Colors.white),
+                    '案内を終了',
+                    style: TextStyle(fontSize: 15, color: Color(0xFFD93A2A)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _busy ? null : _prepareReturnRoute,
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(0, 50),
+                    backgroundColor: const Color.fromARGB(255, 9, 31, 156),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    '今すぐ折り返す',
+                    style: TextStyle(fontSize: 15, color: Colors.white),
                   ),
                 ),
               ),
