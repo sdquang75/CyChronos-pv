@@ -9,10 +9,12 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_bottom_navigation.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_toast.dart';
+import '../../../core/widgets/tap_scale.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
 import '../data/settings_service.dart';
 
+/// 設定画面 (Appleのミニマリズム思想に基づく洗練されたSettings).
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
@@ -35,15 +37,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             borderRadius: BorderRadius.circular(24),
           ),
           icon: Container(
-            width: 60,
-            height: 60,
+            width: 56,
+            height: 56,
             decoration: BoxDecoration(
               color: AppColors.error.withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.logout_rounded,
-              size: 30,
+              size: 28,
               color: AppColors.error,
             ),
           ),
@@ -53,7 +55,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             style: TextStyle(
               fontFamily: 'HankenGrotesk',
               fontFamilyFallback: ['NotoSansJP'],
-              fontSize: 21,
+              fontSize: 20,
               fontWeight: FontWeight.w700,
               color: AppColors.primary,
             ),
@@ -66,7 +68,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               fontFamilyFallback: ['NotoSansJP'],
               fontSize: 14,
               color: AppColors.textSecondary,
-              height: 1.6,
+              height: 1.5,
             ),
           ),
           actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -81,7 +83,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       side: BorderSide(
                         color: AppColors.border.withValues(alpha: 0.65),
                       ),
-                      minimumSize: const Size.fromHeight(48),
+                      minimumSize: const Size.fromHeight(46),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -91,7 +93,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       style: TextStyle(
                         fontFamily: 'HankenGrotesk',
                         fontFamilyFallback: ['NotoSansJP'],
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -107,7 +109,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.error,
                       foregroundColor: Colors.white,
-                      minimumSize: const Size.fromHeight(48),
+                      minimumSize: const Size.fromHeight(46),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -117,7 +119,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       style: TextStyle(
                         fontFamily: 'HankenGrotesk',
                         fontFamilyFallback: ['NotoSansJP'],
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -198,7 +200,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showPrivacyPolicyDialog() {
-    showDialog<void>(
+    showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
@@ -218,11 +220,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         content: const SingleChildScrollView(
           child: Text(
             '【位置情報の利用について】\n'
-            'CyChronosは、最適なサイクリングルートの提案、移動中の音声案内、および走行ログの記録のために現在地情報を取得します。\n\n'
-            '【外部サービスとの連携】\n'
-            'ルート計算およびスポット情報検索のため、MapboxおよびGoogle Maps PlatformのAPIを利用しています。第三者へ個人を特定可能な情報が提供されることはありません。\n\n'
-            '【走行データの保護】\n'
-            'ユーザーの走行履歴および座標データは暗号化通信により保護され、本人のアカウント管理下でのみ閲覧・削除が可能です。',
+            'CyChronosは、最適なサイクリングルートの提案およびナビゲーションのために端末の位置情報を利用します。'
+            '走行ログは暗号化され、ご本人の履歴管理と統計分析の目的でのみ使用されます。\n\n'
+            '【免責事項】\n'
+            '実際の道路交通法、現地の標識・信号に従って安全に走行してください。'
+            'アプリの案内による事故・トラブルについては一切の責任を負いかねます。',
             style: TextStyle(
               fontSize: 13,
               color: AppColors.textSecondary,
@@ -245,8 +247,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final AuthState authState = ref.watch(authProvider);
-    final SettingsState settings = ref.watch(settingsProvider);
+    final settings = ref.watch(settingsProvider);
+    final authState = ref.watch(authProvider);
 
     final user = authState is AuthAuthenticated ? authState.user : null;
     final String userName =
@@ -262,24 +264,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           padding: EdgeInsets.fromLTRB(
-            24,
-            24,
-            24,
+            20,
+            20,
+            20,
             40 + AppBottomNavigation.barHeightFor(context),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Apple-style bold large title
               const Text('設定', style: AppTypography.pageTitle),
-              const SizedBox(height: AppSpacing.sm),
-              const Text(
-                'アカウントや走行時のナビゲーションを管理できます。',
-                style: AppTypography.pageSubtitle,
-              ),
+              const SizedBox(height: 20),
 
-              const SizedBox(height: AppSpacing.xxl + 4),
-
-              // アカウント情報カード
+              // Account Card
               _buildAccountCard(
                 userName: userName,
                 userEmail: userEmail,
@@ -287,39 +284,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 hasPhoto: hasPhoto,
               ),
 
-              const SizedBox(height: AppSpacing.xxl + 4),
+              const SizedBox(height: 24),
 
-              // ナビゲーション設定
+              // Navigation section
               const Text('ナビゲーション設定', style: AppTypography.sectionLabel),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.sm),
               _buildNavigationCard(settings),
 
-              const SizedBox(height: AppSpacing.xxl + 4),
+              const SizedBox(height: 24),
 
-              // 地図表示設定
+              // Map section
               const Text('地図表示設定', style: AppTypography.sectionLabel),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.sm),
               _buildMapCard(settings),
 
-              const SizedBox(height: AppSpacing.xxl + 4),
+              const SizedBox(height: 24),
 
-              // ストレージ & サポート
+              // Support & Storage
               const Text('サポート & ストレージ', style: AppTypography.sectionLabel),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.sm),
               _buildSupportAndStorageCard(),
 
-              const SizedBox(height: AppSpacing.xxl + 4),
+              const SizedBox(height: 24),
 
-              // アプリ情報
+              // About
               const Text('アプリ情報', style: AppTypography.sectionLabel),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.sm),
               _buildAboutCard(),
 
-              const SizedBox(height: AppSpacing.xxl + 4),
+              const SizedBox(height: 24),
 
-              // アカウント操作
-              const Text('アカウント', style: AppTypography.sectionLabel),
-              const SizedBox(height: AppSpacing.md),
+              // Logout
               AppCard(
                 padding: EdgeInsets.zero,
                 borderRadius: 24,
@@ -327,15 +322,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: _SettingsMenuRow(
                   icon: Icons.logout_rounded,
                   iconColor: AppColors.error,
+                  iconBgColor: AppColors.error.withValues(alpha: 0.1),
                   title: 'ログアウト',
                   titleColor: AppColors.error,
-                  subtitle: '現在のアカウントからログアウトします',
                   trailing: _isLoggingOut
                       ? const SizedBox(
-                          width: 22,
-                          height: 22,
+                          width: 20,
+                          height: 20,
                           child: CircularProgressIndicator(
-                            strokeWidth: 2.4,
+                            strokeWidth: 2.2,
                             color: AppColors.error,
                           ),
                         )
@@ -358,21 +353,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }) {
     return AppCard(
       borderRadius: 24,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       child: Row(
         children: [
           CircleAvatar(
-            radius: 34,
+            radius: 30,
             backgroundColor: AppColors.accentBg,
             backgroundImage: hasPhoto ? NetworkImage(photoUrl!) : null,
             child: hasPhoto
                 ? null
                 : const Icon(
                     Icons.person_rounded,
-                    size: 36,
+                    size: 32,
                     color: AppColors.primary,
                   ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -384,13 +380,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   style: const TextStyle(
                     fontFamily: 'HankenGrotesk',
                     fontFamilyFallback: ['NotoSansJP'],
-                    fontSize: 19,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: AppColors.primary,
                   ),
                 ),
                 if (userEmail.isNotEmpty) ...[
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 3),
                   Text(
                     userEmail,
                     maxLines: 1,
@@ -420,28 +416,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         children: [
           _SettingsSwitchRow(
             icon: Icons.volume_up_rounded,
+            iconBgColor: const Color(0xFF007AFF).withValues(alpha: 0.12),
+            iconColor: const Color(0xFF007AFF),
             title: '音声案内',
-            subtitle: '走行中の交差点や曲がり角で音声案内を再生',
             value: settings.voiceGuidanceEnabled,
             onChanged: (val) {
               ref.read(settingsProvider.notifier).setVoiceGuidance(val);
             },
           ),
-          const Divider(height: 1, indent: 68, endIndent: 20),
+          const Divider(height: 1, indent: 56, endIndent: 16),
           _SettingsSwitchRow(
             icon: Icons.stay_current_portrait_rounded,
+            iconBgColor: const Color(0xFF34C759).withValues(alpha: 0.12),
+            iconColor: const Color(0xFF34C759),
             title: '画面の常時点灯',
-            subtitle: 'ナビゲーション中に画面がスリープするのを防止',
             value: settings.keepScreenAwake,
             onChanged: (val) {
               ref.read(settingsProvider.notifier).setKeepScreenAwake(val);
             },
           ),
-          const Divider(height: 1, indent: 68, endIndent: 20),
+          const Divider(height: 1, indent: 56, endIndent: 16),
           _SettingsSwitchRow(
             icon: Icons.alt_route_rounded,
+            iconBgColor: const Color(0xFFFF9500).withValues(alpha: 0.12),
+            iconColor: const Color(0xFFFF9500),
             title: '自動リルート',
-            subtitle: 'コースを外れたときに自動で新しいルートを再検索',
             value: settings.autoRerouteEnabled,
             onChanged: (val) {
               ref.read(settingsProvider.notifier).setAutoReroute(val);
@@ -460,57 +459,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ];
 
     return AppCard(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       borderRadius: 24,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.accentBg,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  Icons.layers_rounded,
-                  color: AppColors.primary,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 14),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '地図タイプ',
-                      style: TextStyle(
-                        fontFamily: 'HankenGrotesk',
-                        fontFamilyFallback: ['NotoSansJP'],
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    SizedBox(height: 3),
-                    Text(
-                      'Google Mapsの表示スタイルを選択します',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontFamilyFallback: ['NotoSansJP'],
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          const Text(
+            '地図タイプ',
+            style: TextStyle(
+              fontFamily: 'HankenGrotesk',
+              fontFamilyFallback: ['NotoSansJP'],
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary,
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Row(
             children: types.map((item) {
               final key = item['key'] as String;
@@ -520,7 +484,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
               return Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
                   child: GestureDetector(
                     onTap: () {
                       HapticFeedback.selectionClick();
@@ -528,22 +492,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppColors.primary : AppColors.accentBg,
-                        borderRadius: BorderRadius.circular(16),
+                        color: isSelected ? AppColors.primary : AppColors.bgCool,
+                        borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                           color: isSelected
                               ? AppColors.primary
                               : AppColors.border.withValues(alpha: 0.5),
-                          width: isSelected ? 1.5 : 1,
                         ),
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
                                   color: AppColors.primary.withValues(alpha: 0.2),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
                                 ),
                               ]
                             : null,
@@ -556,7 +519,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             size: 20,
                             color: isSelected ? Colors.white : AppColors.primary,
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 5),
                           Text(
                             label,
                             style: TextStyle(
@@ -593,15 +556,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         children: [
           _SettingsMenuRow(
             icon: Icons.mail_outline_rounded,
+            iconBgColor: const Color(0xFF5856D6).withValues(alpha: 0.12),
+            iconColor: const Color(0xFF5856D6),
             title: 'お問い合わせ',
-            subtitle: 'ご意見や不具合を送信します',
             onTap: () => context.push('/contact'),
           ),
-          const Divider(height: 1, indent: 68, endIndent: 20),
+          const Divider(height: 1, indent: 56, endIndent: 16),
           _SettingsMenuRow(
             icon: Icons.cleaning_services_rounded,
+            iconBgColor: const Color(0xFFFF2D55).withValues(alpha: 0.12),
+            iconColor: const Color(0xFFFF2D55),
             title: 'キャッシュを削除',
-            subtitle: '一時保存された画像データを解放します',
             onTap: _showClearCacheDialog,
           ),
         ],
@@ -618,8 +583,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         children: [
           _SettingsMenuRow(
             icon: Icons.description_outlined,
+            iconBgColor: AppColors.accentBg,
+            iconColor: AppColors.primary,
             title: 'オープンソースライセンス',
-            subtitle: '使用しているライブラリの権利表記',
             onTap: () {
               showLicensePage(
                 context: context,
@@ -629,18 +595,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               );
             },
           ),
-          const Divider(height: 1, indent: 68, endIndent: 20),
+          const Divider(height: 1, indent: 56, endIndent: 16),
           _SettingsMenuRow(
             icon: Icons.privacy_tip_outlined,
+            iconBgColor: AppColors.accentBg,
+            iconColor: AppColors.primary,
             title: '利用規約 & プライバシー',
-            subtitle: '位置情報の取り扱いと利用規約',
             onTap: _showPrivacyPolicyDialog,
           ),
-          const Divider(height: 1, indent: 68, endIndent: 20),
+          const Divider(height: 1, indent: 56, endIndent: 16),
           const _SettingsMenuRow(
             icon: Icons.info_outline_rounded,
+            iconBgColor: AppColors.accentBg,
+            iconColor: AppColors.primary,
             title: 'バージョン',
-            subtitle: 'CyChronos for Mobile',
             trailing: Text(
               'v1.0.0 (42)',
               style: TextStyle(
@@ -658,17 +626,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 }
 
+// Apple iOS-style clean switch row (zero cluttered subtext)
 class _SettingsSwitchRow extends StatelessWidget {
   final IconData icon;
+  final Color iconBgColor;
+  final Color iconColor;
   final String title;
-  final String subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
 
   const _SettingsSwitchRow({
     required this.icon,
+    required this.iconBgColor,
+    required this.iconColor,
     required this.title,
-    required this.subtitle,
     required this.value,
     required this.onChanged,
   });
@@ -676,51 +647,33 @@ class _SettingsSwitchRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
-              color: AppColors.accentBg,
-              borderRadius: BorderRadius.circular(14),
+              color: iconBgColor,
+              borderRadius: BorderRadius.circular(9),
             ),
-            child: Icon(icon, color: AppColors.primary, size: 22),
+            child: Icon(icon, color: iconColor, size: 18),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontFamily: 'HankenGrotesk',
-                    fontFamilyFallback: ['NotoSansJP'],
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontFamilyFallback: ['NotoSansJP'],
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                    height: 1.35,
-                  ),
-                ),
-              ],
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontFamily: 'HankenGrotesk',
+                fontFamilyFallback: ['NotoSansJP'],
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+              ),
             ),
           ),
-          const SizedBox(width: 8),
-          Switch(
+          Switch.adaptive(
             value: value,
-            activeThumbColor: Colors.white,
             activeTrackColor: AppColors.primary,
             onChanged: (newVal) {
               HapticFeedback.lightImpact();
@@ -733,85 +686,71 @@ class _SettingsSwitchRow extends StatelessWidget {
   }
 }
 
+// Apple iOS-style clean menu row with chevron (zero cluttered subtext)
 class _SettingsMenuRow extends StatelessWidget {
+  final IconData icon;
+  final Color? iconColor;
+  final Color? iconBgColor;
+  final String title;
+  final Color? titleColor;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+
   const _SettingsMenuRow({
     required this.icon,
+    this.iconColor,
+    this.iconBgColor,
     required this.title,
-    required this.subtitle,
-    required this.onTap,
-    this.iconColor = AppColors.primary,
-    this.titleColor = AppColors.primary,
+    this.titleColor,
     this.trailing,
+    this.onTap,
   });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback? onTap;
-  final Color iconColor;
-  final Color titleColor;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap == null
-            ? null
-            : () {
-                HapticFeedback.selectionClick();
-                onTap!();
-              },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(icon, color: iconColor, size: 22),
+    final effectiveIconBgColor =
+        iconBgColor ?? AppColors.accentBg;
+    final effectiveIconColor =
+        iconColor ?? AppColors.primary;
+
+    return TapScale(
+      onTap: onTap ?? () {},
+      child: Container(
+        color: Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: effectiveIconBgColor,
+                borderRadius: BorderRadius.circular(9),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontFamily: 'HankenGrotesk',
-                        fontFamilyFallback: const ['NotoSansJP'],
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: titleColor,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontFamilyFallback: ['NotoSansJP'],
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
+              child: Icon(icon, color: effectiveIconColor, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontFamily: 'HankenGrotesk',
+                  fontFamilyFallback: const ['NotoSansJP'],
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: titleColor ?? AppColors.primary,
                 ),
               ),
-              const SizedBox(width: 10),
-              if (trailing != null)
-                trailing!
-              else if (onTap != null)
-                Icon(Icons.chevron_right_rounded, color: iconColor, size: 24),
-            ],
-          ),
+            ),
+            if (trailing != null)
+              trailing!
+            else if (onTap != null)
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: AppColors.textSecondary,
+              ),
+          ],
         ),
       ),
     );
