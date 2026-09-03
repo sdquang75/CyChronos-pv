@@ -7,66 +7,102 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_bottom_navigation.dart';
+import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_toast.dart';
+import '../../../../core/widgets/tap_scale.dart';
 import '../../domain/weather_state.dart';
 import '../providers/weather_provider.dart';
 import 'weather_header_card.dart';
 
 /// HOMEタブのルート画面(検索条件を入力しておすすめスポットを探す)。
 /// RideFlowの入れ子Navigatorのルートとして使われ、検索条件が決まったら
-/// すぐにonFindDestinationを呼んでRideFlow側で目的地一覧画面をpushしてもらう
-/// (実際のAPI呼び出し・ローディング/エラー表示は一覧画面側が持つ。
-/// go_routerではなくコールバックにしているのは、この画面自体はIndexedStackの
-/// 中に常駐していてページ遷移しないため)
+/// すぐにonFindDestinationを呼んでRideFlow側で目的地一覧画面をpushしてもらう。
 class HomeTabView extends ConsumerStatefulWidget {
   const HomeTabView({super.key, required this.onFindDestination});
 
-  final void Function(int minutes, String type, String tripMode, int stayMinutes)
-  onFindDestination;
+  final void Function(
+    int minutes,
+    String type,
+    String tripMode,
+    int stayMinutes,
+  ) onFindDestination;
 
   @override
   ConsumerState<HomeTabView> createState() => _HomeTabViewState();
 }
 
 class _HomeTabViewState extends ConsumerState<HomeTabView> {
-  // Scroll Controller for Auto-Scrolling in Home Tab
   final ScrollController _scrollController = ScrollController();
 
-  // Interactive States
-  final TextEditingController _hoursController = TextEditingController(
-    text: '0',
-  );
-  final TextEditingController _minutesController = TextEditingController(
-    text: '45',
-  );
-  final TextEditingController _stayMinutesController = TextEditingController(
-    text: '15',
-  );
-  final Set<String> _selectedGenres = {'Cafe'}; // default Cafe selected
+  final TextEditingController _hoursController =
+      TextEditingController(text: '0');
+  final TextEditingController _minutesController =
+      TextEditingController(text: '45');
+  final TextEditingController _stayMinutesController =
+      TextEditingController(text: '15');
+
+  final Set<String> _selectedGenres = {'Cafe'};
   String _tripMode = 'one_way'; // 'one_way' | 'round_trip'
 
   @override
   void initState() {
     super.initState();
+    _hoursController.addListener(_onDurationTextChanged);
+    _minutesController.addListener(_onDurationTextChanged);
+    _stayMinutesController.addListener(_onStayTextChanged);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // HomeTabViewはIndexedStackの中に常駐するので初回のみ実行される。
-      // 既に取得済み/取得中なら再取得しない
-      // (タブを往復するたびに天気APIとGPSを叩き直すのを防ぐ)。
       if (ref.read(weatherProvider) is WeatherInitial) {
         ref.read(weatherProvider.notifier).fetchForCurrentLocation();
       }
     });
   }
 
+  void _onDurationTextChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _onStayTextChanged() {
+    if (mounted) setState(() {});
+  }
+
+  int get _totalMinutes {
+    final h = int.tryParse(_hoursController.text) ?? 0;
+    final m = int.tryParse(_minutesController.text) ?? 0;
+    return h * 60 + m;
+  }
+
+  int get _stayMinutes {
+    return int.tryParse(_stayMinutesController.text) ?? 0;
+  }
+
+  void _setTotalMinutes(int total) {
+    final clamped = total.clamp(15, 240);
+    final h = clamped ~/ 60;
+    final m = clamped % 60;
+    _hoursController.text = h.toString();
+    _minutesController.text = m.toString();
+    setState(() {});
+  }
+
+  void _adjustMinutes(int delta) {
+    HapticFeedback.lightImpact();
+    final current = _totalMinutes;
+    _setTotalMinutes(current + delta);
+  }
+
+  void _setStayMinutes(int stay) {
+    final clamped = stay.clamp(0, 90);
+    _stayMinutesController.text = clamped.toString();
+    setState(() {});
+  }
+
   String _selectedPlacesType() {
     if (_selectedGenres.isEmpty) {
       return 'cafe';
     }
-
     final selected = _selectedGenres.first;
-
     const typeMap = {
-      // Google Placesの検索typeではない値はバックエンド側で専用条件へ変換する
       'All': 'all',
       'Cafe': 'cafe',
       'Nature': 'park',
@@ -78,12 +114,14 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
       'Landmark': 'tourist_attraction',
       'Park': 'park',
     };
-
     return typeMap[selected] ?? 'cafe';
   }
 
   @override
   void dispose() {
+    _hoursController.removeListener(_onDurationTextChanged);
+    _minutesController.removeListener(_onDurationTextChanged);
+    _stayMinutesController.removeListener(_onStayTextChanged);
     _scrollController.dispose();
     _hoursController.dispose();
     _minutesController.dispose();
@@ -97,7 +135,6 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
       backgroundColor: AppColors.bgCool,
       body: Stack(
         children: [
-          // Main Body
           Positioned.fill(
             child: SafeArea(bottom: false, child: _buildHomeTab()),
           ),
@@ -138,60 +175,90 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
     );
   }
 
-  // ================= TAB CONTENT BUILDERS =================
-
-  // TAB 0: HOME PLANNER SCREEN
   Widget _buildHomeTab() {
     return SingleChildScrollView(
       controller: _scrollController,
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 24,
+        left: 20,
+        right: 20,
+        top: 20,
         bottom: 180, // Space for floating CTA & Bottom Bar
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeroHeader(),
-          const SizedBox(height: 36),
+          const SizedBox(height: 24),
           _buildTripModeSection(),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
           _buildDurationSection(),
-          const SizedBox(height: 36),
+          const SizedBox(height: 24),
           _buildGenreSection(),
         ],
       ),
     );
   }
 
-  // ================= UI ELEMENT BUILDERS =================
-
-  // Header for Home Screen (Without Logout icon)
-  // Header for Home Screen
   Widget _buildHeroHeader() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'CyChronos',
-          style: TextStyle(
-            fontFamily: 'HankenGrotesk',
-            fontFamilyFallback: ['NotoSansJP'],
-            fontWeight: FontWeight.w800,
-            fontSize: 32,
-            letterSpacing: -0.8,
-            color: AppColors.primary,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'CyChronos',
+                  style: TextStyle(
+                    fontFamily: 'HankenGrotesk',
+                    fontFamilyFallback: ['NotoSansJP'],
+                    fontWeight: FontWeight.w800,
+                    fontSize: 30,
+                    letterSpacing: -0.6,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '隙間時間で、自由なサイクリングへ',
+                  style: TextStyle(
+                    fontFamily: 'HankenGrotesk',
+                    fontFamilyFallback: const ['NotoSansJP'],
+                    fontSize: 13,
+                    color: AppColors.textSecondary.withValues(alpha: 0.85),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.accentBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                ),
+              ),
+              child: const Icon(
+                Icons.directions_bike_rounded,
+                color: AppColors.primary,
+                size: 24,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 18),
         const WeatherHeaderCard(),
       ],
     );
   }
 
-  // Trip Mode Selector (one-way / round-trip)
   Widget _buildTripModeSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,50 +269,129 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
             fontFamilyFallback: const ['NotoSansJP'],
           ),
         ),
-        const SizedBox(height: AppSpacing.lg),
+        const SizedBox(height: AppSpacing.md),
         Row(
           children: [
-            Expanded(child: _buildTripModeButton('one_way', '片道')),
+            Expanded(
+              child: _buildTripModeCard(
+                value: 'one_way',
+                title: '片道',
+                subtitle: '目的地へ直行',
+                icon: Icons.arrow_forward_rounded,
+              ),
+            ),
             const SizedBox(width: 12),
-            Expanded(child: _buildTripModeButton('round_trip', '往復')),
+            Expanded(
+              child: _buildTripModeCard(
+                value: 'round_trip',
+                title: '往復',
+                subtitle: '周回して戻る',
+                icon: Icons.sync_alt_rounded,
+              ),
+            ),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildTripModeButton(String value, String label) {
+  Widget _buildTripModeCard({
+    required String value,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+  }) {
     final isSelected = _tripMode == value;
-    return GestureDetector(
-      onTap: () => setState(() => _tripMode = value),
+    return TapScale(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _tripMode = value);
+      },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        height: 52,
-        alignment: Alignment.center,
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.accentBg : Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected ? AppColors.primary : AppColors.border,
-            width: isSelected ? 1.5 : 1,
+            width: isSelected ? 1.6 : 1,
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'HankenGrotesk',
-            fontFamilyFallback: const ['NotoSansJP'],
-            fontWeight: FontWeight.w600,
-            fontSize: 17,
-            color: isSelected ? AppColors.primary : AppColors.textSecondary,
-          ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColors.primary
+                    : AppColors.bgCool,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                size: 20,
+                color: isSelected ? Colors.white : AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontFamily: 'HankenGrotesk',
+                      fontFamilyFallback: const ['NotoSansJP'],
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontFamilyFallback: const ['NotoSansJP'],
+                      fontSize: 11,
+                      color: isSelected
+                          ? AppColors.primary.withValues(alpha: 0.8)
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // Duration Input (hours & minutes text fields, digits only)
   Widget _buildDurationSection() {
+    final hours = _totalMinutes ~/ 60;
+    final minutes = _totalMinutes % 60;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -255,72 +401,386 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
             fontFamilyFallback: const ['NotoSansJP'],
           ),
         ),
-        const SizedBox(height: AppSpacing.lg),
-        Row(
-          children: [
-            _buildDurationField(controller: _hoursController),
-            const SizedBox(width: 8),
-            const Text(
-              '時間',
-              style: TextStyle(
-                fontFamily: 'HankenGrotesk',
-                fontFamilyFallback: ['NotoSansJP'],
-                fontWeight: FontWeight.w600,
-                fontSize: 18,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(width: 24),
-            _buildDurationField(controller: _minutesController),
-            const SizedBox(width: 8),
-            const Text(
-              '分',
-              style: TextStyle(
-                fontFamily: 'HankenGrotesk',
-                fontFamilyFallback: ['NotoSansJP'],
-                fontWeight: FontWeight.w600,
-                fontSize: 18,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ],
-        ),
-        if (_tripMode == 'round_trip') ...[
-          const SizedBox(height: 18),
-          Row(
+        const SizedBox(height: AppSpacing.md),
+        AppCard(
+          borderRadius: 24,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildDurationField(controller: _stayMinutesController),
-              const SizedBox(width: 8),
-              const Text(
-                '分 滞在',
-                style: TextStyle(
-                  fontFamily: 'HankenGrotesk',
-                  fontFamilyFallback: ['NotoSansJP'],
-                  fontWeight: FontWeight.w600,
-                  fontSize: 18,
-                  color: AppColors.textPrimary,
+              // Header row
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.accentBg,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.schedule_rounded,
+                      color: AppColors.primary,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '希望の所要時間',
+                          style: TextStyle(
+                            fontFamily: 'HankenGrotesk',
+                            fontFamilyFallback: ['NotoSansJP'],
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          '移動と休憩を合わせた全体の時間',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontFamilyFallback: ['NotoSansJP'],
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 18),
+
+              // Large Duration Display
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentBg.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      if (hours > 0) ...[
+                        Text(
+                          '$hours',
+                          style: const TextStyle(
+                            fontFamily: 'JetBrainsMono',
+                            fontWeight: FontWeight.w800,
+                            fontSize: 34,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Text(
+                          '時間',
+                          style: TextStyle(
+                            fontFamily: 'HankenGrotesk',
+                            fontFamilyFallback: ['NotoSansJP'],
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Text(
+                        '$minutes',
+                        style: const TextStyle(
+                          fontFamily: 'JetBrainsMono',
+                          fontWeight: FontWeight.w800,
+                          fontSize: 34,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Text(
+                        '分',
+                        style: TextStyle(
+                          fontFamily: 'HankenGrotesk',
+                          fontFamilyFallback: ['NotoSansJP'],
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
+
+              const SizedBox(height: 12),
+
+              // Stepper buttons & Slider
+              Row(
+                children: [
+                  _buildQuickStepButton(
+                    label: '-15分',
+                    onTap: () => _adjustMinutes(-15),
+                  ),
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 6,
+                        activeTrackColor: AppColors.primary,
+                        inactiveTrackColor:
+                            AppColors.border.withValues(alpha: 0.5),
+                        thumbColor: AppColors.primary,
+                        thumbShape: const RoundSliderThumbShape(
+                          enabledThumbRadius: 10,
+                        ),
+                        overlayColor:
+                            AppColors.primary.withValues(alpha: 0.12),
+                      ),
+                      child: Slider(
+                        value: _totalMinutes.toDouble().clamp(15.0, 180.0),
+                        min: 15.0,
+                        max: 180.0,
+                        divisions: 33, // 5 minute steps
+                        onChanged: (val) => _setTotalMinutes(val.round()),
+                      ),
+                    ),
+                  ),
+                  _buildQuickStepButton(
+                    label: '+15分',
+                    onTap: () => _adjustMinutes(15),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 10),
+
+              // Direct editable input row (also keeps test finders valid)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    '手動入力: ',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontFamilyFallback: ['NotoSansJP'],
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  _buildDurationField(controller: _hoursController),
+                  const SizedBox(width: 6),
+                  const Text(
+                    '時間',
+                    style: TextStyle(
+                      fontFamily: 'HankenGrotesk',
+                      fontFamilyFallback: ['NotoSansJP'],
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  _buildDurationField(controller: _minutesController),
+                  const SizedBox(width: 6),
+                  const Text(
+                    '分',
+                    style: TextStyle(
+                      fontFamily: 'HankenGrotesk',
+                      fontFamilyFallback: ['NotoSansJP'],
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+
+              // Round trip section
+              if (_tripMode == 'round_trip') ...[
+                const SizedBox(height: 16),
+                const Divider(height: 1),
+                const SizedBox(height: 16),
+
+                Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppColors.accentBg,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.coffee_rounded,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '滞在・休憩時間',
+                            style: TextStyle(
+                              fontFamily: 'HankenGrotesk',
+                              fontFamilyFallback: ['NotoSansJP'],
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          Text(
+                            'カフェや目的地で過ごす時間',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontFamilyFallback: ['NotoSansJP'],
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    _buildDurationField(controller: _stayMinutesController),
+                    const SizedBox(width: 6),
+                    const Text(
+                      '分 滞在',
+                      style: TextStyle(
+                        fontFamily: 'HankenGrotesk',
+                        fontFamilyFallback: ['NotoSansJP'],
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 10),
+
+                // Stay preset chips
+                Wrap(
+                  spacing: 8,
+                  children: [0, 15, 30, 45, 60].map((mins) {
+                    final isSel = _stayMinutes == mins;
+                    return GestureDetector(
+                      onTap: () => _setStayMinutes(mins),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSel ? AppColors.primary : AppColors.bgCool,
+                          borderRadius: BorderRadius.circular(9999),
+                          border: Border.all(
+                            color: isSel
+                                ? AppColors.primary
+                                : AppColors.border,
+                          ),
+                        ),
+                        child: Text(
+                          mins == 0 ? '滞在なし' : '$mins分',
+                          style: TextStyle(
+                            fontFamily: 'JetBrainsMono',
+                            fontSize: 12,
+                            fontWeight:
+                                isSel ? FontWeight.w700 : FontWeight.w500,
+                            color: isSel ? Colors.white : AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 12),
+
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.bgCool,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.info_outline_rounded,
+                        size: 16,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '移動 約${(_totalMinutes - _stayMinutes).clamp(0, 999)}分 '
+                          '(片道 約${((_totalMinutes - _stayMinutes) / 2).round().clamp(0, 999)}分) '
+                          '+ 滞在 $_stayMinutes分 = 合計 $_totalMinutes分',
+                          style: const TextStyle(
+                            fontFamily: 'HankenGrotesk',
+                            fontFamilyFallback: ['NotoSansJP'],
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
-          const SizedBox(height: 8),
-          const Text(
-            '所要時間には、往路・滞在・復路をすべて含みます。',
-            style: TextStyle(
-              fontFamily: 'HankenGrotesk',
-              fontFamilyFallback: ['NotoSansJP'],
-              fontSize: 13,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
+        ),
       ],
+    );
+  }
+
+  Widget _buildQuickStepButton({
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return TapScale(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.accentBg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'JetBrainsMono',
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+            color: AppColors.primary,
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildDurationField({required TextEditingController controller}) {
     return SizedBox(
-      width: 90,
+      width: 60,
+      height: 38,
       child: TextField(
         controller: controller,
         keyboardType: TextInputType.number,
@@ -330,30 +790,30 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
         ],
         textAlign: TextAlign.center,
         style: const TextStyle(
-          fontFamily: 'HankenGrotesk',
-          fontFamilyFallback: ['NotoSansJP'],
-          fontWeight: FontWeight.w600,
-          fontSize: 22,
+          fontFamily: 'JetBrainsMono',
+          fontWeight: FontWeight.w700,
+          fontSize: 16,
           color: AppColors.textPrimary,
         ),
         decoration: InputDecoration(
           filled: true,
-          fillColor: const Color(0xFFFFFFFF).withValues(alpha: 0.8),
+          fillColor: Colors.white,
+          isDense: true,
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 18,
+            horizontal: 6,
+            vertical: 8,
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(
-              color: AppColors.border.withValues(alpha: 0.5),
-              width: 1.5,
+              color: AppColors.border.withValues(alpha: 0.8),
+              width: 1,
             ),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(24),
-            borderSide: BorderSide(
-              color: AppColors.primary.withValues(alpha: 0.8),
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(
+              color: AppColors.primary,
               width: 1.5,
             ),
           ),
@@ -362,7 +822,6 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
     );
   }
 
-  // Genre Selector (Expanded list of interests)
   Widget _buildGenreSection() {
     final genres = [
       {'id': 'All', 'label': 'すべて', 'svg': _kAllSvg},
@@ -386,162 +845,213 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
             fontFamilyFallback: const ['NotoSansJP'],
           ),
         ),
-        const SizedBox(height: AppSpacing.lg),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children:
-              genres.map((genre) {
-                final id = genre['id'] as String;
-                final label = genre['label'] as String;
-                final svgStr = genre['svg'] as String;
-                final isSelected = _selectedGenres.contains(id);
-
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedGenres
-                        ..clear()
-                        ..add(id);
-                    });
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 10,
-                    ),
+        const SizedBox(height: AppSpacing.md),
+        AppCard(
+          borderRadius: 24,
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      color:
-                          isSelected
-                              ? AppColors.accentBg
-                              : const Color(0xFFF2F3F8),
-                      borderRadius: BorderRadius.circular(9999),
-                      border: Border.all(
-                        color:
-                            isSelected
-                                ? AppColors.primary.withValues(alpha: 0.3)
-                                : AppColors.border,
-                        width: 1,
-                      ),
+                      color: AppColors.accentBg,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                    child: const Icon(
+                      Icons.place_rounded,
+                      color: AppColors.primary,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        SvgPicture.string(
-                          svgStr,
-                          width: 20,
-                          height: 20,
-                          colorFilter: ColorFilter.mode(
-                            isSelected
-                                ? AppColors.primary
-                                : AppColors.textSecondary,
-                            BlendMode.srcIn,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
                         Text(
-                          label,
+                          '行きたいスポット',
                           style: TextStyle(
                             fontFamily: 'HankenGrotesk',
                             fontFamilyFallback: ['NotoSansJP'],
-                            fontWeight:
-                                isSelected ? FontWeight.w600 : FontWeight.w400,
                             fontSize: 16,
-                            color:
-                                isSelected
-                                    ? AppColors.primary
-                                    : AppColors.textSecondary,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          '気分に合わせて立ち寄り先を選択',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontFamilyFallback: ['NotoSansJP'],
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       ],
                     ),
                   ),
-                );
-              }).toList(),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: genres.map((genre) {
+                  final id = genre['id'] as String;
+                  final label = genre['label'] as String;
+                  final svgStr = genre['svg'] as String;
+                  final isSelected = _selectedGenres.contains(id);
+
+                  return TapScale(
+                    onTap: () {
+                      setState(() {
+                        _selectedGenres
+                          ..clear()
+                          ..add(id);
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.bgCool,
+                        borderRadius: BorderRadius.circular(9999),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.border.withValues(alpha: 0.6),
+                          width: 1,
+                        ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(alpha: 0.25),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SvgPicture.string(
+                            svgStr,
+                            width: 18,
+                            height: 18,
+                            colorFilter: ColorFilter.mode(
+                              isSelected
+                                  ? Colors.white
+                                  : AppColors.textSecondary,
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                          const SizedBox(width: 7),
+                          Text(
+                            label,
+                            style: TextStyle(
+                              fontFamily: 'HankenGrotesk',
+                              fontFamilyFallback: const ['NotoSansJP'],
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              fontSize: 14,
+                              color: isSelected
+                                  ? Colors.white
+                                  : AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
         ),
       ],
     );
   }
 
-  // Floating CTA Button
   Widget _buildFloatingCTA() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Material(
-        color: Colors.transparent,
-
-        child: InkWell(
-          onTap: () {
-            final hours = int.tryParse(_hoursController.text) ?? 0;
-            final minutes = int.tryParse(_minutesController.text) ?? 0;
-            final totalMinutes = hours * 60 + minutes;
-            final stayMinutes =
-                _tripMode == 'round_trip'
-                    ? int.tryParse(_stayMinutesController.text) ?? 0
-                    : 0;
-            if (totalMinutes < 1) {
-              AppToast.show(context, '時間を入力してください。', isError: true);
-              return;
-            }
-            if (_tripMode == 'round_trip' && totalMinutes - stayMinutes < 2) {
-              AppToast.show(
-                context,
-                '滞在時間を除いて、移動時間を2分以上確保してください。',
-                isError: true,
-              );
-              return;
-            }
-            // 検索の実行(位置情報取得・API呼び出し・ローディング/エラー表示)は
-            // 目的地一覧画面(DestinationListScreen)側が持つので、
-            // ここではRideFlowにpushしてもらうだけ
-            widget.onFindDestination(
-              totalMinutes,
-              _selectedPlacesType(),
-              _tripMode,
-              stayMinutes,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: TapScale(
+        onTap: () {
+          final hours = int.tryParse(_hoursController.text) ?? 0;
+          final minutes = int.tryParse(_minutesController.text) ?? 0;
+          final totalMinutes = hours * 60 + minutes;
+          final stayMinutes = _tripMode == 'round_trip'
+              ? int.tryParse(_stayMinutesController.text) ?? 0
+              : 0;
+          if (totalMinutes < 1) {
+            AppToast.show(context, '時間を入力してください。', isError: true);
+            return;
+          }
+          if (_tripMode == 'round_trip' && totalMinutes - stayMinutes < 2) {
+            AppToast.show(
+              context,
+              '滞在時間を除いて、移動時間を2分以上確保してください。',
+              isError: true,
             );
-          },
-          borderRadius: BorderRadius.circular(9999),
-          child: Container(
-            height: 64,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(9999),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.2),
-                  blurRadius: 30,
-                  offset: const Offset(0, 10),
+            return;
+          }
+          widget.onFindDestination(
+            totalMinutes,
+            _selectedPlacesType(),
+            _tripMode,
+            stayMinutes,
+          );
+        },
+        child: Container(
+          height: 60,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(9999),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.28),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'ルートを検索',
+                style: TextStyle(
+                  fontFamily: 'HankenGrotesk',
+                  fontFamilyFallback: ['NotoSansJP'],
+                  fontWeight: FontWeight.w700,
+                  fontSize: 20,
+                  color: Colors.white,
                 ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  'ルートを検索',
-                  style: TextStyle(
-                    fontFamily: 'HankenGrotesk',
-                    fontFamilyFallback: ['NotoSansJP'],
-                    fontWeight: FontWeight.w600,
-                    fontSize: 22,
-                    color: Colors.white,
-                  ),
+              ),
+              const SizedBox(width: 8),
+              SvgPicture.string(
+                _kArrowRightSvg,
+                width: 20,
+                height: 20,
+                colorFilter: const ColorFilter.mode(
+                  Colors.white,
+                  BlendMode.srcIn,
                 ),
-                const SizedBox(width: 8),
-                SvgPicture.string(
-                  _kArrowRightSvg,
-                  width: 20,
-                  height: 20,
-                  colorFilter: const ColorFilter.mode(
-                    Colors.white,
-                    BlendMode.srcIn,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
