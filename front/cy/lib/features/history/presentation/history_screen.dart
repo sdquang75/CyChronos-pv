@@ -100,6 +100,31 @@ class HistoryScreen extends ConsumerWidget {
       );
     }
 
+    final now = DateTime.now();
+    final monday = DateTime(now.year, now.month, now.day)
+        .subtract(Duration(days: now.weekday - 1));
+    final nextMonday = monday.add(const Duration(days: 7));
+
+    double weekDistanceM = 0;
+    int weekTripCount = 0;
+    int weekDurationSec = 0;
+
+    for (final raw in trips) {
+      if (raw is! Map<String, dynamic>) continue;
+      final startTimeStr = raw['start_time']?.toString();
+      if (startTimeStr == null) continue;
+      final tripDate = DateTime.tryParse(startTimeStr)?.toLocal();
+      if (tripDate != null &&
+          !tripDate.isBefore(monday) &&
+          tripDate.isBefore(nextMonday)) {
+        weekTripCount++;
+        final dist = raw['total_distance_m'];
+        if (dist is num) weekDistanceM += dist.toDouble();
+        final dur = raw['duration_sec'];
+        if (dur is num) weekDurationSec += dur.toInt();
+      }
+    }
+
     return RefreshIndicator(
       color: AppColors.primary,
       onRefresh: () {
@@ -111,11 +136,144 @@ class HistoryScreen extends ConsumerWidget {
         physics: const AlwaysScrollableScrollPhysics(
           parent: BouncingScrollPhysics(),
         ),
-        itemCount: trips.length,
+        itemCount: trips.length + 1,
         itemBuilder: (context, index) {
-          return _TripCard(trip: trips[index] as Map<String, dynamic>);
+          if (index == 0) {
+            return _WeeklySummaryCard(
+              distanceM: weekDistanceM,
+              tripCount: weekTripCount,
+              durationSec: weekDurationSec,
+            );
+          }
+          return _TripCard(trip: trips[index - 1] as Map<String, dynamic>);
         },
       ),
+    );
+  }
+}
+
+/// 今週のアクティビティ(走行距離・回数・時間)を一覧上部にカード表示する
+class _WeeklySummaryCard extends StatelessWidget {
+  final double distanceM;
+  final int tripCount;
+  final int durationSec;
+
+  const _WeeklySummaryCard({
+    required this.distanceM,
+    required this.tripCount,
+    required this.durationSec,
+  });
+
+  String _formatDuration(int seconds) {
+    if (seconds == 0) return '0分';
+    final hours = seconds ~/ 3600;
+    final minutes = (seconds % 3600) ~/ 60;
+    if (hours == 0) return '$minutes分';
+    return '$hours時間$minutes分';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final km = (distanceM / 1000).toStringAsFixed(1);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primary,
+            Color(0xFF2D6A4F),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.25),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.directions_bike_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                '今週のアクティビティ',
+                style: TextStyle(
+                  fontFamilyFallback: ['NotoSansJP'],
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildStatMetric('走行距離', '${km}km'),
+              Container(
+                width: 1,
+                height: 32,
+                color: Colors.white.withValues(alpha: 0.2),
+              ),
+              _buildStatMetric('ライド回数', '$tripCount回'),
+              Container(
+                width: 1,
+                height: 32,
+                color: Colors.white.withValues(alpha: 0.2),
+              ),
+              _buildStatMetric('走行時間', _formatDuration(durationSec)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatMetric(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            fontFamily: 'HankenGrotesk',
+            fontFamilyFallback: ['NotoSansJP'],
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            fontFamilyFallback: const ['NotoSansJP'],
+            color: Colors.white.withValues(alpha: 0.75),
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 }

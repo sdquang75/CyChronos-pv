@@ -361,23 +361,27 @@ class _DestinationCard extends StatelessWidget {
       maxwidth: 200,
     );
 
-    if (photoUrl == null) {
-      return Image.asset(
-        'assets/logo.png',
-        fit: BoxFit.cover,
-      );
-    }
+    final Widget imageWidget = photoUrl == null
+        ? Image.asset(
+            'assets/logo.png',
+            fit: BoxFit.cover,
+          )
+        : Image.network(
+            photoUrl,
+            fit: BoxFit.cover,
+            // 通信失敗時はロゴへ切り替える
+            errorBuilder: (context, error, stackTrace) {
+              return Image.asset(
+                'assets/logo.png',
+                fit: BoxFit.cover,
+              );
+            },
+          );
 
-    return Image.network(
-      photoUrl,
-      fit: BoxFit.cover,
-      // 通信失敗時はロゴへ切り替える
-      errorBuilder: (context, error, stackTrace) {
-        return Image.asset(
-          'assets/logo.png',
-          fit: BoxFit.cover,
-        );
-      },
+    final tag = 'destination-photo-${destination['id'] ?? destination['name']}';
+    return Hero(
+      tag: tag,
+      child: imageWidget,
     );
   }
 
@@ -595,22 +599,110 @@ class _DestinationCard extends StatelessWidget {
   }
 }
 
-// 検索中は結果エリアの真ん中にスピナーだけを出す
-// (ホームに留まったままトーストで進捗を伝えるのではなく、
-// この画面自体が「検索中」という状態を持つ)
-class _SearchingIndicator extends StatelessWidget {
+// 検索中は結果エリアに骨組みカード(スケルトン)を点滅表示し、
+// 単なるスピナーよりも読み込み中の体感速度を向上させる
+class _SearchingIndicator extends StatefulWidget {
   const _SearchingIndicator();
 
   @override
+  State<_SearchingIndicator> createState() => _SearchingIndicatorState();
+}
+
+class _SearchingIndicatorState extends State<_SearchingIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1000),
+  )..repeat(reverse: true);
+
+  late final Animation<double> _opacity = Tween<double>(
+    begin: 0.3,
+    end: 0.8,
+  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: SizedBox(
-        width: 28,
-        height: 28,
-        child: CircularProgressIndicator(
-          strokeWidth: 2.5,
-          color: AppColors.primary,
-        ),
+    return AnimatedBuilder(
+      animation: _opacity,
+      builder: (context, child) {
+        return Opacity(
+          opacity: _opacity.value,
+          child: ListView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(top: 4, bottom: 8),
+            itemCount: 3,
+            itemBuilder: (context, index) => const _DestinationCardSkeleton(),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DestinationCardSkeleton extends StatelessWidget {
+  const _DestinationCardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: AppColors.border.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.lg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 140,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: AppColors.border.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  width: 80,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: AppColors.border.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: 170,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: AppColors.border.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

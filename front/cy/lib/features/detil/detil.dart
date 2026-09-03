@@ -75,22 +75,24 @@ class DetilScreen extends StatelessWidget {
   // スポット写真を表示する。URLが無いとき・読み込みに失敗したときは仮画像に切り替える
   Widget _buildPhoto() {
     final url = imageUrl;
-    if (url == null || url.isEmpty) {
-      return Image.asset('assets/testimage.png', fit: BoxFit.cover);
-    }
-    return Image.network(
-      url,
-      fit: BoxFit.cover,
-      // 読み込み中はインジケーターを出す
-      loadingBuilder: (context, child, progress) {
-        if (progress == null) return child;
-        return const Center(child: CircularProgressIndicator());
-      },
-      // 通信失敗でも画面を壊さず仮画像を出す
-      errorBuilder: (context, error, stackTrace) {
-        return Image.asset('assets/testimage.png', fit: BoxFit.cover);
-      },
-    );
+    final Widget imageWidget = (url == null || url.isEmpty)
+        ? Image.asset('assets/testimage.png', fit: BoxFit.cover)
+        : Image.network(
+            url,
+            fit: BoxFit.cover,
+            // 読み込み中はインジケーターを出す
+            loadingBuilder: (context, child, progress) {
+              if (progress == null) return child;
+              return const Center(child: CircularProgressIndicator());
+            },
+            // 通信失敗でも画面を壊さず仮画像を出す
+            errorBuilder: (context, error, stackTrace) {
+              return Image.asset('assets/testimage.png', fit: BoxFit.cover);
+            },
+          );
+
+    final tag = 'destination-photo-${destination['id'] ?? destination['name']}';
+    return Hero(tag: tag, child: imageWidget);
   }
 
   @override

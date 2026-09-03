@@ -120,6 +120,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   double? _routeFromLng;
   Position? _lastLoggedPosition;
   DateTime? _lastLoggedAt;
+  bool _userPanned = false;
 
   // ---- destination(Map)から表示用の値を取り出すヘルパーたち ----
 
@@ -376,6 +377,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     _offRouteSamples = 0;
     _arrivalSamples = 0;
     _navigationStatusMessage = null;
+    _userPanned = false;
 
     if (widget.keepScreenAwake) {
       try {
@@ -468,7 +470,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
 
   void _followCurrentPosition(Position position) {
     final controller = _mapController;
-    if (controller == null || !widget.useMapTiles) return;
+    if (controller == null || !widget.useMapTiles || _userPanned) return;
     unawaited(
       controller.animateCamera(
         CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)),
@@ -691,7 +693,10 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   Future<void> _endNavigation({bool isAutoArrival = false}) async {
     if (_busy) return; // 二度押しガード
     HapticFeedback.mediumImpact();
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _userPanned = false;
+    });
 
     final authState = ref.read(authProvider);
     final userId =
@@ -841,9 +846,12 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                   Text(
                     distanceLabel,
                     style: const TextStyle(
-                      color: Color(0xFFDCE4FF),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontFamily: 'HankenGrotesk',
+                      fontFamilyFallback: ['NotoSansJP'],
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -852,10 +860,11 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
+                      fontFamilyFallback: ['NotoSansJP'],
                       color: Colors.white,
-                      fontSize: 18,
-                      height: 1.2,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      height: 1.25,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -994,6 +1003,33 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
               child: _buildNavigationHeader(),
             ),
 
+          // マップを手動でスクロールしたときに現在地に戻すFAB
+          if (_isNavigating && _userPanned)
+            Positioned(
+              right: 16,
+              bottom: 100 + AppBottomNavigation.barHeightFor(context),
+              child: FloatingActionButton.small(
+                key: const ValueKey('recenter-button'),
+                backgroundColor: Colors.white,
+                foregroundColor: AppColors.primary,
+                elevation: 4,
+                tooltip: '現在地に合わせる',
+                onPressed: () {
+                  setState(() => _userPanned = false);
+                  final pos = _currentPosition;
+                  if (pos != null) {
+                    _mapController?.animateCamera(
+                      CameraUpdate.newLatLngZoom(
+                        LatLng(pos.latitude, pos.longitude),
+                        16.5,
+                      ),
+                    );
+                  }
+                },
+                child: const Icon(Icons.my_location_rounded, size: 22),
+              ),
+            ),
+
           // 下部: 通常時は情報バー、案内モード中は「案内を終了」ボタンだけ。
           // AnimatedSwitcherで切り替え時にスッと入れ替わる。
           // この画面はHomeScreen側の画面下部メニューバー(常に最前面に被さる)の
@@ -1122,6 +1158,11 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         top: 100,
         bottom: 260 + AppBottomNavigation.barHeightFor(context),
       ),
+      onCameraMoveStarted: () {
+        if (_isNavigating && !_userPanned) {
+          setState(() => _userPanned = true);
+        }
+      },
       onMapCreated: (controller) async {
         _mapController = controller;
         // 地図のレイアウト確定前にbounds指定すると失敗することがあるので少し待つ

@@ -102,6 +102,30 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
             child: SafeArea(bottom: false, child: _buildHomeTab()),
           ),
 
+          // Gradient Backdrop for Floating CTA
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: AppBottomNavigation.barHeightFor(context) + 90,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppColors.bgCool.withValues(alpha: 0.0),
+                      AppColors.bgCool.withValues(alpha: 0.85),
+                      AppColors.bgCool,
+                    ],
+                    stops: const [0.0, 0.45, 1.0],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
           // Floating CTA
           Positioned(
             left: 0,

@@ -153,4 +153,29 @@ void main() {
     expect(repo.deletedTripId, 99);
     expect(find.text('削除予定カフェ'), findsNothing);
   });
+
+  testWidgets('HistoryScreen: 今週のアクティビティ概要カードが表示される',
+      (WidgetTester tester) async {
+    final nowIso = DateTime.now().toIso8601String();
+    final repo = _FakeHistoryRepository(
+      trips: [
+        {
+          'trip_id': 1,
+          'destination_name': '今週のサイクリング',
+          'total_distance_m': 25000,
+          'duration_sec': 3600,
+          'average_speed_kmh': 25.0,
+          'start_time': nowIso,
+        },
+      ],
+    );
+
+    await tester.pumpWidget(_wrapHistory(repository: repo));
+    await tester.pumpAndSettle();
+
+    expect(find.text('今週のアクティビティ'), findsOneWidget);
+    expect(find.text('25.0km'), findsOneWidget);
+    expect(find.text('1回'), findsOneWidget);
+    expect(find.text('1時間0分'), findsOneWidget);
+  });
 }
