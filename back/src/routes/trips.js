@@ -47,17 +47,34 @@ router.post("/start", async (req, res) => {
 });
 
 // トリップ終了: status を active から completed に変更し end_time に現在時刻を登録
-// 引数: user_id, trip_id
+// 引数: user_id, trip_id, total_distance_m(任意), duration_sec(任意), average_speed_kmh(任意)
 router.post("/:tripId/end", async (req, res) => {
-  const userId = parseId((req.body ?? {}).user_id, "user_id", res);
+  const body = req.body ?? {};
+  const userId = parseId(body.user_id, "user_id", res);
   if (userId === null) return;
   const tripId = parseId(req.params.tripId, "trip_id", res);
   if (tripId === null) return;
 
+  const totalDistanceM =
+    body.total_distance_m != null && Number.isFinite(Number(body.total_distance_m))
+      ? Math.max(0, Math.round(Number(body.total_distance_m)))
+      : null;
+  const durationSec =
+    body.duration_sec != null && Number.isFinite(Number(body.duration_sec))
+      ? Math.max(0, Math.round(Number(body.duration_sec)))
+      : null;
+  const averageSpeedKmh =
+    body.average_speed_kmh != null && Number.isFinite(Number(body.average_speed_kmh))
+      ? Math.max(0, Number(Number(body.average_speed_kmh).toFixed(2)))
+      : null;
+
   const [result] = await pool.query(
-    "UPDATE trip_history SET status = 'completed', end_time = NOW() " +
+    "UPDATE trip_history SET status = 'completed', end_time = NOW(), " +
+      "total_distance_m = COALESCE(?, total_distance_m), " +
+      "duration_sec = COALESCE(?, duration_sec), " +
+      "average_speed_kmh = COALESCE(?, average_speed_kmh) " +
       "WHERE trip_id = ? AND user_id = ? AND status = 'active' AND deleted_at IS NULL",
-    [tripId, userId]
+    [totalDistanceM, durationSec, averageSpeedKmh, tripId, userId]
   );
 
   if (result.affectedRows === 0) {

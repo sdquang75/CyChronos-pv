@@ -52,9 +52,14 @@ async function getCyclingRoute(from, to) {
   const url = new URL(`${BASE_URL}/directions/v5/mapbox/cycling/${from.lng},${from.lat};${to.lng},${to.lat}`);
   url.searchParams.set("geometries", "geojson");
   url.searchParams.set("overview", "full");
+  // 端末側で曲がり案内を組み立てられるよう、日本語の案内手順も同時に取得する。
+  url.searchParams.set("steps", "true");
+  url.searchParams.set("language", "ja");
+  url.searchParams.set("roundabout_exits", "true");
   url.searchParams.set("access_token", token);
 
-  const response = await fetch(url);
+  // 案内開始を待たせ続けないよう、外部APIが応答しなければ10秒で失敗させる。
+  const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
   if (!response.ok) {
     throw new Error(`Mapbox API error: ${response.status} ${response.statusText}`);
   }

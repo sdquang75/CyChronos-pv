@@ -28,4 +28,32 @@ class HistoryRepository {
         .map((trip) => Map<String, dynamic>.from(trip))
         .toList();
   }
+
+  /// ログ単体取得(GET /api/trips/{trip_id}?user_id={user_id})。
+  /// トリップ情報に加えて locations (走行座標ログの配列)を含むMapを返す。
+  Future<Map<String, dynamic>?> fetchTripDetail({
+    required int userId,
+    required int tripId,
+  }) async {
+    final response = await _dio.get(
+      '/api/trips/$tripId',
+      queryParameters: {'user_id': userId},
+    );
+
+    final data = response.data;
+    if (data is! Map) return null;
+    return Map<String, dynamic>.from(data);
+  }
+
+  /// ログ削除(DELETE /api/trips/{trip_id}?user_id={user_id})。
+  /// トリップを論理削除する(成功時は204 No Content)。
+  Future<void> deleteTrip({
+    required int userId,
+    required int tripId,
+  }) async {
+    await _dio.delete(
+      '/api/trips/$tripId',
+      queryParameters: {'user_id': userId},
+    );
+  }
 }

@@ -46,4 +46,35 @@ class HistoryNotifier extends StateNotifier<HistoryState> {
       state = const HistoryError('履歴を取得できませんでした。通信環境をご確認のうえ、もう一度お試しください。');
     }
   }
+
+  /// 指定したトリップを論理削除し、一覧を最新化する
+  Future<bool> deleteTrip({required int tripId}) async {
+    final authState = _ref.read(authProvider);
+    final userId =
+        authState is AuthAuthenticated ? authState.user.userId : null;
+    if (userId == null) return false;
+
+    // 即座に一覧から消してUIの反応を最速化する(楽観的更新)
+    final currentState = state;
+    if (currentState is HistoryLoaded) {
+      final updatedList = currentState.trips
+          .where((trip) => trip['trip_id'] != tripId)
+          .toList();
+      state = HistoryLoaded(updatedList);
+    }
+
+    try {
+      await _ref
+          .read(historyRepositoryProvider)
+          .deleteTrip(userId: userId, tripId: tripId);
+      final trips = await _ref
+          .read(historyRepositoryProvider)
+          .fetchTrips(userId: userId);
+      state = HistoryLoaded(trips);
+      return true;
+    } catch (_) {
+      await loadTrips();
+      return false;
+    }
+  }
 }

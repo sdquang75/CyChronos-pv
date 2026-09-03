@@ -7,12 +7,88 @@ class CyclingRoute {
   final double distanceM; // ルートの総距離(m)
   final double durationSec; // ルートの所要時間(秒)
   final List<List<double>> points; // ルートの形。[経度, 緯度] の点の並び(プレビュー描画に使う)
+  final List<NavigationStep> steps; // 曲がり角・到着などの案内手順
 
   const CyclingRoute({
     required this.distanceM,
     required this.durationSec,
     required this.points,
+    this.steps = const [],
   });
+
+  factory CyclingRoute.fromMap(Map<String, dynamic> route) {
+    final geometry = route['geometry'] as Map?;
+    final points = _parseCoordinates(geometry?['coordinates']);
+    final legs = (route['legs'] as List?) ?? const [];
+    final steps = <NavigationStep>[];
+
+    for (final rawLeg in legs.whereType<Map>()) {
+      final rawSteps = (rawLeg['steps'] as List?) ?? const [];
+      for (final rawStep in rawSteps.whereType<Map>()) {
+        final maneuver = rawStep['maneuver'] as Map?;
+        final location = _parsePoint(maneuver?['location']);
+        if (location == null) continue;
+        steps.add(
+          NavigationStep(
+            instruction:
+                maneuver?['instruction']?.toString().trim().isNotEmpty == true
+                    ? maneuver!['instruction'].toString().trim()
+                    : '道なりに進みます',
+            roadName: rawStep['name']?.toString() ?? '',
+            maneuverType: maneuver?['type']?.toString() ?? 'continue',
+            modifier: maneuver?['modifier']?.toString(),
+            distanceM: (rawStep['distance'] as num?)?.toDouble() ?? 0,
+            durationSec: (rawStep['duration'] as num?)?.toDouble() ?? 0,
+            maneuverPoint: location,
+          ),
+        );
+      }
+    }
+
+    return CyclingRoute(
+      distanceM: (route['distance'] as num?)?.toDouble() ?? 0,
+      durationSec: (route['duration'] as num?)?.toDouble() ?? 0,
+      points: points,
+      steps: steps,
+    );
+  }
+}
+
+class NavigationStep {
+  final String instruction;
+  final String roadName;
+  final String maneuverType;
+  final String? modifier;
+  final double distanceM;
+  final double durationSec;
+  final List<double> maneuverPoint; // [経度, 緯度]
+
+  const NavigationStep({
+    required this.instruction,
+    required this.roadName,
+    required this.maneuverType,
+    required this.modifier,
+    required this.distanceM,
+    required this.durationSec,
+    required this.maneuverPoint,
+  });
+}
+
+List<List<double>> _parseCoordinates(dynamic value) {
+  final coordinates = value is List ? value : const [];
+  return coordinates
+      .whereType<List>()
+      .map(_parsePoint)
+      .whereType<List<double>>()
+      .toList(growable: false);
+}
+
+List<double>? _parsePoint(dynamic value) {
+  if (value is! List || value.length < 2) return null;
+  final lng = value[0];
+  final lat = value[1];
+  if (lng is! num || lat is! num) return null;
+  return [lng.toDouble(), lat.toDouble()];
 }
 
 class RouteRepository {
@@ -44,23 +120,11 @@ class RouteRepository {
     }
     final route = Map<String, dynamic>.from(routes.first as Map);
 
-    // 経路の形は geometry.coordinates に [経度, 緯度] の配列で入っている
-    final geometry = route['geometry'] as Map?;
-    final coordinates = (geometry?['coordinates'] as List?) ?? const [];
-    final points = coordinates
-        .whereType<List>()
-        .where((point) => point.length >= 2)
-        .map((point) => [
-              (point[0] as num).toDouble(),
-              (point[1] as num).toDouble(),
-            ])
-        .toList();
-
-    return CyclingRoute(
-      distanceM: (route['distance'] as num?)?.toDouble() ?? 0,
-      durationSec: (route['duration'] as num?)?.toDouble() ?? 0,
-      points: points,
-    );
+    final cyclingRoute = CyclingRoute.fromMap(route);
+    if (cyclingRoute.points.length < 2) {
+      throw const FormatException('ルート形状を取得できませんでした');
+    }
+    return cyclingRoute;
   }
 
   /// トリップ開始をバックに記録する。place_id を送ると「訪問済み」として次回の提案から除外される
@@ -73,21 +137,48 @@ class RouteRepository {
       '/api/trips/start',
       data: {
         'user_id': userId,
-        if (placeId != null && placeId.isNotEmpty) 'destination_place_id': placeId,
+        if (placeId != null && placeId.isNotEmpty)
+          'destination_place_id': placeId,
         if (destinationName != null) 'destination_name': destinationName,
       },
     );
     return (response.data['trip_id'] as num).toInt();
   }
 
+  /// 走行中の現在地座標をバックに保存する(POST /api/locations)
+  Future<void> logLocation({
+    required int userId,
+    required int tripId,
+    required double lat,
+    required double lng,
+  }) async {
+    await _dio.post(
+      '/api/locations',
+      data: {
+        'user_id': userId,
+        'trip_id': tripId,
+        'lat': lat,
+        'lng': lng,
+      },
+    );
+  }
+
   /// トリップ終了をバックに記録する(statusがcompletedになり走行履歴として残る)
   Future<void> endTrip({
     required int userId,
     required int tripId,
+    int? totalDistanceM,
+    int? durationSec,
+    double? averageSpeedKmh,
   }) async {
     await _dio.post(
       '/api/trips/$tripId/end',
-      data: {'user_id': userId},
+      data: {
+        'user_id': userId,
+        if (totalDistanceM != null) 'total_distance_m': totalDistanceM,
+        if (durationSec != null) 'duration_sec': durationSec,
+        if (averageSpeedKmh != null) 'average_speed_kmh': averageSpeedKmh,
+      },
     );
   }
 }

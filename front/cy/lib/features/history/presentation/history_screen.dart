@@ -8,8 +8,10 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_bottom_navigation.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_state_view.dart';
+import '../../../core/widgets/app_toast.dart';
 import '../domain/history_state.dart';
 import 'providers/history_provider.dart';
+import 'trip_detail_screen.dart';
 
 /// 走行履歴画面。
 /// back/docs/API.md「2. ログ全件取得」(GET /api/trips)の実データを表示する。
@@ -119,7 +121,7 @@ class HistoryScreen extends ConsumerWidget {
 }
 
 /// トリップ1件分のカード(GET /api/trips の1要素を表示する)
-class _TripCard extends StatelessWidget {
+class _TripCard extends ConsumerWidget {
   final Map<String, dynamic> trip;
 
   const _TripCard({required this.trip});
@@ -170,45 +172,126 @@ class _TripCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  _titleText(),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.cardTitle,
-                ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tripId = (trip['trip_id'] as num).toInt();
+
+    return Dismissible(
+      key: ValueKey('trip-$tripId'),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (direction) async {
+        HapticFeedback.lightImpact();
+        return showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+            ),
+            title: const Text('走行記録の削除'),
+            content: const Text('この走行記録を削除しますか？\n削除した記録は元に戻せません。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('キャンセル'),
               ),
-              const SizedBox(width: AppSpacing.md),
-              Text(
-                _dateText(),
-                style: TextStyle(
-                  fontFamily: 'JetBrainsMono',
-                  fontSize: 12,
-                  color: AppColors.textSecondary.withValues(alpha: 0.6),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.error,
                 ),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('削除する'),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildStat('距離', _distanceText()),
-              _buildStat('時間', _durationText()),
-              _buildStat('平均速度', _speedText()),
-            ],
+        );
+      },
+      onDismissed: (direction) async {
+        final success =
+            await ref.read(historyProvider.notifier).deleteTrip(tripId: tripId);
+        if (context.mounted) {
+          if (success) {
+            AppToast.show(context, '走行記録を削除しました');
+          } else {
+            AppToast.show(context, '削除に失敗しました');
+          }
+        }
+      },
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+        decoration: BoxDecoration(
+          color: AppColors.error,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.delete_outline_rounded, color: Colors.white, size: 24),
+            SizedBox(width: AppSpacing.sm),
+            Text(
+              '削除',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
+          ],
+        ),
+      ),
+      child: AppCard(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: EdgeInsets.zero,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => TripDetailScreen(trip: trip),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _titleText(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.cardTitle,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Text(
+                      _dateText(),
+                      style: TextStyle(
+                        fontFamily: 'JetBrainsMono',
+                        fontSize: 12,
+                        color: AppColors.textSecondary.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildStat('距離', _distanceText()),
+                    _buildStat('時間', _durationText()),
+                    _buildStat('平均速度', _speedText()),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
+import '../../core/widgets/app_bottom_navigation.dart';
 import '../../core/widgets/app_button.dart';
 
 /// 走行終了後に出す完了画面。以前はトースト1本(「案内を終了しました」等)で
@@ -19,12 +20,14 @@ class TripSummaryScreen extends StatefulWidget {
     this.distanceM,
     this.duration,
     this.averageSpeedKmh,
+    this.isArrival = false,
   });
 
   final String destinationName;
   final bool isRoundTrip;
+  final bool isArrival;
 
-  // 走行距離の合計(m)。往復なら往路+復路。取得できなければnull
+  // 往路または往復の実走距離(メートル)。取得できなければnull
   final double? distanceM;
 
   // 案内開始〜終了の実経過時間(滞在時間も含む)。取得できなければnull
@@ -56,31 +59,28 @@ class _TripSummaryScreenState extends State<TripSummaryScreen>
     end: 1.6,
   ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
   late final Animation<double> _ringFade = Tween<double>(
-    begin: 0.35,
+    begin: 0.8,
     end: 0.0,
-  ).animate(
-    CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.15, 1.0, curve: Curves.easeOut),
-    ),
-  );
+  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
-  // チェックマーク自体・下の文言や統計は少し遅れてフェードイン
+  // チェックのアイコン: 少し遅れてフワッと出す
   late final Animation<double> _checkFade = CurvedAnimation(
     parent: _controller,
-    curve: const Interval(0.35, 0.65, curve: Curves.easeOut),
+    curve: const Interval(0.35, 0.85, curve: Curves.easeIn),
   );
+
+  // テキスト・統計・完了ボタン: 下からフワッとスライドイン
   late final Animation<double> _contentFade = CurvedAnimation(
     parent: _controller,
-    curve: const Interval(0.5, 1.0, curve: Curves.easeOut),
+    curve: const Interval(0.3, 0.9, curve: Curves.easeOut),
   );
   late final Animation<Offset> _contentSlide = Tween<Offset>(
-    begin: const Offset(0, 0.08),
+    begin: const Offset(0, 0.25),
     end: Offset.zero,
   ).animate(
     CurvedAnimation(
       parent: _controller,
-      curve: const Interval(0.5, 1.0, curve: Curves.easeOut),
+      curve: const Interval(0.3, 0.9, curve: Curves.easeOutCubic),
     ),
   );
 
@@ -97,39 +97,45 @@ class _TripSummaryScreenState extends State<TripSummaryScreen>
     super.dispose();
   }
 
-  // 距離をkm表示にする(小数1桁)。不明なら「--」
+  // 距離(メートル)を「X.Xkm」の形式にする。未計測なら「--」
   String _distanceText() {
     final meters = widget.distanceM;
     if (meters == null) return '--';
     return '${(meters / 1000).toStringAsFixed(1)}km';
   }
 
-  // 経過時間を「◯時間◯分」にする(1時間未満は「◯分」)。不明なら「--」
+  // 所要時間を「○時間○分」または「○分」にする。未計測なら「--」
   String _durationText() {
     final duration = widget.duration;
     if (duration == null) return '--';
     final hours = duration.inHours;
-    final minutes = duration.inMinutes % 60;
+    final minutes = duration.inMinutes.remainder(60);
     if (hours == 0) return '$minutes分';
     return '$hours時間$minutes分';
   }
 
-  // 平均速度(km/h、小数1桁)。不明なら「--」
+  // 平均速度(km/h)を小数1桁で出す。未計測なら「--」
   String _speedText() {
     final speed = widget.averageSpeedKmh;
     if (speed == null) return '--';
     return speed.toStringAsFixed(1);
   }
 
+  // 「完了」を押したとき: RideFlowのスタックを先頭(HomeTabView)まで
+  // 全部popして戻す。案内モード中の中途半端なRouteConfirmScreenを
+  // 経由させずに一発で初期状態へ復帰させる
   void _finish() {
     HapticFeedback.lightImpact();
-    // RideFlow(HOMEタブ専用の入れ子Navigator)のルート(プランナー画面)まで
-    // 一気に戻す。目的地一覧・詳細・ルート確認はすべて閉じられる
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   @override
   Widget build(BuildContext context) {
+    // 画面下部の共通ナビゲーションバー(HOME・HISTORY・SETTINGS)が
+    // 浮かんでいるため、完了ボタンが隠れないようにその分の高さを余白として確保する
+    final bottomClearance =
+        AppBottomNavigation.barHeightFor(context) + AppSpacing.md;
+
     return PopScope(
       // 端末の戻る操作では閉じさせず、必ず「完了」ボタンから戻す
       // (途中の状態のままRideFlowに戻ると表示が中途半端になるため)
@@ -138,110 +144,133 @@ class _TripSummaryScreenState extends State<TripSummaryScreen>
         // 通常の背景(bgCool)ではなく、達成感を出すためあえて真っ白にする
         backgroundColor: AppColors.surface,
         body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
-            child: Column(
-              children: [
-                const Spacer(flex: 3),
-                SizedBox(
-                  width: 140,
-                  height: 140,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      FadeTransition(
-                        opacity: _ringFade,
-                        child: ScaleTransition(
-                          scale: _ringScale,
-                          child: Container(
-                            width: 120,
-                            height: 120,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
+          bottom: false,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        AppSpacing.xxl,
+                        0,
+                        AppSpacing.xxl,
+                        bottomClearance,
                       ),
-                      ScaleTransition(
-                        scale: _circleScale,
-                        child: Container(
-                          width: 120,
-                          height: 120,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppColors.primary,
-                          ),
-                          child: FadeTransition(
-                            opacity: _checkFade,
-                            child: const Icon(
-                              Icons.check_rounded,
-                              color: Colors.white,
-                              size: 64,
+                      child: Column(
+                        children: [
+                          const Spacer(flex: 3),
+                          SizedBox(
+                            width: 140,
+                            height: 140,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                FadeTransition(
+                                  opacity: _ringFade,
+                                  child: ScaleTransition(
+                                    scale: _ringScale,
+                                    child: Container(
+                                      width: 120,
+                                      height: 120,
+                                      decoration: const BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                ScaleTransition(
+                                  scale: _circleScale,
+                                  child: Container(
+                                    width: 120,
+                                    height: 120,
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: AppColors.primary,
+                                    ),
+                                    child: FadeTransition(
+                                      opacity: _checkFade,
+                                      child: const Icon(
+                                        Icons.check_rounded,
+                                        color: Colors.white,
+                                        size: 64,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
+                          const SizedBox(height: AppSpacing.xxl),
+                          FadeTransition(
+                            opacity: _contentFade,
+                            child: SlideTransition(
+                              position: _contentSlide,
+                              child: Column(
+                                children: [
+                                  const Text(
+                                    'お疲れさまでした!',
+                                    style: AppTypography.pageTitle,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: AppSpacing.sm),
+                                  Text(
+                                    widget.isArrival
+                                        ? '目的地に到着しました'
+                                        : (widget.isRoundTrip
+                                            ? '${widget.destinationName}への往復ライドが完了しました'
+                                            : '${widget.destinationName}へのライドが完了しました'),
+                                    style: AppTypography.pageSubtitle,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: AppSpacing.xxxl),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      _StatTile(
+                                        icon: Icons.directions_bike_rounded,
+                                        label: '距離',
+                                        value: _distanceText(),
+                                      ),
+                                      _StatTile(
+                                        icon: Icons.schedule_rounded,
+                                        label: '時間',
+                                        value: _durationText(),
+                                      ),
+                                      _StatTile(
+                                        icon: Icons.speed_rounded,
+                                        label: '平均速度',
+                                        value: _speedText(),
+                                        unit: 'km/h',
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const Spacer(flex: 4),
+                          FadeTransition(
+                            opacity: _contentFade,
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: AppButton(
+                                label: '完了',
+                                onPressed: _finish,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xxl),
-                FadeTransition(
-                  opacity: _contentFade,
-                  child: SlideTransition(
-                    position: _contentSlide,
-                    child: Column(
-                      children: [
-                        const Text(
-                          'お疲れさまでした!',
-                          style: AppTypography.pageTitle,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          widget.isRoundTrip
-                              ? '${widget.destinationName}への往復ライドが完了しました'
-                              : '${widget.destinationName}へのライドが完了しました',
-                          style: AppTypography.pageSubtitle,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: AppSpacing.xxxl),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _StatTile(
-                              icon: Icons.directions_bike_rounded,
-                              label: '距離',
-                              value: _distanceText(),
-                            ),
-                            _StatTile(
-                              icon: Icons.schedule_rounded,
-                              label: '時間',
-                              value: _durationText(),
-                            ),
-                            _StatTile(
-                              icon: Icons.speed_rounded,
-                              label: '平均速度',
-                              value: _speedText(),
-                              unit: 'km/h',
-                            ),
-                          ],
-                        ),
-                      ],
                     ),
                   ),
                 ),
-                const Spacer(flex: 4),
-                FadeTransition(
-                  opacity: _contentFade,
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: AppButton(label: '完了', onPressed: _finish),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xl),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),
