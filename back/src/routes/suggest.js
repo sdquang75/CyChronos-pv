@@ -1,4 +1,5 @@
 const express = require("express");
+const pool = require("../db");
 const mapbox = require("../services/mapbox");
 const places = require("../services/place");
 const visits = require("../services/visits");
@@ -169,14 +170,17 @@ router.get("/", async (req, res) => {
 
 
   } catch (error) {
-    // どのAPIで失敗したか確認しやすくする
+    // どのエラーか正確に確認できるようにする
     console.error(error);
 
-    const message = error.message?.includes("Google Maps API error")
-      ? "Google Maps APIの呼び出しに失敗しました"
-      : "Mapbox APIの呼び出しに失敗しました";
+    if (error.message?.includes("Google Maps API error")) {
+      return res.status(502).json({ error: "Google Maps APIの呼び出しに失敗しました" });
+    }
+    if (error.message?.includes("Mapbox API error")) {
+      return res.status(502).json({ error: "Mapbox APIの呼び出しに失敗しました" });
+    }
 
-    res.status(502).json({ error: message });
+    res.status(500).json({ error: "スポット提案の取得に失敗しました", details: error.message });
   }
 
 });
