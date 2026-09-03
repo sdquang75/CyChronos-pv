@@ -63,9 +63,15 @@ class ApiClient {
   }
 
   static Future<String> _resolveBaseUrl() async {
-    // Web はホストPC上で動くので localhost でよい(明示指定があればそちら)
+    // 1. 明示的に --dart-define=API_BASE_URL=... が指定されている場合は
+    // エミュレータ・実機・Web を問わず最優先でそのURLを採用する
+    if (_envBaseUrl.isNotEmpty) {
+      return _envBaseUrl;
+    }
+
+    // Web はホストPC上で動くので localhost でよい
     if (kIsWeb) {
-      return _envBaseUrl.isNotEmpty ? _envBaseUrl : 'http://localhost:3000';
+      return 'http://localhost:3000';
     }
 
     final deviceInfo = DeviceInfoPlugin();
@@ -73,11 +79,10 @@ class ApiClient {
     if (defaultTargetPlatform == TargetPlatform.android) {
       final info = await deviceInfo.androidInfo;
       if (!info.isPhysicalDevice) {
-        // エミュレータ: 10.0.2.2 がホストPCを指す(--dart-define より優先)
+        // エミュレータ: 10.0.2.2 がホストPCを指す
         return 'http://10.0.2.2:3000';
       }
       // 実機: LAN 経由で PC に接続する必要がある
-      if (_envBaseUrl.isNotEmpty) return _envBaseUrl;
       debugPrint(
         'ApiClient: Android実機では --dart-define=API_BASE_URL=http://PCのLAN_IP:3000 '
         'を指定しないとバックエンドに接続できません。',
@@ -91,7 +96,6 @@ class ApiClient {
         // シミュレータ: ホストと localhost を共有
         return 'http://localhost:3000';
       }
-      if (_envBaseUrl.isNotEmpty) return _envBaseUrl;
       debugPrint(
         'ApiClient: iOS実機では --dart-define=API_BASE_URL=http://PCのLAN_IP:3000 '
         'を指定しないとバックエンドに接続できません。',
@@ -100,6 +104,6 @@ class ApiClient {
     }
 
     // デスクトップ等はホスト上で動く
-    return _envBaseUrl.isNotEmpty ? _envBaseUrl : 'http://localhost:3000';
+    return 'http://localhost:3000';
   }
 }
