@@ -18,6 +18,10 @@ router.get("/", async (req, res) => {
   const lat = parseFloat(req.query.lat);
   const minutes = parseInt(req.query.minutes, 10);
   const type = req.query.type || "cafe";
+  const mode = req.query.mode || "one_way";
+  const stayMinutes = req.query.stayMinutes === undefined
+    ? 0
+    : parseInt(req.query.stayMinutes, 10);
   // 数値でないものが混ざっていたら 400 で返す
   if (!Number.isFinite(lng) || !Number.isFinite(lat) || !Number.isFinite(minutes)) {
     return res.status(400).json({ error: "lng, lat, minutes は数値で指定してください" });
@@ -26,15 +30,24 @@ router.get("/", async (req, res) => {
   if (minutes < 1) {
     return res.status(400).json({ error: "minutes は1以上で指定してください" });
   }
-
-  // user_id は省略可。指定があれば訪問済みスポットを提案から除外する(trips系と同じくクエリで受ける)
-  let userId = null;
-  if (req.query.user_id !== undefined) {
-    userId = Number(req.query.user_id);
-    if (!Number.isInteger(userId) || userId <= 0) {
-      return res.status(400).json({ error: "user_id は正の整数で指定してください" });
-    }
+  if (mode !== "one_way" && mode !== "round_trip") {
+    return res.status(400).json({ error: "mode は one_way または round_trip で指定してください" });
   }
+  if (!Number.isInteger(stayMinutes) || stayMinutes < 0) {
+    return res.status(400).json({ error: "stayMinutes は0以上の整数で指定してください" });
+  }
+  if (mode === "round_trip" && minutes - stayMinutes < 2) {
+    return res.status(400).json({ error: "往復モードでは移動時間を2分以上確保してください" });
+  }
+
+  const searchMinutes = mode === "round_trip"
+    ? Math.max(1, Math.floor((minutes - stayMinutes) / 2))
+    : minutes;
+
+  // ログイン済みなら訪問済みスポットを提案から除外する。
+  // クエリの user_id は他人のIDを書けてしまうため使わず、検証済みトークン由来の値だけを見る
+  // (optionalAppUser ミドルウェアが req.appUser にセットする。未ログインなら null)
+  const userId = req.appUser?.user_id ?? null;
 
   // ここから先でやりたいこと:
   // 1. Mapboxで「この時間で行ける範囲」を取る
@@ -44,13 +57,13 @@ router.get("/", async (req, res) => {
     // 同じ場所・同じ条件の検索は数分間キャッシュを使い回す(Mapbox+Google課金と2秒待ちの節約)。
     // 座標は小数3桁(約100m)に丸め、GPSの微妙なブレでも同じキーに当たるようにする。
     // キャッシュするのは母集団まで。除外・シャッフルは毎回やるので提案の顔ぶれは変わる
-    const cacheKey = `suggest:${lng.toFixed(3)},${lat.toFixed(3)},${minutes},${type}`;
+    const cacheKey = `suggest:${lng.toFixed(3)},${lat.toFixed(3)},${minutes},${type},${mode},${stayMinutes}`;
     let candidates = cache.get(cacheKey);
 
     if (!candidates) {
       // 上限側(minutes+10)の外周だと範囲外候補が増えるため、指定時間ちょうどの外周を検索中心にする。
       // 各検索点の半径で±10分帯を覆い、最終判定はMatrixの実所要時間で行う。
-      const isochroneData = await mapbox.getIsochrone(lng, lat, minutes);
+      const isochroneData = await mapbox.getIsochrone(lng, lat, searchMinutes);
       const searchArea = getSearchAreaFromIsochrone(isochroneData);
 
 
@@ -81,10 +94,13 @@ router.get("/", async (req, res) => {
       if (normalizedPlaces.length > 0) {
         // 候補から座標だけの配列を作る
         const coordsList = normalizedPlaces.map((place) => ({ lng: place.lng, lat: place.lat }));
-        // 現在地から全候補への所要時間(秒)と距離(m)を24件ずつ分割して取る
-        const { durations, distances } = await mapbox.getTravelTimes({ lng, lat }, coordsList);
-        //  候補に所要時間と距離を貼り付けた結果で置き換える
-        normalizedPlaces = places.attachDurations(normalizedPlaces, durations, distances);
+        if (mode === "round_trip") {
+          const travelTimes = await mapbox.getRoundTripTravelTimes({ lng, lat }, coordsList);
+          normalizedPlaces = places.attachRoundTripMetrics(normalizedPlaces, travelTimes, stayMinutes);
+        } else {
+          const { durations, distances } = await mapbox.getTravelTimes({ lng, lat }, coordsList);
+          normalizedPlaces = places.attachDurations(normalizedPlaces, durations, distances);
+        }
       }
       candidates = {
         searchArea,
@@ -98,7 +114,9 @@ router.get("/", async (req, res) => {
     // user_id があれば訪問済みの place_id を取得(なければ除外なし=空配列)
     const visitedPlaceIds = userId === null ? [] : await visits.getVisitedPlaceIds(userId);
 
-    const filterdPlaces = places.filterWithinMinutes(candidates.normalizedPlaces, minutes); //±10分
+    const filterdPlaces = mode === "round_trip"
+      ? places.filterWithinRoundTripMinutes(candidates.normalizedPlaces, minutes)
+      : places.filterWithinMinutes(candidates.normalizedPlaces, minutes); //±10分
 
     // 訪問済みを除外し、シャッフルして先頭N件だけ返す(足りなければ訪問済みで補充)
 
@@ -107,11 +125,21 @@ router.get("/", async (req, res) => {
 
     res.json({
       searchArea: candidates.searchArea,
+      searchConditions: { mode, minutes, stayMinutes },
       places: picked.map((place) => ({
         ...place,
         durationMinutes: place.durationSec == null ? null : Math.round(place.durationSec / 60),
         // kmの小数1桁(例: 6316m -> 6.3)。/1000してからtoFixedだと文字列になるので、100で割って丸めて10で割る
         distanceKm: place.distanceM == null ? null : Math.round(place.distanceM / 100) / 10,
+        roundTripDurationMinutes: place.roundTripDurationSec == null
+          ? null
+          : Math.round(place.roundTripDurationSec / 60),
+        totalDurationMinutes: place.totalDurationSec == null
+          ? null
+          : Math.round(place.totalDurationSec / 60),
+        roundTripDistanceKm: place.roundTripDistanceM == null
+          ? null
+          : Math.round(place.roundTripDistanceM / 100) / 10,
       })),
     });
 

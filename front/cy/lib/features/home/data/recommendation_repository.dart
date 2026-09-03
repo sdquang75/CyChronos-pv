@@ -12,6 +12,8 @@ class RecommendationRepository {
     required double longitude,
     required String type,
     required int minutes,
+    required String mode,
+    required int stayMinutes,
   }) async {
     final response = await _dio.get(
       '/api/suggest',
@@ -20,6 +22,8 @@ class RecommendationRepository {
         'lng': longitude,
         'type': type,
         'minutes': minutes,
+        'mode': mode,
+        'stayMinutes': stayMinutes,
       },
     );
     return response.data;
