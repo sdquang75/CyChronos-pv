@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
+import '../../../core/utils/calorie_calculator.dart';
 import '../../../core/network/place_photo.dart';
 import '../../../core/widgets/app_bottom_navigation.dart';
 import '../../../core/widgets/app_screen_frame.dart';
@@ -521,6 +521,31 @@ class _DestinationCard extends StatelessWidget {
         ? '約$durationMinutes分'
         : '所要時間不明';
 
+    // カロリー計算に使用する距離(m)と所要時間(秒)
+    final dynamic rawDistanceM = destination['distanceM'];
+    final dynamic rawDurationSec = destination['durationSec'];
+
+    final double? distanceM = rawDistanceM is num
+        ? rawDistanceM.toDouble()
+        : double.tryParse(rawDistanceM?.toString() ?? '');
+
+    final double? durationSec = rawDurationSec is num
+        ? rawDurationSec.toDouble()
+        : double.tryParse(rawDurationSec?.toString() ?? '');
+
+    final int? calories =
+        distanceM != null && durationSec != null
+            ? CalorieCalculator.calculate(
+                distanceM: distanceM,
+                durationSec: durationSec,
+              )
+            : null;
+
+    final String calorieText =
+        calories != null
+            ? '約$calories kcal'
+            : '-- kcal';
+
     // カード全体をタップして詳細画面へ移動できる
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -530,6 +555,7 @@ class _DestinationCard extends StatelessWidget {
       child: _buildCard(
         context,
         durationText,
+        calorieText,
       ),
     );
   }
@@ -545,6 +571,7 @@ class _DestinationCard extends StatelessWidget {
   Widget _buildCard(
     BuildContext context,
     String durationText,
+    String calorieText,
   ) {
     final String name =
         destination['name']?.toString() ?? '名称不明';
@@ -705,6 +732,43 @@ class _DestinationCard extends StatelessWidget {
                             ],
                           ),
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 8),
+
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.local_fire_department_rounded,
+                      size: 16,
+                      color: Color(0xFFE86A33),
+                    ),
+
+                    const SizedBox(width: 5),
+
+                    const Text(
+                      '推定消費',
+                      style: TextStyle(
+                        fontFamily: 'HankenGrotesk',
+                        fontFamilyFallback: ['NotoSansJP'],
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
+                        color: Color(0xFF484553),
+                      ),
+                    ),
+
+                    const SizedBox(width: 6),
+
+                    Text(
+                      calorieText,
+                      style: const TextStyle(
+                        fontFamily: 'JetBrainsMono',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        color: Color(0xFFE86A33),
                       ),
                     ),
                   ],
