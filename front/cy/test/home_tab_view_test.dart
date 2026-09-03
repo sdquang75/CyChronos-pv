@@ -123,8 +123,8 @@ void main() {
     await tester.tap(find.text('往復'));
     await tester.pumpAndSettle();
 
-    // 滞在・休憩時間セクションが現れること
-    expect(find.text('滞在・休憩時間'), findsOneWidget);
+    // 滞在時間セクションが現れること
+    expect(find.text('滞在時間'), findsOneWidget);
 
     // 30分の滞在プリセットをタップ
     await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -150));
