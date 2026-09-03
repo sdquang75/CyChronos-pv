@@ -1,6 +1,30 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const { getTravelTimes, getRoundTripTravelTimes } = require("../src/services/mapbox");
+const { getCyclingRoute, getTravelTimes, getRoundTripTravelTimes } = require("../src/services/mapbox");
+
+test("自転車ルートは日本語のターン案内を含めて取得する", async (t) => {
+  const originalFetch = global.fetch;
+  let requestedUrl;
+  global.fetch = async (requestUrl) => {
+    requestedUrl = new URL(requestUrl);
+    return {
+      ok: true,
+      json: async () => ({ routes: [] }),
+    };
+  };
+  t.after(() => { global.fetch = originalFetch; });
+
+  await getCyclingRoute(
+    { lng: 139.7673, lat: 35.6812 },
+    { lng: 139.7800, lat: 35.7000 }
+  );
+
+  assert.strictEqual(requestedUrl.searchParams.get("geometries"), "geojson");
+  assert.strictEqual(requestedUrl.searchParams.get("overview"), "full");
+  assert.strictEqual(requestedUrl.searchParams.get("steps"), "true");
+  assert.strictEqual(requestedUrl.searchParams.get("language"), "ja");
+  assert.strictEqual(requestedUrl.searchParams.get("roundabout_exits"), "true");
+});
 
 test("Matrix上限を超える候補を24件ずつに分割し、結果を元の順序で結合する", async (t) => {
   const originalFetch = global.fetch;

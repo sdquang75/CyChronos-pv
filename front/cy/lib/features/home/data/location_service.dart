@@ -11,7 +11,9 @@ class LocationService {
     await _ensureLocationAvailable();
 
     return Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+      ),
     );
   }
 
@@ -19,8 +21,8 @@ class LocationService {
     await _ensureLocationAvailable();
     yield* Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 25,
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 10,
       ),
     );
   }
