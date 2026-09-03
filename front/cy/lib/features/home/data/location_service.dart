@@ -8,6 +8,26 @@ class LocationPermissionDeniedForeverException implements Exception {}
 
 class LocationService {
   Future<Position> getCurrentPosition() async {
+    await _ensureLocationAvailable();
+
+    return Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+      ),
+    );
+  }
+
+  Stream<Position> getPositionStream() async* {
+    await _ensureLocationAvailable();
+    yield* Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 10,
+      ),
+    );
+  }
+
+  Future<void> _ensureLocationAvailable() async {
     if (!await Geolocator.isLocationServiceEnabled()) {
       throw LocationServiceDisabledException();
     }
@@ -23,9 +43,5 @@ class LocationService {
     if (permission == LocationPermission.denied) {
       throw LocationPermissionDeniedException();
     }
-
-    return Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-    );
   }
 }

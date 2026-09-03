@@ -1,12 +1,8 @@
 # CyChronos API 仕様書
 
-サイクリングナビアプリのバックエンドAPI。走行中の座標ログの保存・取得・削除と、地図・スポット提案(到達圏、自転車ルート、周辺スポット検索)を提供する。
+## はじめに
 
-- ベースURL: `http://localhost:3000`(ポートは `.env` の `PORT` で変更可)
-- データ形式: リクエスト・レスポンスともに JSON(`Content-Type: application/json`)
-- DB: MySQL 8.4 / データベース `cychronos`
-- 外部API: Mapbox(`.env` の `MAPBOX_ACCESS_TOKEN`)、Google Places(`.env` の `GOOGLE_PLACES_API_KEY`)
-- 認証: Googleアカウント(Firebase Authentication)。フロントでGoogleサインインして取得した **IDトークン** を `Authorization: Bearer <IDトークン>` ヘッダーで送信し、バックエンドが `firebase-admin` で検証する(`.env` の `FIREBASE_PROJECT_ID`)
+認証はフロントでGoogleサインインし、Firebase IDトークンを取得して行う。
 
 ### 認証が必要なAPI
 
@@ -305,8 +301,13 @@ GET /api/trips/{trip_id}
 | 400 Bad Request | trip_id 不正 |
 | 401 Unauthorized | IDトークンが無い/検証に失敗した |
 | 404 Not Found | トリップが存在しない/他ユーザーのトリップ/削除済み |
+基本的な利用順は次のとおり。
 
----
+1. ログインまたはアカウント作成で `user_id` を取得
+2. スポット提案で目的地候補を取得
+3. ルート取得後、トリップを開始
+4. 走行中の座標を保存
+5. トリップを終了し、履歴として取得
 
 ## 4. ログ削除(論理削除)
 
@@ -389,113 +390,101 @@ Mapbox Isochrone API の GeoJSON(FeatureCollection)をそのまま返す。
 ```
 GET /api/maps/route?fromLng={fromLng}&fromLat={fromLat}&toLng={toLng}&toLat={toLat}
 ```
+## エンドポイント一覧
 
-### 引数
+「接続済み」は現在のFlutterアプリから呼び出しているAPI。
 
-| 項目 | 渡し方 | 必須 | 説明 |
+| 機能 | メソッド | パス | Flutter |
 |---|---|---|---|
-| fromLng | クエリ | ○ | 出発地の経度 |
-| fromLat | クエリ | ○ | 出発地の緯度 |
-| toLng | クエリ | ○ | 目的地の経度 |
-| toLat | クエリ | ○ | 目的地の緯度 |
+| 稼働確認 | GET | `/` | - |
+| アカウント作成 | POST | `/api/auth/register` | 接続済み |
+| ログイン | POST | `/api/auth/login` | 接続済み |
+| スポット提案 | GET | `/api/suggest` | 接続済み |
+| 自転車ルート取得 | GET | `/api/maps/route` | 接続済み |
+| スポット写真取得 | GET | `/api/maps/photo` | 接続済み |
+| 到達圏取得 | GET | `/api/maps/isochrone` | - |
+| 周辺スポット検索 | GET | `/api/maps/places` | - |
+| トリップ開始 | POST | `/api/trips/start` | 接続済み |
+| トリップ終了 | POST | `/api/trips/{trip_id}/end` | 接続済み |
+| 履歴一覧取得 | GET | `/api/trips` | 接続済み |
+| 履歴詳細取得 | GET | `/api/trips/{trip_id}` | - |
+| 履歴削除 | DELETE | `/api/trips/{trip_id}` | - |
+| 座標保存 | POST | `/api/locations` | - |
 
-### レスポンス(200 OK)
 
-Mapbox Directions API のレスポンスをそのまま返す。主に使うのは `routes[0]` の `geometry`(GeoJSON LineString)・`distance`(m)・`duration`(秒)。
+## 共通のレスポンス形式
 
-```json
-{
-  "routes": [
-    {
-      "geometry": { "type": "LineString", "coordinates": [[135.50, 34.69], ...] },
-      "distance": 3521.4,
-      "duration": 845.2,
-      "legs": [ ... ]
-    }
-  ],
-  "waypoints": [ ... ],
-  "code": "Ok"
-}
-```
+### User
 
-| ステータス | 内容 |
-|---|---|
-| 200 OK | ルート情報 |
-| 400 Bad Request | 座標のいずれかが数値でない |
-| 502 Bad Gateway | Mapbox APIの呼び出しに失敗 `{"error": "Mapbox APIの呼び出しに失敗しました"}` |
+認証APIが返すユーザー情報。
 
----
-
-## 7. 周辺スポット検索(仮)
-
-中心座標と半径を指定して周辺スポットを検索する。Google Places Nearby Search の結果を、フロントで使いやすい形に整形して返す。
-
-```
-GET /api/maps/places?lng={lng}&lat={lat}&radius={radius}&type={type}
-```
-
-### 引数
-
-| 項目 | 渡し方 | 必須 | 説明 |
-|---|---|---|---|
-| lng | クエリ | ○ | 中心の経度 |
-| lat | クエリ | ○ | 中心の緯度 |
-| radius | クエリ | ○ | 検索半径(m) |
-| type | クエリ | - | 施設の種類(Google Places の type。例: `cafe`, `park`) |
-
-### 挙動
-
-- サイクリングの目的地に向かないカテゴリ(lodging, hotel, parking, gas_station, atm, bank, hospital, doctor, pharmacy, school, university, police, fire_station, post_office, local_government_office)は結果から除外する
-- `id` / `name` / 座標が欠けているスポットも除外する
-
-### レスポンス(200 OK)
-
-整形済みスポットの配列。該当なしの場合は空配列 `[]`。
-
-```json
-[
-  {
-    "id": "ChIJxxxxxxxxxxxxxxxx",
-    "name": "カフェ○○",
-    "lat": 34.6941,
-    "lng": 135.5030,
-    "address": "大阪市中央区…",
-    "rating": 4.2,
-    "genre": "cafe"
-  }
-]
-```
-
-| 項目 | 型 | 説明 |
+| 項目 | 型 | 内容 |
 |---|---|---|
-| id | string | Google Places の place_id |
-| name | string | スポット名 |
-| lat / lng | number | 座標 |
-| address | string | 住所(取得できない場合は空文字) |
-| rating | number \| null | 評価(なければ null) |
-| genre | string \| null | 種類(Google Places の types の先頭。なければ null) |
+| `user_id` | integer | CyChronos内のユーザーID |
+| `firebase_uid` | string | FirebaseのUID |
+| `email` | string \| null | メールアドレス |
+| `display_name` | string \| null | 表示名 |
+| `photo_url` | string \| null | プロフィール画像URL |
+| `created_at` / `updated_at` | string | 作成・更新日時 |
 
-| ステータス | 内容 |
-|---|---|
-| 200 OK | スポット一覧 |
-| 400 Bad Request | lng / lat / radius が数値でない |
-| 502 Bad Gateway | Google Maps APIの呼び出しに失敗 `{"error": "Google Maps APIの呼び出しに失敗しました"}` |
+### Trip
 
----
+トリップ終了・履歴取得APIが返す走行履歴。
 
-## 8. スポット提案(仮)
+| 項目 | 型 | 内容 |
+|---|---|---|
+| `trip_id` / `user_id` | integer | トリップID / 所有ユーザーID |
+| `destination_name` | string | 目的地名 |
+| `destination_place_id` | string \| null | Google Place ID |
+| `destination_url` | string \| null | 目的地URL |
+| `start_time` / `end_time` | string \| null | 開始・終了日時 |
+| `total_distance_m` | number \| null | 総走行距離（m） |
+| `duration_sec` | number \| null | 走行時間（秒） |
+| `average_speed_kmh` | number \| null | 平均速度（km/h） |
+| `status` | string | `active` / `completed` / `cancelled` |
+| `created_at` / `updated_at` | string | 作成・更新日時 |
 
-「今いる場所から `minutes` 分で行ける範囲にあるスポット」を提案する。内部で **到達圏取得(Mapbox)** → 到達圏を四角形(bbox)で囲んで検索範囲を算出 → **周辺スポット検索(Google Places)** → **所要時間の一括取得(Mapbox Matrix)** の順に実行する。
+### Place
 
-各候補には現在地から自転車での所要時間(`durationMinutes`)が付く。所要時間が `minutes` を超える候補・自転車で到達できない候補は除外される(※`minutes` は片道扱い)。
+周辺検索・スポット提案APIが返す施設情報。
+
+| 項目 | 型 | 内容 |
+|---|---|---|
+| `id` | string | Google Place ID |
+| `name` | string | 施設名 |
+| `lat` / `lng` | number | 緯度 / 経度 |
+| `address` | string | 住所。取得できない場合は空文字 |
+| `rating` | number \| null | Googleの評価 |
+| `photoReference` | string \| null | 写真取得APIに渡す参照値 |
+| `genre` | string \| null | Google Placesの施設種別 |
+
+## 認証
+
+### POST `/api/auth/register`
+
+Firebase IDトークンのユーザーをDBに登録する。
+| 入力 | 成功 | 主なエラー |
+|---|---|---|
+| `Authorization: Bearer <IDトークン>` | `201 User`。論理削除済みアカウントの再有効化は `200 User` | `401` トークンなし・不正、`409` 登録済み |
+
+### POST `/api/auth/login`
+
+登録済みユーザーを取得し、Google側の最新プロフィールをDBへ反映する。
+
+| 入力 | 成功 | 主なエラー |
+|---|---|---|
+| `Authorization: Bearer <IDトークン>` | `200 User` | `401` トークンなし・不正、`404` 未登録・削除済み |
 
 **IDトークンを付けて呼ぶと**、そのユーザーが過去に訪問したスポットを提案から除外する。未訪問だけで10件に満たない場合は訪問済みから補充する(候補ゼロにはならない)。トークンなしでも呼べるが、その場合は除外なし。
 
 ```
 GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}
 ```
+## スポット・地図
 
-### 引数
+### GET `/api/suggest`
+
+指定時間に近い所要時間で到達できるスポットを、最大10件ランダムに返す。`minutes` は片道時間として扱い、実際の候補は `minutes ± 10分` の範囲に絞る。
 
 | 項目 | 渡し方 | 必須 | 説明 |
 |---|---|---|---|
@@ -505,8 +494,14 @@ GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}
 | type | クエリ | - | 施設の種類(省略時は `cafe`) |
 
 ※ 訪問済み除外の対象ユーザーは `Authorization` ヘッダーのIDトークンから決まる(`user_id` クエリは廃止)。
+| クエリ | 必須 | 内容 |
+|---|---|---|
+| `lng` / `lat` | ○ | 現在地の経度 / 緯度 |
+| `minutes` | ○ | 希望する片道時間（分、1以上） |
+| `type` | - | 施設種別。省略時は `cafe`。`all` は種別指定なし |
+| `user_id` | - | 正の整数。指定時は未訪問スポットを優先 |
 
-### レスポンス(200 OK)
+`user_id` を指定した場合でも、未訪問候補が10件未満なら訪問済み候補で補充する。
 
 ```json
 {
@@ -517,18 +512,22 @@ GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}
       "minLat": 34.65,
       "maxLat": 34.74
     },
-    "centerLng": 135.50,
+    "centerLng": 135.5,
     "centerLat": 34.695,
-    "radius": 6000
+    "radius": 6000,
+    "searchPoints": [
+      { "lng": 135.48, "lat": 34.7 }
+    ]
   },
   "places": [
     {
-      "id": "ChIJxxxxxxxxxxxxxxxx",
+      "id": "ChIJxxxxxxxx",
       "name": "カフェ○○",
       "lat": 34.6941,
-      "lng": 135.5030,
+      "lng": 135.503,
       "address": "大阪市中央区…",
       "rating": 4.2,
+      "photoReference": "photo-reference",
       "genre": "cafe",
       "durationSec": 1116.1,
       "durationMinutes": 19,
@@ -539,98 +538,140 @@ GET /api/suggest?lng={lng}&lat={lat}&minutes={minutes}&type={type}
 }
 ```
 
-- `searchArea`: 到達圏から算出した検索範囲。`bbox` は到達圏を囲む四角形、`centerLng`/`centerLat` はその中心、`radius` は Places 検索に使った半径(m、上限50km)
-- `places`: 「7. 周辺スポット検索」の形式に所要時間を足した配列
-- `durationMinutes`: 現在地からそのスポットまで自転車で走った場合の所要時間(分、四捨五入)。**表示にはこちらを使う**。`durationSec` は元の秒数
-- `distanceKm`: 現在地からの走行距離(km、小数1桁)。**数値型**なので `6` は「6.0km」の意味(フロントで `toStringAsFixed(1)` 等で整形)。`distanceM` は元のメートル値
-- ⚠️ 所要時間の取得(Mapbox Matrix)が失敗した場合も提案自体は返るが、そのときは `durationMinutes` が `null` になり、時間超過の除外も行われない。フロントは `null` のとき「約◯分」表示をスキップすること
+- `searchArea.radius` は到達圏を囲む大きさの目安（m、最大50km）。各地点で実際に行うPlaces検索の半径とは異なる
+- `durationSec` / `durationMinutes` は自転車での所要時間
+- `distanceM` / `distanceKm` は自転車ルート上の距離
+- 外部APIまたは所要時間取得に失敗した場合は `502`
+- 引数不正は `400`
 
 | ステータス | 内容 |
 |---|---|
 | 200 OK | 検索範囲と提案スポット一覧 |
 | 400 Bad Request | lng / lat / minutes が数値でない、minutes が1未満 |
 | 502 Bad Gateway | 外部APIの呼び出しに失敗。`{"error": "Mapbox APIの呼び出しに失敗しました"}` または `{"error": "Google Maps APIの呼び出しに失敗しました"}` |
+### GET `/api/maps/route`
 
----
+Mapboxの自転車ルートをそのまま返す。ルート形状に加え、日本語の曲がり案内も取得する。
 
-## 9. アカウント作成(Googleアカウント)
-
-Googleサインイン(Firebase Authentication)で取得したIDトークンを検証し、ユーザーを `users` テーブルに登録する。email・表示名・プロフィール画像はIDトークンのクレームから取得するため、リクエストボディは不要。
-
-論理削除済み(`deleted_at` あり)の同一アカウントが存在する場合は再有効化して返す。
-
-```
-POST /api/auth/register
-```
-
-### リクエストヘッダー
-
-| 項目 | 必須 | 説明 |
+| クエリ | 必須 | 内容 |
 |---|---|---|
-| Authorization | ○ | `Bearer <Firebase IDトークン>` |
+| `fromLng` / `fromLat` | ○ | 出発地の経度 / 緯度 |
+| `toLng` / `toLat` | ○ | 目的地の経度 / 緯度 |
 
-リクエストボディ: なし
+成功時は `200`。主に使用する値は `routes[0].geometry`（GeoJSON LineString）、`routes[0].distance`（m）、`routes[0].duration`（秒）、`routes[0].legs[].steps[]`（日本語の案内手順）。引数不正は `400`、Mapbox失敗は `502`。
 
-### レスポンス(201 Created)
+### GET `/api/maps/photo`
+
+`Place.photoReference` に対応する写真をGoogle Places経由で返す。JSONではなく画像データを返し、`Content-Type` は `image/jpeg` など実画像の形式になる。
+
+| クエリ | 必須 | 内容 |
+|---|---|---|
+| `photoReference` | ○ | `Place.photoReference` の値 |
+| `maxwidth` | ○ | 最大画像幅（px）。Flutterでは `800` を使用 |
+
+`photoReference` 未指定は `400`、Google Places失敗は `502`。
+
+### GET `/api/maps/isochrone`
+
+指定地点から自転車で移動できる範囲をMapboxのGeoJSON FeatureCollectionで返す。
+
+| クエリ | 必須 | 内容 |
+|---|---|---|
+| `lng` / `lat` | ○ | 中心の経度 / 緯度 |
+| `minutes` | ○ | 移動時間（分、1以上） |
+
+`minutes` が60以下なら時間で計算し、60を超える場合は1分250mで距離に換算する（上限100km）。成功は `200`、引数不正は `400`、Mapbox失敗は `502`。
+
+### GET `/api/maps/places`
+
+指定範囲の施設をGoogle Placesで検索し、`Place[]` を返す。
+
+| クエリ | 必須 | 内容 |
+|---|---|---|
+| `lng` / `lat` | ○ | 中心の経度 / 緯度 |
+| `radius` | ○ | 検索半径（m） |
+| `type` | - | 施設種別。`all` は種別指定なし |
+
+目的地に向かない生活インフラ・事業所・行政区域などは除外される。該当なしは `[]`。引数不正は `400`、Google Places失敗は `502`。
+
+## トリップ・履歴
+
+### POST `/api/trips/start`
+
+トリップを `active` 状態で作成する。
 
 ```json
 {
   "user_id": 1,
-  "firebase_uid": "AbCdEfGh1234567890",
-  "email": "taro@gmail.com",
-  "display_name": "山田 太郎",
-  "photo_url": "https://lh3.googleusercontent.com/a/xxxx",
-  "created_at": "2026-07-07T02:00:00.000Z",
-  "updated_at": "2026-07-07T02:00:00.000Z"
+  "destination_name": "大阪城公園",
+  "destination_place_id": "ChIJxxxxxxxx",
+  "destination_url": "https://example.com"
 }
 ```
 
-| ステータス | 内容 |
-|---|---|
-| 201 Created | 登録成功。作成されたユーザー情報を返す |
-| 200 OK | 論理削除済みアカウントを再有効化した場合。ユーザー情報を返す |
-| 401 Unauthorized | Authorizationヘッダー未指定、またはIDトークンの検証失敗 |
-| 409 Conflict | 同じGoogleアカウントで登録済み `{"error": "このアカウントは登録済みです"}` |
-
----
-
-## 10. ログイン(Googleアカウント)
-
-IDトークンを検証し、登録済みユーザーの情報を返す。あわせてGoogle側の最新プロフィール(email・表示名・画像)を `users` に反映する。未登録の場合は404を返すので、フロントは**アカウント作成**(9)を呼ぶこと。
-
-```
-POST /api/auth/login
-```
-
-### リクエストヘッダー
-
-| 項目 | 必須 | 説明 |
+| 項目 | 必須 | 内容 |
 |---|---|---|
-| Authorization | ○ | `Bearer <Firebase IDトークン>` |
+| `user_id` | ○ | 正の整数 |
+| `destination_name` | - | 目的地名。省略時は空文字 |
+| `destination_place_id` | - | `Place.id`。255文字以内 |
+| `destination_url` | - | 目的地URL |
 
-リクエストボディ: なし
+成功時は `201 {"trip_id": 4}`。引数不正は `400`、ユーザーが存在しない場合は `404`。
 
-### レスポンス(200 OK)
+### POST `/api/trips/{trip_id}/end`
+
+`active` なトリップを `completed` にし、終了時刻を記録する。
+
+```json
+{ "user_id": 1 }
+```
+
+成功時は `200 Trip`。引数不正は `400`、該当トリップなし・他ユーザー・削除済みは `404`、すでに終了済みなど `active` でない場合は `409`。
+
+### GET `/api/trips?user_id={user_id}`
+
+指定ユーザーの削除されていない履歴を、開始日時の新しい順で `Trip[]` として返す。該当なしは `[]`。`user_id` 不正は `400`。
+
+### GET `/api/trips/{trip_id}?user_id={user_id}`
+
+`Trip` に、次の `locations` 配列を加えて返す。座標は `log_num` の昇順。
+
+| 項目 | 型 | 内容 |
+|---|---|---|
+| `log_id` / `log_num` | integer | ログID / トリップ内連番 |
+| `lat` / `lng` | number | 緯度 / 経度 |
+| `recorded_at` | string | 記録日時 |
+| `speed_kmh` | number \| null | 記録時の速度 |
+| `accuracy_m` | number \| null | GPS精度 |
+
+成功は `200`、引数不正は `400`、該当トリップなし・他ユーザー・削除済みは `404`。
+
+### DELETE `/api/trips/{trip_id}?user_id={user_id}`
+
+トリップを論理削除する。成功時は `204 No Content`。引数不正は `400`、該当トリップなし・他ユーザー・削除済みは `404`。
+
+## 座標ログ
+
+### POST `/api/locations`
+
+走行中の座標を保存する。`log_num` と記録日時はサーバー側で設定する。
 
 ```json
 {
   "user_id": 1,
-  "firebase_uid": "AbCdEfGh1234567890",
-  "email": "taro@gmail.com",
-  "display_name": "山田 太郎",
-  "photo_url": "https://lh3.googleusercontent.com/a/xxxx",
-  "created_at": "2026-07-07T02:00:00.000Z",
-  "updated_at": "2026-07-07T03:10:00.000Z"
+  "trip_id": 4,
+  "lat": 34.6941,
+  "lng": 135.503
 }
 ```
 
-| ステータス | 内容 |
-|---|---|
-| 200 OK | 認証成功。ユーザー情報を返す |
-| 401 Unauthorized | Authorizationヘッダー未指定、またはIDトークンの検証失敗 |
-| 404 Not Found | ユーザー未登録 `{"error": "アカウントが未登録です。先にアカウント作成を行ってください"}` |
+| 項目 | 必須 | 内容 |
+|---|---|---|
+| `user_id` / `trip_id` | ○ | 正の整数 |
+| `lat` | ○ | 緯度（-90〜90） |
+| `lng` | ○ | 経度（-180〜180） |
 
----
+成功時は `204 No Content`。引数不正は `400`、該当トリップなし・他ユーザー・削除済みは `404`。
 
 ## 共通エラー
 
@@ -641,8 +682,9 @@ POST /api/auth/login
 | 500 Internal Server Error | DB接続失敗などサーバー内部エラー `{"error": "Internal Server Error"}` |
 
 ## 関連ファイル
+エラーは原則として `{"error": "メッセージ"}` のJSONで返す。
 
-| ファイル | 内容 |
+| ステータス | 内容 |
 |---|---|
 | `src/app.js` | Expressアプリ本体・ルーターのマウント |
 | `src/routes/auth.js` | アカウント作成・ログインAPI |
@@ -656,3 +698,9 @@ POST /api/auth/login
 | `src/services/place.js` | Google Places API呼び出し・レスポンス整形 |
 | `src/db.js` | MySQL接続プール(接続情報は `.env`) |
 | `db/cydump.sql` | DBダンプ(スキーマ+サンプルデータ) |
+| `400 Bad Request` | 引数不正 |
+| `401 Unauthorized` | Firebase認証失敗 |
+| `404 Not Found` | 対象データまたはパスが存在しない |
+| `409 Conflict` | 現在の状態では処理できない |
+| `500 Internal Server Error` | DB接続失敗などの内部エラー |
+| `502 Bad Gateway` | Mapbox / Google Placesの呼び出し失敗 |

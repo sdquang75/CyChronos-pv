@@ -29,7 +29,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final TextEditingController _minutesController = TextEditingController(
     text: '45',
   );
+  final TextEditingController _stayMinutesController = TextEditingController(
+    text: '15',
+  );
   final Set<String> _selectedGenres = {'Cafe'}; // default Cafe selected
+  String _tripMode = 'one_way';
+  int _submittedMinutes = 45;
+  int _submittedStayMinutes = 0;
+  String _submittedTripMode = 'one_way';
 
   @override
   void initState() {
@@ -52,13 +59,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final selected = _selectedGenres.first;
 
     const typeMap = {
-      // 「すべて」はジャンルを絞らず幅広く検索する
-      // (Google Placesのほぼ全スポットが持つtype)
-      'All': 'point_of_interest',
+      // Google Placesの検索typeではない値はバックエンド側で専用条件へ変換する
+      'All': 'all',
       'Cafe': 'cafe',
       'Nature': 'park',
       'Food': 'restaurant',
-      'Temple': 'place_of_worship',
+      'Temple': 'temple',
       'Art': 'museum',
       'Viewpoint': 'tourist_attraction',
       'Shop': 'store',
@@ -74,6 +80,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _scrollController.dispose();
     _hoursController.dispose();
     _minutesController.dispose();
+    _stayMinutesController.dispose();
     super.dispose();
   }
 
@@ -89,11 +96,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       case RecommendationLoaded(data: final data):
         final places = data['places'] as List<dynamic>? ?? [];
         // 検索に使った空き時間(分)も一覧画面に渡す(一覧ヘッダーの「空き時間」表示に使う)
-        final hours = int.tryParse(_hoursController.text) ?? 0;
-        final minutes = int.tryParse(_minutesController.text) ?? 0;
         context.push(
           '/destination',
-          extra: {'places': places, 'minutes': hours * 60 + minutes},
+          extra: {
+            'places': places,
+            'minutes': _submittedMinutes,
+            'type': _selectedPlacesType(),
+            'tripMode': _submittedTripMode,
+            'stayMinutes': _submittedStayMinutes,
+          },
         );
         message = 'おすすめスポットを取得しました。';
       case RecommendationLocationServiceDisabled():
@@ -182,10 +193,70 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         children: [
           _buildHeroHeader(),
           const SizedBox(height: 36),
+          _buildTripModeSection(),
+          const SizedBox(height: 28),
           _buildDurationSection(),
           const SizedBox(height: 36),
           _buildGenreSection(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTripModeSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'TRIP MODE',
+          style: TextStyle(
+            fontFamily: 'JetBrainsMono',
+            fontWeight: FontWeight.w500,
+            fontSize: 14,
+            letterSpacing: 0.7,
+            color: Color(0xFF484553),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(child: _buildTripModeButton('one_way', '片道')),
+            const SizedBox(width: 12),
+            Expanded(child: _buildTripModeButton('round_trip', '往復')),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTripModeButton(String value, String label) {
+    final isSelected = _tripMode == value;
+    return GestureDetector(
+      onTap: () => setState(() => _tripMode = value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: 52,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFF1EBFF) : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color:
+                isSelected ? const Color(0xFF19005C) : const Color(0xFFC9C4D5),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'HankenGrotesk',
+            fontFamilyFallback: const ['NotoSansJP'],
+            fontWeight: FontWeight.w600,
+            fontSize: 17,
+            color:
+                isSelected ? const Color(0xFF19005C) : const Color(0xFF484553),
+          ),
+        ),
       ),
     );
   }
@@ -256,6 +327,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ],
         ),
+        if (_tripMode == 'round_trip') ...[
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              _buildDurationField(controller: _stayMinutesController),
+              const SizedBox(width: 8),
+              const Text(
+                '分 滞在',
+                style: TextStyle(
+                  fontFamily: 'HankenGrotesk',
+                  fontFamilyFallback: ['NotoSansJP'],
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  color: Color(0xFF191C1F),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '空き時間には、往路・滞在・復路をすべて含みます。',
+            style: TextStyle(
+              fontFamily: 'HankenGrotesk',
+              fontFamilyFallback: ['NotoSansJP'],
+              fontSize: 13,
+              color: Color(0xFF484553),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -422,6 +522,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             final hours = int.tryParse(_hoursController.text) ?? 0;
             final minutes = int.tryParse(_minutesController.text) ?? 0;
             final totalMinutes = hours * 60 + minutes;
+            final stayMinutes =
+                _tripMode == 'round_trip'
+                    ? int.tryParse(_stayMinutesController.text) ?? 0
+                    : 0;
             if (totalMinutes < 1) {
               ScaffoldMessenger.of(context).clearSnackBars();
               ScaffoldMessenger.of(context).showSnackBar(
@@ -442,11 +546,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               );
               return;
             }
+            if (_tripMode == 'round_trip' && totalMinutes - stayMinutes < 2) {
+              ScaffoldMessenger.of(context).clearSnackBars();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('滞在時間を除いて、移動時間を2分以上確保してください。'),
+                  backgroundColor: const Color(0xFF2A0088),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              );
+              return;
+            }
+            _submittedMinutes = totalMinutes;
+            _submittedTripMode = _tripMode;
+            _submittedStayMinutes = stayMinutes;
             ref
                 .read(recommendationProvider.notifier)
                 .fetchForCurrentLocation(
                   minutes: totalMinutes,
                   type: _selectedPlacesType(),
+                  mode: _tripMode,
+                  stayMinutes: stayMinutes,
                 );
           },
           borderRadius: BorderRadius.circular(9999),

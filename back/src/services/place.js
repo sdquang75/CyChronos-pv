@@ -18,6 +18,14 @@ const hidecategory = [
 // 全typeが汎用のものは目的地候補から外す
 const genericTypes = ["point_of_interest", "establishment", "premise", "geocode", "plus_code"];
 
+// 「すべて」検索で返りやすい市区町村・住所など、目的地ではない地理情報type。
+const administrativeTypes = new Set([
+  "country", "political", "locality", "sublocality", "neighborhood",
+  "postal_code", "postal_code_prefix", "postal_code_suffix", "postal_town",
+  "route", "street_address", "street_number", "intersection",
+]);
+
+const sabunminutes = 10; //±10分の範囲で候補を絞る
 
 /**
  * 指定範囲からいけそうなスポットを取得する
@@ -26,7 +34,7 @@ const genericTypes = ["point_of_interest", "establishment", "premise", "geocode"
  * @param {number} lng 経度
  * @param {number} lat 緯度
  */
-async function getNearbyPlaces(lng, lat, radius, type) {
+async function getNearbyPlaces(lng, lat, radius, type, { includeNextPage = true } = {}) {
 
   // .env に置いた Google Places のAPIキーを読み込む
   const token = process.env.GOOGLE_PLACES_API_KEY;
@@ -35,9 +43,7 @@ async function getNearbyPlaces(lng, lat, radius, type) {
   const url = new URL(`${BASE_URL}/maps/api/place/nearbysearch/json`);
   url.searchParams.set("location", `${lat},${lng}`); // 検索の中心座標
   url.searchParams.set("radius", radius);            // 検索半径(m)
-  if (type) {
-    url.searchParams.set("type", type);              // 施設の種類
-  }
+  applyPlaceSearchFilter(url, type);
   url.searchParams.set("language", "ja");            // 名前・住所を日本語で返させる(未指定だとローマ字になりがち)
   url.searchParams.set("key", token);                // APIキー
 
@@ -47,7 +53,7 @@ async function getNearbyPlaces(lng, lat, radius, type) {
   // Googleは1回につき最大20件・毎回同じ「有名さ順」しか返さない。
   // next_page_token で2ページ目(最大+20件)を取り、提案の母集団を増やす。
   // 3ページ目まで取ると更に+2秒かかるので、いまは2ページで止めている。
-  if (data.next_page_token) {
+  if (includeNextPage && data.next_page_token) {
     try {
       results.push(...(await fetchNextPage(data.next_page_token, token)));
     } catch (error) {
@@ -57,6 +63,29 @@ async function getNearbyPlaces(lng, lat, radius, type) {
   }
 
   return { ...data, results };
+}
+
+function isAdministrativeType(type) {
+  return administrativeTypes.has(type) ||
+    /^administrative_area_level_[1-7]$/.test(type) ||
+    /^sublocality_level_[1-5]$/.test(type);
+}
+
+// Nearby Search (Legacy) の type に使えないレスポンス専用typeを吸収する。
+// 既存フロントとの互換性を保つため point_of_interest / place_of_worship も受け付ける。
+function applyPlaceSearchFilter(url, type) {
+  const normalizedType = typeof type === "string" ? type.trim() : "";
+
+  if (!normalizedType || normalizedType === "all" || normalizedType === "point_of_interest") {
+    return;
+  }
+
+  if (normalizedType === "temple" || normalizedType === "place_of_worship") {
+    url.searchParams.set("keyword", "寺院");
+    return;
+  }
+
+  url.searchParams.set("type", normalizedType);
 }
 
 /**
@@ -147,6 +176,11 @@ function normalizePlacesResponse(data) {
 
       return !hasHiddenCategory;
     })
+    // 「大阪市」「北区」等の行政区画・住所結果はサイクリング目的地ではないので外す
+    .filter((place) => {
+      const types = Array.isArray(place.types) ? place.types : [];
+      return !types.some(isAdministrativeType);
+    })
     // typesが汎用type(point_of_interest等)だけの施設は、カテゴリ未設定の会社・オフィスの
     // 可能性が高いので外す(typesが無いものも同様に外す)
     .filter((place) => {
@@ -161,6 +195,53 @@ function normalizePlacesResponse(data) {
       Number.isFinite(place.lat) &&
       Number.isFinite(place.lng)
     );
+}
+
+// 複数の外周検索結果を方向ごとに1件ずつ取り、place_id重複を除きながら均等に結合する。
+function mergeNormalizedPlaceGroups(placeGroups, maxCount) {
+  const groups = placeGroups.filter(Array.isArray);
+  const maxGroupLength = groups.reduce((max, group) => Math.max(max, group.length), 0);
+  const merged = [];
+  const seenIds = new Set();
+
+  for (let index = 0; index < maxGroupLength && merged.length < maxCount; index += 1) {
+    for (const group of groups) {
+      const place = group[index];
+      if (!place?.id || seenIds.has(place.id)) continue;
+      seenIds.add(place.id);
+      merged.push(place);
+      if (merged.length >= maxCount) break;
+    }
+  }
+
+  return merged;
+}
+
+// Isochrone外周を等間隔にサンプリングし、ジャンル検索の中心点として使う。
+function getBoundarySearchPoints(coordinates, count) {
+  if (!Array.isArray(coordinates) || !Number.isInteger(count) || count < 1) {
+    return [];
+  }
+
+  const validCoordinates = coordinates.filter((coordinate) =>
+    Array.isArray(coordinate) &&
+    Number.isFinite(coordinate[0]) &&
+    Number.isFinite(coordinate[1])
+  );
+  if (validCoordinates.length === 0) return [];
+
+  // GeoJSON Polygonは先頭と末尾が同一点なので、重複サンプルを避ける。
+  const first = validCoordinates[0];
+  const last = validCoordinates[validCoordinates.length - 1];
+  const openRing = validCoordinates.length > 1 && first[0] === last[0] && first[1] === last[1]
+    ? validCoordinates.slice(0, -1)
+    : validCoordinates;
+  const pointCount = Math.min(count, openRing.length);
+
+  return Array.from({ length: pointCount }, (_, index) => {
+    const coordinateIndex = Math.floor(index * openRing.length / pointCount);
+    return { lng: openRing[coordinateIndex][0], lat: openRing[coordinateIndex][1] };
+  });
 }
 
 // Fisher-Yatesシャッフル。Googleは毎回同じ順(有名さ順)で返すので、提案に変化をつける。
@@ -201,17 +282,57 @@ function attachDurations(places, durations, distances = []) {
   });
 }
 
-// 指定時間内に収まるplaceのみを返す。
-// durationSec フィールド自体が無い place は素通りさせる(Matrix失敗時に所要時間なしで続行するため)
-function filterWithinMinutes(places, minutes){
-  return places.filter((place) => {
-    if (place.durationSec === null || place.durationSec > minutes * 60) {
-      return false;
-    }
-    return true;
+// 指定時間±10分を厳守する。所要時間不明の候補も条件を保証できないため除外する。
+function filterWithinMinutes(places, minutes) {
+  const minDurationSec = Math.max(0, minutes - sabunminutes) * 60;
+  const maxDurationSec = (minutes + sabunminutes) * 60;
+  return places.filter((place) =>
+    Number.isFinite(place.durationSec) &&
+    place.durationSec >= minDurationSec &&
+    place.durationSec <= maxDurationSec
+  );
+}
+
+function attachRoundTripMetrics(places, travelTimes, stayMinutes) {
+  return places.map((place, index) => {
+    const outboundDurationSec = travelTimes.outboundDurations[index] ?? null;
+    const returnDurationSec = travelTimes.returnDurations[index] ?? null;
+    const outboundDistanceM = travelTimes.outboundDistances[index] ?? null;
+    const returnDistanceM = travelTimes.returnDistances[index] ?? null;
+    const roundTripDurationSec = Number.isFinite(outboundDurationSec) && Number.isFinite(returnDurationSec)
+      ? outboundDurationSec + returnDurationSec
+      : null;
+    const roundTripDistanceM = Number.isFinite(outboundDistanceM) && Number.isFinite(returnDistanceM)
+      ? outboundDistanceM + returnDistanceM
+      : null;
+    const stayDurationSec = stayMinutes * 60;
+
+    return {
+      ...place,
+      durationSec: outboundDurationSec,
+      distanceM: outboundDistanceM,
+      outboundDurationSec,
+      returnDurationSec,
+      roundTripDurationSec,
+      stayDurationSec,
+      totalDurationSec: roundTripDurationSec == null ? null : roundTripDurationSec + stayDurationSec,
+      outboundDistanceM,
+      returnDistanceM,
+      roundTripDistanceM,
+    };
   });
+}
+
+function filterWithinRoundTripMinutes(places, minutes) {
+  const minDurationSec = Math.max(0, minutes - sabunminutes) * 60;
+  const maxDurationSec = (minutes + sabunminutes) * 60;
+  return places.filter((place) =>
+    Number.isFinite(place.totalDurationSec) &&
+    place.totalDurationSec >= minDurationSec &&
+    place.totalDurationSec <= maxDurationSec
+  );
 }
 
 
 
-module.exports = { getNearbyPlaces, getPlacePhoto, normalizePlace, normalizePlacesResponse, shufflePlaces, pickSuggestions, attachDurations, filterWithinMinutes };
+module.exports = { getNearbyPlaces, getPlacePhoto, applyPlaceSearchFilter, normalizePlace, normalizePlacesResponse, mergeNormalizedPlaceGroups, getBoundarySearchPoints, shufflePlaces, pickSuggestions, attachDurations, filterWithinMinutes, attachRoundTripMetrics, filterWithinRoundTripMinutes };

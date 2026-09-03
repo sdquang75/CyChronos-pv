@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -7,6 +9,15 @@ plugins {
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// Google Maps のAPIキーは local.properties(git管理外)の MAPS_API_KEY から読む。
+// 例: android/local.properties に「MAPS_API_KEY=AIza...」を1行追加する
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { localProperties.load(it) }
+}
+val mapsApiKey: String = localProperties.getProperty("MAPS_API_KEY") ?: ""
 
 android {
     namespace = "com.cychronos.cy"
@@ -31,6 +42,8 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // AndroidManifest.xml の ${MAPS_API_KEY} をここで差し込む
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     buildTypes {
