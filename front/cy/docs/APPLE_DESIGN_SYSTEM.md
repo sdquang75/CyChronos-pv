@@ -58,10 +58,10 @@ Tất cả các trạng thái trong chuyến đi (**Một chiều, Khứ hồi l
   - Quay về màn hình xem trước và hiện thông báo: `"案内をキャンセルしました（履歴には保存されません）"`.
 - **Trường hợp B: Đã đạp xe một quãng đường nhưng muốn dừng giữa chừng (Mid-Ride Termination)**
   - Điều kiện: Đã đạp xe `>= 2 phút` và có GPS log thực tế.
-  - Hiển thị Action Sheet chuẩn Apple:
-    - **`保存して終了`**: Lưu lại quãng đường và thời gian thực tế đã đi được vào lịch sử.
-    - **`破棄して終了`**: Hủy bỏ, xóa chuyến đi khỏi server, không lưu lịch sử.
-    - **`案内を続ける`**: Đóng hộp thoại, tiếp tục dẫn đường.
+  - Hiển thị hộp thoại xác nhận tối giản chuẩn Apple (Tối giản tuyệt đối với **đúng 2 nút đối xứng**, tránh gây rối mắt khi lái xe):
+    - **`続ける`**: Đóng hộp thoại, tiếp tục lộ trình.
+    - **`終了する`** (Màu đỏ Apple): Hủy chuyến đi dở dang và quay về, không lưu lịch sử rác.
+    - *(Lưu ý: Nếu người dùng muốn hoàn thành chuyến đi và lưu lịch sử, họ chỉ cần nhấn nút `[ 🏁 到着・完了 ]` ngay trên Dock).*
 
 ---
 

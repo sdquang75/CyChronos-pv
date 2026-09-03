@@ -959,67 +959,99 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
       return;
     }
 
-    // すでにある程度走行していた場合は、Appleスタイルのダイアログで確認
-    final shouldSave = await showDialog<bool>(
+    // すでにある程度走行していた場合は、シンプルなAppleスタイルの確認ダイアログ(2択)
+    final confirmed = await showDialog<bool>(
       context: context,
       builder:
           (ctx) => AlertDialog(
+            backgroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            icon: Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.close_rounded,
+                size: 26,
+                color: AppColors.error,
+              ),
             ),
             title: const Text(
               '案内を終了しますか？',
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'HankenGrotesk',
                 fontFamilyFallback: ['NotoSansJP'],
-                fontWeight: FontWeight.w800,
                 fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
               ),
             ),
             content: const Text(
-              'ここまでの走行記録を履歴に保存しますか？\n破棄すると履歴には残りません。',
+              '案内を終了します。走行記録は保存されません。\n（記録を保存する場合は「到着・完了」を押してください）',
+              textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 height: 1.4,
                 color: AppColors.textSecondary,
               ),
             ),
+            actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(null), // 案内継続
-                child: const Text(
-                  '案内を続ける',
-                  style: TextStyle(color: AppColors.textSecondary),
-                ),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false), // 破棄
-                child: const Text(
-                  '破棄して終了',
-                  style: TextStyle(
-                    color: AppColors.danger,
-                    fontWeight: FontWeight.w600,
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        '続ける',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(true), // 保存
-                child: const Text(
-                  '保存して終了',
-                  style: TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w700,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.error,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        '終了する',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
     );
 
-    if (shouldSave == null) return; // 案内継続
-    if (shouldSave) {
-      await _endNavigation(isAutoArrival: false);
-    } else {
+    if (confirmed == true) {
       await _cancelNavigation();
     }
   }
