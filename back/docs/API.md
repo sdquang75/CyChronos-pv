@@ -155,14 +155,14 @@ Firebase IDトークンのユーザーをDBに登録する。
 
 ### GET `/api/maps/route`
 
-Mapboxの自転車ルートをそのまま返す。
+Mapboxの自転車ルートをそのまま返す。ルート形状に加え、日本語の曲がり案内も取得する。
 
 | クエリ | 必須 | 内容 |
 |---|---|---|
 | `fromLng` / `fromLat` | ○ | 出発地の経度 / 緯度 |
 | `toLng` / `toLat` | ○ | 目的地の経度 / 緯度 |
 
-成功時は `200`。主に使用する値は `routes[0].geometry`（GeoJSON LineString）、`routes[0].distance`（m）、`routes[0].duration`（秒）。引数不正は `400`、Mapbox失敗は `502`。
+成功時は `200`。主に使用する値は `routes[0].geometry`（GeoJSON LineString）、`routes[0].distance`（m）、`routes[0].duration`（秒）、`routes[0].legs[].steps[]`（日本語の案内手順）。引数不正は `400`、Mapbox失敗は `502`。
 
 ### GET `/api/maps/photo`
 
