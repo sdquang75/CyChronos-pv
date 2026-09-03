@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_spacing.dart';
-import '../../core/theme/app_typography.dart';
 import '../../core/widgets/app_bottom_navigation.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_top_bar.dart';
+import '../../core/widgets/tap_scale.dart';
 import '../route_confirm/route_confirm.dart';
 
 // Google Placesの英語ジャンル(type) → 画面表示用の日本語ラベルの変換表
@@ -24,6 +23,7 @@ const Map<String, String> _genreLabels = {
   'establishment': '施設',
 };
 
+/// スポット詳細画面 (Apple Mapsのミニマリズム思想に基づく洗練された詳細ビュー).
 class DetilScreen extends StatelessWidget {
   final String name;
   final String address;
@@ -39,30 +39,24 @@ class DetilScreen extends StatelessWidget {
     required this.name,
     required this.address,
     required this.genre,
-    this.imageUrl, // 写真URLを受け取る(省略可)
-    this.durationSec, // 所要時間を受け取る(省略可)
-    this.distanceMeter, // 距離を受け取る(省略可)
-    this.rating, // 評価を受け取る(省略可)
-    this.destination = const {}, // 元データを受け取る(省略可)
+    this.imageUrl,
+    this.durationSec,
+    this.distanceMeter,
+    this.rating,
+    this.destination = const {},
   });
 
-  // 英語ジャンルを日本語にして返す(変換表に無いものは英語のまま表示)
   String _genreLabel() {
     if (genre.isEmpty) return 'ジャンル';
     return _genreLabels[genre] ?? genre;
   }
 
-  // 距離をkm表示用の文字列にする(小数1桁・末尾が.0なら削る)。不明なら「--」
-  // route_confirm.dartの距離表記(例: 8.5km)と同じ精度に揃えている。
-  // 以前は小数3桁(例: 4.502km)まで出しており、桁区切りのカンマと
-  // 誤読されやすかった
   String _distanceText() {
     final meters = distanceMeter;
     if (meters == null) return '--';
     return (meters / 1000).toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '');
   }
 
-  // 所要時間の文字列(例: 1時間15分 / 30分)。不明なら「--」
   String _durationText() {
     final sec = durationSec;
     if (sec == null) return '--';
@@ -72,7 +66,6 @@ class DetilScreen extends StatelessWidget {
     return '$hours時間$minutes分';
   }
 
-  // スポット写真を表示する。URLが無いとき・読み込みに失敗したときは仮画像に切り替える
   Widget _buildPhoto() {
     final url = imageUrl;
     final Widget imageWidget = (url == null || url.isEmpty)
@@ -80,12 +73,12 @@ class DetilScreen extends StatelessWidget {
         : Image.network(
             url,
             fit: BoxFit.cover,
-            // 読み込み中はインジケーターを出す
             loadingBuilder: (context, child, progress) {
               if (progress == null) return child;
-              return const Center(child: CircularProgressIndicator());
+              return const Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              );
             },
-            // 通信失敗でも画面を壊さず仮画像を出す
             errorBuilder: (context, error, stackTrace) {
               return Image.asset('assets/testimage.png', fit: BoxFit.cover);
             },
@@ -97,9 +90,6 @@ class DetilScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // AppScreenFrame・下部メニューバーはHomeScreen(IndexedStackシェル)側で
-    // 一括して描画されるので、ここでは自分の中身だけを組み立てる。
-    // 共有の浮動メニューバーに本文が隠れないよう、下端の余白だけ確保しておく
     return Scaffold(
       backgroundColor: AppColors.bgCool,
       body: SafeArea(
@@ -109,33 +99,44 @@ class DetilScreen extends StatelessWidget {
             const AppTopBar(title: 'スポット詳細'),
             Expanded(
               child: SingleChildScrollView(
-                // 縦に長い画面なので、小さい端末でもスクロールして全部見られるようにする
+                physics: const BouncingScrollPhysics(),
                 padding: EdgeInsets.fromLTRB(
-                  AppSpacing.xxl,
-                  AppSpacing.lg,
-                  AppSpacing.xxl,
-                  AppSpacing.lg + AppBottomNavigation.barHeightFor(context),
+                  20,
+                  16,
+                  20,
+                  24 + AppBottomNavigation.barHeightFor(context),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // スポット写真
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(
-                        AppSpacing.radiusCard,
+                    // スポット写真 (Apple-style 24px radius with subtle border)
+                    Container(
+                      width: double.infinity,
+                      height: 220,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        color: AppColors.accentBg,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: AppColors.border.withValues(alpha: 0.4),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.08),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      child: Container(
-                        width: double.infinity,
-                        height: 220,
-                        color: AppColors.accentBg, // 画像読み込み中の背景色
-                        child: _buildPhoto(),
-                      ),
+                      child: _buildPhoto(),
                     ),
 
-                    const SizedBox(height: AppSpacing.lg),
+                    const SizedBox(height: 16),
 
                     // 名前・ジャンル・評価
                     AppCard(
+                      borderRadius: 24,
+                      padding: const EdgeInsets.all(18),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -143,11 +144,16 @@ class DetilScreen extends StatelessWidget {
                             name.isNotEmpty ? name : '観光地名',
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: AppTypography.cardTitle.copyWith(
-                              fontSize: 20,
+                            style: const TextStyle(
+                              fontFamily: 'HankenGrotesk',
+                              fontFamilyFallback: ['NotoSansJP'],
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primary,
+                              letterSpacing: -0.5,
                             ),
                           ),
-                          const SizedBox(height: AppSpacing.md),
+                          const SizedBox(height: 12),
                           Row(
                             children: [
                               Container(
@@ -157,36 +163,54 @@ class DetilScreen extends StatelessWidget {
                                 ),
                                 decoration: BoxDecoration(
                                   color: AppColors.accentBg,
-                                  borderRadius: BorderRadius.circular(
-                                    AppSpacing.radiusPill,
-                                  ),
+                                  borderRadius: BorderRadius.circular(9999),
                                   border: Border.all(
-                                    color: AppColors.primary.withValues(
-                                      alpha: 0.15,
-                                    ),
+                                    color: AppColors.primary.withValues(alpha: 0.15),
                                   ),
                                 ),
                                 child: Text(
                                   _genreLabel(),
-                                  style: AppTypography.label.copyWith(
+                                  style: const TextStyle(
                                     fontFamily: 'HankenGrotesk',
-                                    fontWeight: FontWeight.w600,
+                                    fontFamilyFallback: ['NotoSansJP'],
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
                                     color: AppColors.primary,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: AppSpacing.sm),
-                              const Icon(
-                                Icons.star_rounded,
-                                size: 18,
-                                color: AppColors.starGold,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                rating != null
-                                    ? rating!.toStringAsFixed(1)
-                                    : '評価なし',
-                                style: AppTypography.body,
+                              const SizedBox(width: 10),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.starGold.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(9999),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.star_rounded,
+                                      size: 16,
+                                      color: AppColors.starGold,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      rating != null
+                                          ? rating!.toStringAsFixed(1)
+                                          : '評価なし',
+                                      style: const TextStyle(
+                                        fontFamily: 'JetBrainsMono',
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 12,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -194,26 +218,34 @@ class DetilScreen extends StatelessWidget {
                       ),
                     ),
 
-                    const SizedBox(height: AppSpacing.lg),
+                    const SizedBox(height: 14),
 
-                    // 住所・距離・所要時間
+                    // 住所・距離・所要時間 (Apple Inset Grouped style)
                     AppCard(
+                      borderRadius: 24,
+                      padding: const EdgeInsets.symmetric(vertical: 6),
                       child: Column(
                         children: [
-                          _InfoRow(
-                            icon: Icons.location_on_outlined,
+                          _AppleInfoRow(
+                            icon: Icons.location_on_rounded,
+                            iconColor: const Color(0xFF007AFF),
+                            iconBgColor: const Color(0xFF007AFF).withValues(alpha: 0.12),
                             label: '住所',
                             value: address.isNotEmpty ? address : '住所不明',
                           ),
-                          const SizedBox(height: AppSpacing.md),
-                          _InfoRow(
+                          const Divider(height: 1, indent: 56, endIndent: 16),
+                          _AppleInfoRow(
                             icon: Icons.directions_bike_rounded,
+                            iconColor: const Color(0xFF34C759),
+                            iconBgColor: const Color(0xFF34C759).withValues(alpha: 0.12),
                             label: '距離',
                             value: '${_distanceText()}km',
                           ),
-                          const SizedBox(height: AppSpacing.md),
-                          _InfoRow(
-                            icon: Icons.access_time_rounded,
+                          const Divider(height: 1, indent: 56, endIndent: 16),
+                          _AppleInfoRow(
+                            icon: Icons.schedule_rounded,
+                            iconColor: const Color(0xFFFF9500),
+                            iconBgColor: const Color(0xFFFF9500).withValues(alpha: 0.12),
                             label: '所要時間',
                             value: _durationText(),
                           ),
@@ -221,32 +253,45 @@ class DetilScreen extends StatelessWidget {
                       ),
                     ),
 
-                    const SizedBox(height: AppSpacing.xl),
+                    const SizedBox(height: 24),
 
-                    AppButton(
-                      label: 'ルートを見る',
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                        // 目的地データを丸ごと渡してルート確認画面へ
-                        // (RideFlowの入れ子Navigatorでpushするので「戻る」でここに帰れる)
+                    TapScale(
+                      onTap: () {
+                        HapticFeedback.mediumImpact();
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder:
-                                (_) => RouteConfirmScreen(
-                                  destination: destination,
-                                ),
+                            builder: (_) => RouteConfirmScreen(
+                              destination: destination,
+                            ),
                           ),
                         );
                       },
+                      child: AppButton(
+                        label: 'ルートを見る',
+                        icon: Icons.navigation_rounded,
+                        height: 52,
+                        borderRadius: 18,
+                        onPressed: () {
+                          HapticFeedback.mediumImpact();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => RouteConfirmScreen(
+                                destination: destination,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
 
-                    const SizedBox(height: AppSpacing.md),
+                    const SizedBox(height: 12),
 
                     AppButton(
                       label: 'お気に入り登録',
                       variant: AppButtonVariant.secondary,
                       icon: Icons.favorite_border_rounded,
-                      // TODO: お気に入り機能は未実装
+                      height: 48,
+                      borderRadius: 16,
                       onPressed: null,
                     ),
                   ],
@@ -260,39 +305,66 @@ class DetilScreen extends StatelessWidget {
   }
 }
 
-// 住所・距離・所要時間の1行分(アイコン + ラベル + 値)
-class _InfoRow extends StatelessWidget {
+// Apple iOS Maps-style clean info row
+class _AppleInfoRow extends StatelessWidget {
   final IconData icon;
+  final Color iconColor;
+  final Color iconBgColor;
   final String label;
   final String value;
 
-  const _InfoRow({
+  const _AppleInfoRow({
     required this.icon,
+    required this.iconColor,
+    required this.iconBgColor,
     required this.label,
     required this.value,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 18, color: AppColors.primary),
-        const SizedBox(width: AppSpacing.sm),
-        SizedBox(
-          width: 72,
-          child: Text(label, style: AppTypography.label),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: AppTypography.body.copyWith(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w500,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: iconBgColor,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(icon, color: iconColor, size: 18),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 68,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontFamily: 'HankenGrotesk',
+                fontFamilyFallback: ['NotoSansJP'],
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
-        ),
-      ],
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontFamily: 'HankenGrotesk',
+                fontFamilyFallback: ['NotoSansJP'],
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

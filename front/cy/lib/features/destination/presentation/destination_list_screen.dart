@@ -6,7 +6,6 @@ import '../../../core/network/place_photo.dart';
 import '../../../core/utils/calorie_calculator.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_bottom_navigation.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
@@ -206,26 +205,20 @@ class _DestinationListScreenState
     );
   }
 
-  // タイトルはAppTopBarが表示するので、ここでは説明文+空き時間バッジのみ
+  // タイトルはAppTopBarが表示するので、ここでは検索条件の要約バッジのみ
   Widget _buildSubHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        const Text('条件に合った目的地を選びましょう。', style: AppTypography.pageSubtitle),
-
-        const SizedBox(height: AppSpacing.lg),
-
         Container(
           padding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 9,
+            horizontal: 12,
+            vertical: 7,
           ),
           decoration: BoxDecoration(
             color: AppColors.accentBg,
-            borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+            borderRadius: BorderRadius.circular(9999),
             border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.18),
-              width: 1,
+              color: AppColors.primary.withValues(alpha: 0.15),
             ),
           ),
           child: Row(
@@ -233,28 +226,58 @@ class _DestinationListScreenState
             children: [
               const Icon(
                 Icons.schedule_rounded,
-                size: 18,
+                size: 16,
                 color: AppColors.primary,
               ),
-
-              const SizedBox(width: AppSpacing.sm),
-
-              const Text('空き時間', style: AppTypography.label),
-
-              const SizedBox(width: AppSpacing.sm),
-
-              Text(_freeTimeText(), style: AppTypography.stat),
+              const SizedBox(width: 6),
+              Text(
+                _freeTimeText(),
+                style: const TextStyle(
+                  fontFamily: 'JetBrainsMono',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: AppColors.primary,
+                ),
+              ),
             ],
           ),
         ),
         if (widget.tripMode == 'round_trip') ...[
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            '往復・滞在${widget.stayMinutes}分',
-            style: AppTypography.label.copyWith(
-              fontFamily: 'HankenGrotesk',
-              fontWeight: FontWeight.w600,
-              color: AppColors.primary,
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 7,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(9999),
+              border: Border.all(
+                color: AppColors.border.withValues(alpha: 0.6),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.sync_alt_rounded,
+                  size: 14,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  widget.stayMinutes == 0
+                      ? '往復'
+                      : '往復 (滞在${widget.stayMinutes}分)',
+                  style: const TextStyle(
+                    fontFamily: 'HankenGrotesk',
+                    fontFamilyFallback: ['NotoSansJP'],
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -512,171 +535,152 @@ class _DestinationCard extends StatelessWidget {
     final String name =
         destination['name']?.toString() ?? '名称不明';
 
-    return AppCard(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: AppColors.accentBg,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppColors.border.withValues(alpha: 0.35),
-              ),
-            ),
-            child: _buildThumbnail(),
-          ),
-
-          const SizedBox(width: 14),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.cardTitle,
+    return TapScale(
+      onTap: () => _openDetail(context),
+      child: AppCard(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        borderRadius: 20,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: AppColors.accentBg,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppColors.border.withValues(alpha: 0.35),
                 ),
+              ),
+              child: _buildThumbnail(),
+            ),
 
-                const SizedBox(height: 10),
+            const SizedBox(width: 14),
 
-                Row(
-                  children: [
-                    Flexible(
-                      child: Container(
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'HankenGrotesk',
+                      fontFamilyFallback: ['NotoSansJP'],
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  Row(
+                    children: [
+                      Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
+                          horizontal: 8,
+                          vertical: 4,
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.accentBg,
-                          borderRadius: BorderRadius.circular(
-                            AppSpacing.radiusPill,
-                          ),
-                          border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.15),
-                          ),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(
                               Icons.directions_bike_rounded,
-                              size: 15,
+                              size: 14,
                               color: AppColors.primary,
                             ),
-
-                            const SizedBox(width: 5),
-
-                            Flexible(
-                              child: Text(
-                                durationText,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppTypography.stat.copyWith(
-                                  fontSize: 11,
-                                ),
+                            const SizedBox(width: 4),
+                            Text(
+                              durationText,
+                              style: const TextStyle(
+                                fontFamily: 'JetBrainsMono',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 11,
+                                color: AppColors.primary,
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ),
-
-                    const SizedBox(width: 8),
-
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          _openDetail(context);
-                        },
-                        borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusPill,
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
                         ),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 6,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '詳細を見る',
-                                style: TextStyle(
-                                  fontFamily: 'HankenGrotesk',
-                                  fontFamilyFallback: [
-                                    'NotoSansJP',
-                                  ],
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12,
-                                  color: AppColors.primary,
-                                ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE86A33).withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.local_fire_department_rounded,
+                              size: 14,
+                              color: Color(0xFFE86A33),
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              calorieText,
+                              style: const TextStyle(
+                                fontFamily: 'JetBrainsMono',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 11,
+                                color: Color(0xFFE86A33),
                               ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
 
-                              SizedBox(width: 2),
+                  const SizedBox(height: 6),
 
-                              Icon(
-                                Icons.arrow_forward_ios_rounded,
-                                size: 12,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      GestureDetector(
+                        onTap: () => _openDetail(context),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '詳細を見る',
+                              style: TextStyle(
+                                fontFamily: 'HankenGrotesk',
+                                fontFamilyFallback: ['NotoSansJP'],
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
                                 color: AppColors.primary,
                               ),
-                            ],
-                          ),
+                            ),
+                            SizedBox(width: 2),
+                            Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 11,
+                              color: AppColors.primary,
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 6),
-
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.local_fire_department_rounded,
-                      size: 15,
-                      color: Color(0xFFE86A33),
-                    ),
-
-                    const SizedBox(width: 4),
-
-                    const Text(
-                      '推定消費',
-                      style: TextStyle(
-                        fontFamily: 'HankenGrotesk',
-                        fontFamilyFallback: ['NotoSansJP'],
-                        fontWeight: FontWeight.w500,
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-
-                    const SizedBox(width: 6),
-
-                    Text(
-                      calorieText,
-                      style: const TextStyle(
-                        fontFamily: 'JetBrainsMono',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                        color: Color(0xFFE86A33),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

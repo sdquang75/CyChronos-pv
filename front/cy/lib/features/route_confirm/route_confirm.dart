@@ -12,7 +12,6 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../core/network/place_photo.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
-import '../../core/theme/app_typography.dart';
 import '../../core/widgets/app_bottom_navigation.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_toast.dart';
@@ -1251,18 +1250,18 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     );
   }
 
-  /// 通常時の下部バー: 目的地情報+距離・時間+ボタン(Googleマップの検索結果バー風)
+  /// 通常時の下部バー: 目的地情報+距離・時間+ボタン(Apple Maps風ボトムシート)
   Widget _buildInfoPanel() {
     return Container(
       key: const ValueKey('info-panel'), // AnimatedSwitcherが切り替えを認識するための目印
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 26),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 16,
+            color: Colors.black.withValues(alpha: 0.14),
+            blurRadius: 20,
             offset: const Offset(0, -4),
           ),
         ],
@@ -1271,58 +1270,92 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Apple Home Indicatorバー
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 14),
+              decoration: BoxDecoration(
+                color: AppColors.border.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
           // 目的地の名前(復路プレビュー中は「出発地点へ戻る」に差し替える)
           Text(
             _isReturnRoute ? '出発地点へ戻る' : _name,
             maxLines: 1, // 長い名前は1行に収めて…で省略する
             overflow: TextOverflow.ellipsis,
-            style: AppTypography.cardTitle.copyWith(fontSize: 22),
+            style: const TextStyle(
+              fontFamily: 'HankenGrotesk',
+              fontFamilyFallback: ['NotoSansJP'],
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primary,
+              letterSpacing: -0.5,
+            ),
           ),
           // 住所(あるときだけ。復路は出発地点なので住所表示はしない)
-          if (!_isReturnRoute && _address.isNotEmpty)
+          if (!_isReturnRoute && _address.isNotEmpty) ...[
+            const SizedBox(height: 2),
             Text(
               _address,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTypography.body.copyWith(
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontFamilyFallback: ['NotoSansJP'],
+                fontSize: 13,
                 color: AppColors.textSecondary,
               ),
             ),
-          const SizedBox(height: AppSpacing.sm),
+          ],
+          const SizedBox(height: 12),
 
-          // 距離と所要時間を1行で
-          Row(
-            children: [
-              const Icon(
-                Icons.directions_bike,
-                size: 18,
-                color: AppColors.primary,
+          // 距離と所要時間をApple Maps風のバッジに美しくまとめる
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.accentBg,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.12),
               ),
-              const SizedBox(width: 6),
-              Text(
-                '${_distanceText()} ・ ${_durationText()}',
-                style: AppTypography.stat.copyWith(
-                  fontSize: 16,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.directions_bike_rounded,
+                  size: 18,
                   color: AppColors.primary,
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                Text(
+                  '${_distanceText()} ・ ${_durationText()}',
+                  style: const TextStyle(
+                    fontFamily: 'JetBrainsMono',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: 18),
 
-          // ボタン: 左=ルートを変更(戻る) / 右=案内開始
+          // ボタン: 左=戻る / 右=案内開始
           Row(
             children: [
               Expanded(
                 child: AppButton(
                   label: '戻る',
                   variant: AppButtonVariant.secondary,
-                  height: 50,
-                  borderRadius: AppSpacing.radiusInput,
+                  height: 52,
+                  borderRadius: 18,
                   onPressed: () {
-                    // 詳細画面に戻って選び直せるようにする
-                    // (RideFlowの入れ子Navigatorでpushされてきた画面なので、
-                    // go_routerではなく素のNavigatorでpopする)
                     final navigator = Navigator.of(context);
                     if (navigator.canPop()) {
                       navigator.pop();
@@ -1330,12 +1363,14 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                   },
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: 12),
               Expanded(
+                flex: 2,
                 child: AppButton(
                   label: _isReturnRoute ? '帰りの案内を開始' : '案内開始',
-                  height: 50,
-                  borderRadius: AppSpacing.radiusInput,
+                  icon: Icons.navigation_rounded,
+                  height: 52,
+                  borderRadius: 18,
                   onPressed: _busy ? null : _startNavigation,
                 ),
               ),
@@ -1350,36 +1385,52 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   Widget _buildOutboundNavigationButtons() {
     return Container(
       key: const ValueKey('outbound-navigation-buttons'),
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 26),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 16,
+            color: Colors.black.withValues(alpha: 0.14),
+            blurRadius: 20,
             offset: const Offset(0, -4),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: _buildDangerOutlineButton(
-              label: '案内を終了',
-              onPressed: _busy ? null : _endNavigation,
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 14),
+              decoration: BoxDecoration(
+                color: AppColors.border.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            flex: 2,
-            child: AppButton(
-              label: '到着・滞在を開始',
-              icon: Icons.flag_rounded,
-              height: 50,
-              borderRadius: AppSpacing.radiusInput,
-              onPressed: _busy ? null : _beginStay,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: _buildDangerOutlineButton(
+                  label: '案内を終了',
+                  onPressed: _busy ? null : _endNavigation,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: AppButton(
+                  label: '到着・滞在を開始',
+                  icon: Icons.flag_rounded,
+                  height: 52,
+                  borderRadius: 18,
+                  onPressed: _busy ? null : _beginStay,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1390,14 +1441,14 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   Widget _buildStayPanel() {
     return Container(
       key: const ValueKey('stay-panel'),
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 26),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 16,
+            color: Colors.black.withValues(alpha: 0.14),
+            blurRadius: 20,
             offset: const Offset(0, -4),
           ),
         ],
@@ -1406,15 +1457,41 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('滞在中', style: AppTypography.cardTitle.copyWith(fontSize: 22)),
-          const SizedBox(height: AppSpacing.sm),
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 14),
+              decoration: BoxDecoration(
+                color: AppColors.border.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const Text(
+            '滞在中',
+            style: TextStyle(
+              fontFamily: 'HankenGrotesk',
+              fontFamilyFallback: ['NotoSansJP'],
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 4),
           Text(
             _plannedStayMinutes == 0
                 ? '案内を停止しています。まもなく帰りのルートを表示します。'
                 : '案内を停止しています。$_plannedStayMinutes分後に帰りのルートを表示します。',
-            style: AppTypography.body.copyWith(color: AppColors.textSecondary),
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontFamilyFallback: ['NotoSansJP'],
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              height: 1.4,
+            ),
           ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: 18),
           Row(
             children: [
               Expanded(
@@ -1423,12 +1500,12 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                   onPressed: _busy ? null : _endNavigation,
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: 12),
               Expanded(
                 child: AppButton(
                   label: '今すぐ折り返す',
-                  height: 50,
-                  borderRadius: AppSpacing.radiusInput,
+                  height: 52,
+                  borderRadius: 18,
                   onPressed: _busy ? null : _prepareReturnRoute,
                 ),
               ),
@@ -1448,13 +1525,13 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     return OutlinedButton(
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
-        minimumSize: const Size(0, 50),
+        minimumSize: const Size(0, 52),
         side: const BorderSide(color: AppColors.danger, width: 1.5),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
+          borderRadius: BorderRadius.circular(18),
         ),
       ),
-      child: Text(label, style: const TextStyle(fontSize: 15, color: AppColors.danger)),
+      child: Text(label, style: const TextStyle(fontSize: 15, color: AppColors.danger, fontWeight: FontWeight.w700)),
     );
   }
 
