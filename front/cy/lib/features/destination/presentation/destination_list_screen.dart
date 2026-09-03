@@ -114,74 +114,92 @@ class _DestinationListScreenState
   Widget build(BuildContext context) {
     // AppScreenFrame・下部メニューバーはHomeScreen(IndexedStackシェル)側で
     // 一括して描画されるので、ここでは自分の中身だけを組み立てる
+    final navBarHeight = AppBottomNavigation.barHeightFor(context);
+
     return Scaffold(
       backgroundColor: AppColors.bgCool,
       body: SafeArea(
         bottom: false,
-        child: Padding(
-          padding: EdgeInsets.only(
-            bottom: AppBottomNavigation.barHeightFor(context),
-          ),
-          child: Column(
-            children: [
-              const AppTopBar(title: 'おすすめスポット'),
-
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.xxl,
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                const AppTopBar(title: 'おすすめスポット'),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.xxl,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: AppSpacing.lg),
+                        _buildSubHeader(),
+                        const SizedBox(height: AppSpacing.xl),
+                        Expanded(child: _buildBody()),
+                      ],
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: AppSpacing.lg),
-                      _buildSubHeader(),
-                      const SizedBox(height: AppSpacing.xl),
-                      Expanded(child: _buildBody()),
-                    ],
+                ),
+              ],
+            ),
+
+            // Gradient Backdrop for Floating Action Buttons
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: navBarHeight + 96,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppColors.bgCool.withValues(alpha: 0.0),
+                        AppColors.bgCool.withValues(alpha: 0.85),
+                        AppColors.bgCool,
+                      ],
+                      stops: const [0.0, 0.45, 1.0],
+                    ),
                   ),
                 ),
               ),
+            ),
 
-              const SizedBox(height: AppSpacing.lg),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.xxl,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: AppButton(
-                        label: '情報変更',
-                        icon: Icons.tune_rounded,
-                        variant: AppButtonVariant.secondary,
-                        onPressed: _goBackToHome,
-                      ),
+            // Floating Action Buttons (情報変更 & 再提案)
+            Positioned(
+              left: AppSpacing.xxl,
+              right: AppSpacing.xxl,
+              bottom: navBarHeight + 14,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: AppButton(
+                      label: '情報変更',
+                      icon: Icons.tune_rounded,
+                      variant: AppButtonVariant.secondary,
+                      onPressed: _goBackToHome,
                     ),
-
-                    const SizedBox(width: AppSpacing.md),
-
-                    Expanded(
-                      child: AppButton(
-                        label: _isLoading ? '検索中...' : '再提案',
-                        icon:
-                            _isLoading
-                                ? Icons.hourglass_top_rounded
-                                : Icons.refresh_rounded,
-                        onPressed: () {
-                          if (_isLoading) return;
-                          _retry();
-                        },
-                      ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: AppButton(
+                      label: _isLoading ? '検索中...' : '再提案',
+                      icon: _isLoading
+                          ? Icons.hourglass_top_rounded
+                          : Icons.refresh_rounded,
+                      onPressed: () {
+                        if (_isLoading) return;
+                        _retry();
+                      },
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-
-              const SizedBox(height: AppSpacing.lg),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -301,9 +319,9 @@ class _DestinationListScreenState
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.only(
+      padding: EdgeInsets.only(
         top: 4,
-        bottom: 8,
+        bottom: AppBottomNavigation.barHeightFor(context) + 76,
       ),
       physics: const BouncingScrollPhysics(),
       itemCount: _places.length,
@@ -634,9 +652,12 @@ class _SearchingIndicatorState extends State<_SearchingIndicator>
         return Opacity(
           opacity: _opacity.value,
           child: ListView.builder(
-            physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.only(top: 4, bottom: 8),
-            itemCount: 3,
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.only(
+              top: 4,
+              bottom: AppBottomNavigation.barHeightFor(context) + 76,
+            ),
+            itemCount: 6,
             itemBuilder: (context, index) => const _DestinationCardSkeleton(),
           ),
         );
