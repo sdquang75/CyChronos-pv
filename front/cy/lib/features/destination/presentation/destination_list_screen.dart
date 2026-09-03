@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/place_photo.dart';
+import '../../../core/utils/calorie_calculator.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
@@ -434,6 +435,31 @@ class _DestinationCard extends StatelessWidget {
             ? '往復 約${_formatMinutes(durationMinutes)}'
             : '約${_formatMinutes(durationMinutes)}';
 
+    // カロリー計算に使用する距離(m)と所要時間(秒)
+    // 往復モードの場合は、行き＋帰りの距離・走行時間を使用する
+    final dynamic rawDistanceM = _isRoundTrip
+        ? destination['roundTripDistanceM']
+        : destination['distanceM'];
+    final dynamic rawDurationSec = _isRoundTrip
+        ? destination['roundTripDurationSec']
+        : destination['durationSec'];
+
+    final double? distanceM = rawDistanceM is num
+        ? rawDistanceM.toDouble()
+        : double.tryParse(rawDistanceM?.toString() ?? '');
+    final double? durationSec = rawDurationSec is num
+        ? rawDurationSec.toDouble()
+        : double.tryParse(rawDurationSec?.toString() ?? '');
+
+    final int? calories = distanceM != null && durationSec != null
+        ? CalorieCalculator.calculate(
+            distanceM: distanceM,
+            durationSec: durationSec,
+          )
+        : null;
+
+    final String calorieText = calories != null ? '約$calories kcal' : '-- kcal';
+
     // カード全体をタップして詳細画面へ移動できる(押下時に軽く縮小+触覚フィードバック)
     return TapScale(
       onTap: () {
@@ -442,6 +468,7 @@ class _DestinationCard extends StatelessWidget {
       child: _buildCard(
         context,
         durationText,
+        calorieText,
       ),
     );
   }
@@ -480,6 +507,7 @@ class _DestinationCard extends StatelessWidget {
   Widget _buildCard(
     BuildContext context,
     String durationText,
+    String calorieText,
   ) {
     final String name =
         destination['name']?.toString() ?? '名称不明';
@@ -604,6 +632,43 @@ class _DestinationCard extends StatelessWidget {
                             ],
                           ),
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 6),
+
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.local_fire_department_rounded,
+                      size: 15,
+                      color: Color(0xFFE86A33),
+                    ),
+
+                    const SizedBox(width: 4),
+
+                    const Text(
+                      '推定消費',
+                      style: TextStyle(
+                        fontFamily: 'HankenGrotesk',
+                        fontFamilyFallback: ['NotoSansJP'],
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+
+                    const SizedBox(width: 6),
+
+                    Text(
+                      calorieText,
+                      style: const TextStyle(
+                        fontFamily: 'JetBrainsMono',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        color: Color(0xFFE86A33),
                       ),
                     ),
                   ],

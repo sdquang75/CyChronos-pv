@@ -1,5 +1,6 @@
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform, debugPrint;
 
@@ -18,7 +19,32 @@ class ApiClient {
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
     ),
-  );
+  )..interceptors.add(InterceptorsWrapper(onRequest: _attachIdToken));
+
+  /// バックエンドの走行データ系API(/api/trips, /api/locations)は
+  /// Firebase の IDトークンで本人確認する。毎回ヘッダーを書くのを避けるため、
+  /// ログイン中ならここで自動的に付ける。
+  ///
+  /// 認証API(/api/auth/*)は呼び出し側が明示的にヘッダーを指定するので、
+  /// 既に Authorization がある場合は上書きしない。
+  static Future<void> _attachIdToken(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
+    if (!options.headers.containsKey('Authorization')) {
+      try {
+        // getIdToken() は期限が近いと自動で更新してくれる
+        final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+        if (token != null) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+      } catch (error) {
+        // トークンが取れなくてもリクエスト自体は投げる(サーバー側で401になる)
+        debugPrint('ApiClient: IDトークンを取得できませんでした: $error');
+      }
+    }
+    handler.next(options);
+  }
 
   /// 実機/エミュレータの判定前に使う暫定URL(init() 完了後に確定する)。
   static String get _fallbackBaseUrl {

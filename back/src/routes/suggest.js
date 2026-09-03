@@ -44,13 +44,15 @@ router.get("/", async (req, res) => {
     ? Math.max(1, Math.floor((minutes - stayMinutes) / 2))
     : minutes;
 
-  // user_id は省略可。指定があれば訪問済みスポットを提案から除外する(trips系と同じくクエリで受ける)
-  let userId = null;
-  if (req.query.user_id !== undefined) {
-    userId = Number(req.query.user_id);
-    if (!Number.isInteger(userId) || userId <= 0) {
+  // ログイン済みなら訪問済みスポットを提案から除外する。
+  // トークン認証(req.appUser.user_id)を最優先とし、未認証テスト互換用にクエリの user_id も許容
+  let userId = req.appUser?.user_id ?? null;
+  if (userId === null && req.query.user_id !== undefined) {
+    const parsed = Number(req.query.user_id);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
       return res.status(400).json({ error: "user_id は正の整数で指定してください" });
     }
+    userId = parsed;
   }
 
   // ここから先でやりたいこと:
