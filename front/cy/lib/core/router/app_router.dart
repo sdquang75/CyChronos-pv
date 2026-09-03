@@ -8,6 +8,7 @@ import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/destination/presentation/destination_list_screen.dart';
 import '../../features/detil/detil.dart';
+import '../../features/history/presentation/history_detail_screen.dart';
 import '../../features/history/presentation/history_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/route_confirm/route_confirm.dart';
@@ -74,6 +75,27 @@ final routerProvider = Provider<GoRouter>((ref) {
               key: state.pageKey,
               child: const HistoryScreen(),
             ),
+      ),
+
+      // 走行履歴の詳細画面(走行軌跡を地図に描く)
+      GoRoute(
+        path: '/history/:tripId',
+        pageBuilder: (context, state) {
+          final tripId = int.tryParse(state.pathParameters['tripId'] ?? '');
+
+          // 不正なIDで直接開かれたときは一覧を出しておく
+          if (tripId == null) {
+            return NoTransitionPage(
+              key: state.pageKey,
+              child: const HistoryScreen(),
+            );
+          }
+
+          return NoTransitionPage(
+            key: state.pageKey,
+            child: HistoryDetailScreen(tripId: tripId),
+          );
+        },
       ),
 
       // 設定画面

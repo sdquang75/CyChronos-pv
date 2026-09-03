@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/widgets/app_bottom_navigation.dart';
 import '../../../core/widgets/app_screen_frame.dart';
@@ -199,7 +200,17 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         ),
         itemCount: _trips.length,
         itemBuilder: (context, index) {
-          return _TripCard(trip: _trips[index]);
+          final trip = _trips[index];
+          final tripId = trip['trip_id'];
+
+          return _TripCard(
+            trip: trip,
+            // trip_id が取れるものだけ詳細へ飛べるようにする(取れなければタップ不可)
+            onTap:
+                tripId is num
+                    ? () => context.push('/history/${tripId.toInt()}')
+                    : null,
+          );
         },
       ),
     );
@@ -209,8 +220,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 /// トリップ1件分のカード(GET /api/trips の1要素を表示する)
 class _TripCard extends StatelessWidget {
   final Map<String, dynamic> trip;
+  final VoidCallback? onTap; // 走行軌跡の詳細画面へ移動する
 
-  const _TripCard({required this.trip});
+  const _TripCard({required this.trip, this.onTap});
 
   // 目的地名。未設定(空文字)のトリップは「目的地未設定」と表示する
   String _titleText() {
@@ -259,66 +271,77 @@ class _TripCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFFC9C4D5).withValues(alpha: 0.35),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2E0094).withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: const Color(0xFFC9C4D5).withValues(alpha: 0.35),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  _titleText(),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontFamily: 'HankenGrotesk',
-                    fontFamilyFallback: ['NotoSansJP'],
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: Color(0xFF19005C),
-                    height: 1.3,
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF2E0094).withValues(alpha: 0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    _titleText(),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'HankenGrotesk',
+                      fontFamilyFallback: ['NotoSansJP'],
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      color: Color(0xFF19005C),
+                      height: 1.3,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                _dateText(),
-                style: TextStyle(
-                  fontFamily: 'JetBrainsMono',
-                  fontSize: 12,
-                  color: const Color(0xFF484553).withValues(alpha: 0.6),
+                const SizedBox(width: 12),
+                Text(
+                  _dateText(),
+                  style: TextStyle(
+                    fontFamily: 'JetBrainsMono',
+                    fontSize: 12,
+                    color: const Color(0xFF484553).withValues(alpha: 0.6),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildStat('距離', _distanceText()),
-              _buildStat('時間', _durationText()),
-              _buildStat('平均速度', _speedText()),
-            ],
-          ),
-        ],
+                // タップで詳細に入れることを示す
+                if (onTap != null)
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: const Color(0xFF484553).withValues(alpha: 0.45),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildStat('距離', _distanceText()),
+                _buildStat('時間', _durationText()),
+                _buildStat('平均速度', _speedText()),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
