@@ -31,8 +31,9 @@ class _FakeAuthNotifier extends StateNotifier<AuthState>
 }
 
 void main() {
-  testWidgets('一覧の「詳細を見る」を押すと、そのスポットのデータが詳細画面に表示される',
-      (WidgetTester tester) async {
+  testWidgets('一覧の「詳細を見る」を押すと、そのスポットのデータが詳細画面に表示される', (
+    WidgetTester tester,
+  ) async {
     // スマホサイズの画面にする(大画面だとPC用フレーム表示に切り替わるため)
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
@@ -48,8 +49,12 @@ void main() {
         return null;
       },
     );
-    addTearDown(() => tester.binding.defaultBinaryMessenger
-        .setMockMethodCallHandler(geolocatorChannel, null));
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        geolocatorChannel,
+        null,
+      ),
+    );
 
     // /api/suggest が返す places 1件分と同じ形のテストデータ
     final place = <String, dynamic>{
@@ -62,15 +67,14 @@ void main() {
       'genre': 'cafe',
       'durationSec': 1800,
       'durationMinutes': 30,
+      'totalDurationMinutes': 75,
       'distanceM': 8800,
       'distanceKm': 8.8,
     };
 
     // 認証だけ偽物に差し替えて、本物のルーターでアプリを組み立てる
     final container = ProviderContainer(
-      overrides: [
-        authProvider.overrideWith((ref) => _FakeAuthNotifier()),
-      ],
+      overrides: [authProvider.overrideWith((ref) => _FakeAuthNotifier())],
     );
     addTearDown(container.dispose);
 
@@ -84,10 +88,15 @@ void main() {
     );
 
     // スプラッシュを飛ばして一覧画面へ(ホーム画面が検索後にやるのと同じ渡し方)
-    router.go('/destination', extra: {
-      'places': [place],
-      'minutes': 90, // ホームで入力した空き時間(1時間30分)
-    });
+    router.go(
+      '/destination',
+      extra: {
+        'places': [place],
+        'minutes': 90, // ホームで入力した空き時間(1時間30分)
+        'tripMode': 'round_trip',
+        'stayMinutes': 15,
+      },
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 700)); // 画面切り替え待ち
 
@@ -96,7 +105,8 @@ void main() {
 
     // 一覧にスポット名・所要時間・空き時間が出ている
     expect(find.text('テストカフェ'), findsOneWidget);
-    expect(find.text('約30分'), findsOneWidget);
+    expect(find.text('約75分'), findsOneWidget);
+    expect(find.text('往復 約75分'), findsNothing);
     expect(find.text('1時間30分'), findsOneWidget); // 渡した空き時間がヘッダーに出る
 
     // 「詳細を見る」を押して詳細画面へ

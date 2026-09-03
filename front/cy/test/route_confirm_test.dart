@@ -90,13 +90,22 @@ class _FakeNavigationAnnouncer implements NavigationAnnouncer {
 // テスト用の偽リポジトリ。決め打ちのルートを返すか、わざと失敗させる
 class _FakeRouteRepository implements RouteRepository {
   final bool shouldFail; // trueならルート取得を失敗させる
+  final Set<int> failingRouteFetches;
+  final Map<int, Completer<CyclingRoute>> controlledRouteFetches;
+  int endTripFailuresRemaining;
   int? startedUserId; // startTrip が呼ばれたときの記録
   String? startedPlaceId;
   int? endedTripId; // endTrip が呼ばれたときの記録
+  int endTripCallCount = 0;
   int routeFetchCount = 0;
   final routeRequests = <Map<String, double>>[];
 
-  _FakeRouteRepository({this.shouldFail = false});
+  _FakeRouteRepository({
+    this.shouldFail = false,
+    this.failingRouteFetches = const <int>{},
+    this.controlledRouteFetches = const <int, Completer<CyclingRoute>>{},
+    this.endTripFailuresRemaining = 0,
+  });
 
   static const route = CyclingRoute(
     distanceM: 8500,
@@ -151,7 +160,11 @@ class _FakeRouteRepository implements RouteRepository {
       'toLat': toLat,
       'toLng': toLng,
     });
-    if (shouldFail) throw Exception('テスト用の失敗');
+    if (shouldFail || failingRouteFetches.contains(routeFetchCount)) {
+      throw Exception('テスト用の失敗');
+    }
+    final controlledFetch = controlledRouteFetches[routeFetchCount];
+    if (controlledFetch != null) return controlledFetch.future;
     return route;
   }
 
@@ -168,6 +181,11 @@ class _FakeRouteRepository implements RouteRepository {
 
   @override
   Future<void> endTrip({required int userId, required int tripId}) async {
+    endTripCallCount++;
+    if (endTripFailuresRemaining > 0) {
+      endTripFailuresRemaining--;
+      throw Exception('テスト用の走行記録終了失敗');
+    }
     endedTripId = tripId;
   }
 }
@@ -208,21 +226,31 @@ Widget _wrap({
   Map<String, dynamic>? destination,
   LocationService? locationService,
   _FakeNavigationAnnouncer? announcer,
+  bool withPreviousScreen = false,
 }) {
+  RouteConfirmScreen routeScreen() => RouteConfirmScreen(
+    destination: destination ?? _destination,
+    locationService: locationService ?? _FakeLocationService(),
+    repository: repository,
+    announcer: announcer ?? _FakeNavigationAnnouncer(),
+    useMapTiles: false, // テストでは地図タイルの通信ができないので簡易描画にする
+    keepScreenAwake: false,
+  );
+
   return ProviderScope(
     overrides: [
       authProvider.overrideWith((ref) => _FakeAuthNotifier(authState)),
     ],
-    child: MaterialApp(
-      home: RouteConfirmScreen(
-        destination: destination ?? _destination,
-        locationService: locationService ?? _FakeLocationService(),
-        repository: repository,
-        announcer: announcer ?? _FakeNavigationAnnouncer(),
-        useMapTiles: false, // テストでは地図タイルの通信ができないので簡易描画にする
-        keepScreenAwake: false,
-      ),
-    ),
+    child:
+        withPreviousScreen
+            ? MaterialApp(
+              initialRoute: '/route-confirm',
+              routes: {
+                '/': (_) => const Scaffold(body: Text('前の画面')),
+                '/route-confirm': (_) => routeScreen(),
+              },
+            )
+            : MaterialApp(home: routeScreen()),
   );
 }
 
@@ -448,6 +476,129 @@ void main() {
     expect(repository.endedTripId, 42);
   });
 
+  testWidgets('到着時の記録保存に失敗したら完了画面で再試行できる', (WidgetTester tester) async {
+    final positions = StreamController<Position>.broadcast(sync: true);
+    addTearDown(positions.close);
+    final repository = _FakeRouteRepository(endTripFailuresRemaining: 2);
+
+    await tester.pumpWidget(
+      _wrap(
+        authState: const AuthAuthenticated(
+          user: AuthUser(
+            userId: 7,
+            uid: 'u1',
+            name: 'テスト',
+            email: 't@example.com',
+          ),
+        ),
+        repository: repository,
+        locationService: _FakeLocationService(positions: positions.stream),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('案内開始'));
+    await tester.pumpAndSettle();
+
+    positions.add(_position(latitude: 35.7000, longitude: 139.7800));
+    await tester.pumpAndSettle();
+
+    expect(find.text('記録保存を再試行'), findsOneWidget);
+    expect(repository.endTripCallCount, 1);
+
+    await tester.tap(find.text('記録保存を再試行'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('目的地に到着しました'), findsOneWidget);
+    expect(find.text('記録保存を再試行'), findsOneWidget);
+    expect(repository.endTripCallCount, 2);
+  });
+
+  testWidgets('案内中の戻る操作は警告し、確認後に記録を終了して前画面へ戻る', (WidgetTester tester) async {
+    final repository = _FakeRouteRepository();
+
+    await tester.pumpWidget(
+      _wrap(
+        authState: const AuthAuthenticated(
+          user: AuthUser(
+            userId: 7,
+            uid: 'u1',
+            name: 'テスト',
+            email: 't@example.com',
+          ),
+        ),
+        repository: repository,
+        withPreviousScreen: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('案内開始'));
+    await tester.pumpAndSettle();
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('案内を終了しますか？'), findsOneWidget);
+    final exitButton = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, '終了して戻る'),
+    );
+    expect(
+      exitButton.style?.foregroundColor?.resolve(<WidgetState>{}),
+      Colors.white,
+    );
+
+    await tester.tap(find.text('キャンセル'));
+    await tester.pumpAndSettle();
+    expect(find.text('案内を終了'), findsOneWidget);
+    expect(repository.endedTripId, isNull);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('終了して戻る'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('前の画面'), findsOneWidget);
+    expect(repository.endedTripId, 42);
+  });
+
+  testWidgets('戻る時に記録終了へ失敗したら画面を維持し、再試行後に戻る', (WidgetTester tester) async {
+    final repository = _FakeRouteRepository(endTripFailuresRemaining: 1);
+
+    await tester.pumpWidget(
+      _wrap(
+        authState: const AuthAuthenticated(
+          user: AuthUser(
+            userId: 7,
+            uid: 'u1',
+            name: 'テスト',
+            email: 't@example.com',
+          ),
+        ),
+        repository: repository,
+        withPreviousScreen: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('案内開始'));
+    await tester.pumpAndSettle();
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('終了して戻る'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('前の画面'), findsNothing);
+    expect(find.textContaining('画面を移動しませんでした'), findsOneWidget);
+    expect(repository.endTripCallCount, 1);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('終了して戻る'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('前の画面'), findsOneWidget);
+    expect(repository.endTripCallCount, 2);
+    expect(repository.endedTripId, 42);
+  });
+
   testWidgets('精度のよい位置で3回連続してルートを外れると再検索する', (WidgetTester tester) async {
     final positions = StreamController<Position>.broadcast(sync: true);
     addTearDown(positions.close);
@@ -520,5 +671,78 @@ void main() {
     );
     expect(repository.routeRequests.last['toLat'], actualStart.latitude);
     expect(repository.routeRequests.last['toLng'], actualStart.longitude);
+  });
+
+  testWidgets('案内開始時の再取得に失敗しても往復の帰着地点は実際の開始地点になる', (WidgetTester tester) async {
+    final repository = _FakeRouteRepository(failingRouteFetches: const {2});
+    final previewPosition = _position();
+    final actualStart = _position(latitude: 35.6825, longitude: 139.7688);
+    final destinationPosition = _position(
+      latitude: 35.7000,
+      longitude: 139.7800,
+    );
+    final locationService = _FakeLocationService(
+      currentPositions: [previewPosition, actualStart, destinationPosition],
+    );
+    final roundTripDestination = <String, dynamic>{
+      ..._destination,
+      'tripMode': 'round_trip',
+      'plannedStayMinutes': 15,
+    };
+
+    await tester.pumpWidget(
+      _wrap(
+        authState: const AuthUnauthenticated(),
+        repository: repository,
+        destination: roundTripDestination,
+        locationService: locationService,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('案内開始'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('到着・滞在を開始'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('今すぐ折り返す'));
+    await tester.pumpAndSettle();
+
+    expect(repository.routeFetchCount, 3);
+    expect(repository.routeRequests.last['toLat'], actualStart.latitude);
+    expect(repository.routeRequests.last['toLng'], actualStart.longitude);
+  });
+
+  testWidgets('再検索中に到着しても完了画面へ再検索中の表示を残さない', (WidgetTester tester) async {
+    final positions = StreamController<Position>.broadcast(sync: true);
+    addTearDown(positions.close);
+    final rerouteResult = Completer<CyclingRoute>();
+    final repository = _FakeRouteRepository(
+      controlledRouteFetches: {2: rerouteResult},
+    );
+
+    await tester.pumpWidget(
+      _wrap(
+        authState: const AuthUnauthenticated(),
+        repository: repository,
+        locationService: _FakeLocationService(positions: positions.stream),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('案内開始'));
+    await tester.pumpAndSettle();
+
+    positions.add(_position(latitude: 35.6900, longitude: 139.8000));
+    positions.add(_position(latitude: 35.6901, longitude: 139.8001));
+    positions.add(_position(latitude: 35.6902, longitude: 139.8002));
+    await tester.pump();
+    expect(find.text('ルートを再検索しています…'), findsOneWidget);
+
+    positions.add(_position(latitude: 35.7000, longitude: 139.7800));
+    await tester.pumpAndSettle();
+
+    expect(find.text('目的地に到着しました'), findsOneWidget);
+    expect(find.text('ルートを再検索しています…'), findsNothing);
+
+    rerouteResult.complete(_FakeRouteRepository.route);
+    await tester.pump();
   });
 }

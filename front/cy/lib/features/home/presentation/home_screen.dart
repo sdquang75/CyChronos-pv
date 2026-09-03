@@ -90,9 +90,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     String? message;
     switch (state) {
       case RecommendationLocating():
-        message = '現在地を取得しています...';
+        ScaffoldMessenger.of(context).clearSnackBars();
+        message = null;
       case RecommendationLoading():
-        message = 'おすすめスポットを検索しています...';
+        message = null;
       case RecommendationLoaded(data: final data):
         final places = data['places'] as List<dynamic>? ?? [];
         // 検索に使った空き時間(分)も一覧画面に渡す(一覧ヘッダーの「空き時間」表示に使う)
@@ -106,7 +107,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             'stayMinutes': _submittedStayMinutes,
           },
         );
-        message = 'おすすめスポットを取得しました。';
+        message = null;
       case RecommendationLocationServiceDisabled():
         message = '位置情報サービスが無効です。端末の設定をご確認ください。';
       case RecommendationPermissionDenied():
@@ -114,7 +115,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       case RecommendationPermissionDeniedForever():
         message = '位置情報の利用が拒否されています。設定アプリから許可してください。';
       case RecommendationError(message: final msg):
-        message = 'エラーが発生しました: $msg';
+        message = msg;
       case RecommendationInitial():
         message = null;
     }
@@ -512,72 +513,85 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   // Floating CTA Button
   Widget _buildFloatingCTA() {
+    final recommendationState = ref.watch(recommendationProvider);
+    final isSearching =
+        recommendationState is RecommendationLocating ||
+        recommendationState is RecommendationLoading;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Material(
         color: Colors.transparent,
 
         child: InkWell(
-          onTap: () {
-            final hours = int.tryParse(_hoursController.text) ?? 0;
-            final minutes = int.tryParse(_minutesController.text) ?? 0;
-            final totalMinutes = hours * 60 + minutes;
-            final stayMinutes =
-                _tripMode == 'round_trip'
-                    ? int.tryParse(_stayMinutesController.text) ?? 0
-                    : 0;
-            if (totalMinutes < 1) {
-              ScaffoldMessenger.of(context).clearSnackBars();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text(
-                    '時間を入力してください。',
-                    style: TextStyle(
-                      fontFamily: 'HankenGrotesk',
-                      fontFamilyFallback: ['NotoSansJP'],
-                    ),
-                  ),
-                  backgroundColor: const Color(0xFF2A0088),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              );
-              return;
-            }
-            if (_tripMode == 'round_trip' && totalMinutes - stayMinutes < 2) {
-              ScaffoldMessenger.of(context).clearSnackBars();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('滞在時間を除いて、移動時間を2分以上確保してください。'),
-                  backgroundColor: const Color(0xFF2A0088),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              );
-              return;
-            }
-            _submittedMinutes = totalMinutes;
-            _submittedTripMode = _tripMode;
-            _submittedStayMinutes = stayMinutes;
-            ref
-                .read(recommendationProvider.notifier)
-                .fetchForCurrentLocation(
-                  minutes: totalMinutes,
-                  type: _selectedPlacesType(),
-                  mode: _tripMode,
-                  stayMinutes: stayMinutes,
-                );
-          },
+          onTap:
+              isSearching
+                  ? null
+                  : () {
+                    final hours = int.tryParse(_hoursController.text) ?? 0;
+                    final minutes = int.tryParse(_minutesController.text) ?? 0;
+                    final totalMinutes = hours * 60 + minutes;
+                    final stayMinutes =
+                        _tripMode == 'round_trip'
+                            ? int.tryParse(_stayMinutesController.text) ?? 0
+                            : 0;
+                    if (totalMinutes < 1) {
+                      ScaffoldMessenger.of(context).clearSnackBars();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text(
+                            '時間を入力してください。',
+                            style: TextStyle(
+                              fontFamily: 'HankenGrotesk',
+                              fontFamilyFallback: ['NotoSansJP'],
+                            ),
+                          ),
+                          backgroundColor: const Color(0xFF2A0088),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+                    if (_tripMode == 'round_trip' &&
+                        totalMinutes - stayMinutes < 2) {
+                      ScaffoldMessenger.of(context).clearSnackBars();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('滞在時間を除いて、移動時間を2分以上確保してください。'),
+                          backgroundColor: const Color(0xFF2A0088),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+                    _submittedMinutes = totalMinutes;
+                    _submittedTripMode = _tripMode;
+                    _submittedStayMinutes = stayMinutes;
+                    ref
+                        .read(recommendationProvider.notifier)
+                        .fetchForCurrentLocation(
+                          minutes: totalMinutes,
+                          type: _selectedPlacesType(),
+                          mode: _tripMode,
+                          stayMinutes: stayMinutes,
+                        );
+                  },
           borderRadius: BorderRadius.circular(9999),
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
             height: 64,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: const Color(0xFF19005C),
+              color:
+                  isSearching
+                      ? const Color(0xFF19005C).withValues(alpha: 0.82)
+                      : const Color(0xFF19005C),
               borderRadius: BorderRadius.circular(9999),
               boxShadow: [
                 BoxShadow(
@@ -587,30 +601,61 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ],
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  'ルートを検索',
-                  style: TextStyle(
-                    fontFamily: 'HankenGrotesk',
-                    fontFamilyFallback: ['NotoSansJP'],
-                    fontWeight: FontWeight.w600,
-                    fontSize: 22,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SvgPicture.string(
-                  _kArrowRightSvg,
-                  width: 20,
-                  height: 20,
-                  colorFilter: const ColorFilter.mode(
-                    Colors.white,
-                    BlendMode.srcIn,
-                  ),
-                ),
-              ],
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              child:
+                  isSearching
+                      ? const Row(
+                        key: ValueKey('searching'),
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Text(
+                            '検索中',
+                            style: TextStyle(
+                              fontFamily: 'HankenGrotesk',
+                              fontFamilyFallback: ['NotoSansJP'],
+                              fontWeight: FontWeight.w600,
+                              fontSize: 20,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      )
+                      : Row(
+                        key: const ValueKey('idle'),
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'ルートを検索',
+                            style: TextStyle(
+                              fontFamily: 'HankenGrotesk',
+                              fontFamilyFallback: ['NotoSansJP'],
+                              fontWeight: FontWeight.w600,
+                              fontSize: 22,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          SvgPicture.string(
+                            _kArrowRightSvg,
+                            width: 20,
+                            height: 20,
+                            colorFilter: const ColorFilter.mode(
+                              Colors.white,
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                        ],
+                      ),
             ),
           ),
         ),
