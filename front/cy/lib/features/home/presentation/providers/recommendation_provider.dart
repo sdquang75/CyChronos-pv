@@ -35,7 +35,7 @@ class RecommendationNotifier extends StateNotifier<RecommendationState> {
   }) async {
     state = const RecommendationLocating();
     try {
-      final position = await _locationService.getCurrentPosition();
+      final position = await _locationService.getFastPosition();
       debugPrint(
         '[recommendation] got position: ${position.latitude}, ${position.longitude}',
       );

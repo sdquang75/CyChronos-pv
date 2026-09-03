@@ -11,6 +11,7 @@ import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_toast.dart';
 import '../../../../core/widgets/tap_scale.dart';
 import '../../domain/weather_state.dart';
+import '../providers/recommendation_provider.dart' show locationServiceProvider;
 import '../providers/weather_provider.dart';
 import 'weather_header_card.dart';
 
@@ -50,6 +51,11 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
     _stayMinutesController.addListener(_onStayTextChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // 1. 位置情報のウォームアップ(RAMキャッシュへの先読み、OSのlastKnownPosition取得)
+      // ユーザーが検索ボタンを押した時に即座に結果を返せるようにする(コスト0)
+      ref.read(locationServiceProvider).getFastPosition().ignore();
+
+      // 2. 天気情報の取得(0msキャッシュ表示 + 必要に応じて最新化)
       if (ref.read(weatherProvider) is WeatherInitial) {
         ref.read(weatherProvider.notifier).fetchForCurrentLocation();
       }
