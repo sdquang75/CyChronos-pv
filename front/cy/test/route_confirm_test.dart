@@ -232,6 +232,16 @@ class _FakeRouteRepository implements RouteRepository {
     endedDurationSec = durationSec;
     endedAverageSpeedKmh = averageSpeedKmh;
   }
+
+  int? cancelledTripId;
+
+  @override
+  Future<void> cancelTrip({
+    required int userId,
+    required int tripId,
+  }) async {
+    cancelledTripId = tripId;
+  }
 }
 
 // テスト用の偽認証。指定した状態のまま動かない
@@ -334,10 +344,11 @@ void main() {
     expect(find.text('案内開始'), findsNothing); // 下部バーは消えた(全画面)
     expect(find.text('テストカフェ'), findsNothing); // バーの中身ごと消えている
     expect(find.text('案内を終了'), findsOneWidget); // 終了ボタンが出る
+    expect(find.text('到着・完了'), findsOneWidget); // 完了ボタンが出る
     expect(find.text('8.5km ・ 約40分'), findsOneWidget); // 上部チップに残り距離・時間
 
-    // 案内を終了 → トリップ終了が記録され、トースト通知の代わりに完了画面が出る
-    await tester.tap(find.text('案内を終了'));
+    // 到着・完了 → トリップ終了が記録され、トースト通知の代わりに完了画面が出る
+    await tester.tap(find.text('到着・完了'));
     await tester.pumpAndSettle();
 
     expect(repository.endedTripId, 42); // 終了APIに開始時のtrip_idが渡っている
@@ -351,6 +362,33 @@ void main() {
 
     expect(find.text('案内開始'), findsOneWidget); // バーが戻った
     expect(find.text('案内を終了'), findsNothing);
+  });
+
+  testWidgets('案内開始直後に「案内を終了」を押したとき: 履歴には保存されずキャンセルされること',
+      (WidgetTester tester) async {
+    final repository = _FakeRouteRepository();
+    await tester.pumpWidget(_wrap(
+      authState: const AuthAuthenticated(
+        user: AuthUser(userId: 7, uid: 'u1', name: 'テスト', email: 't@example.com'),
+      ),
+      repository: repository,
+    ));
+    await tester.pumpAndSettle();
+
+    // 案内開始
+    await tester.tap(find.text('案内開始'));
+    await tester.pumpAndSettle();
+    expect(repository.startedUserId, 7);
+
+    // 開始直後(移動なし)に「案内を終了」を押す
+    await tester.tap(find.text('案内を終了'));
+    await tester.pumpAndSettle();
+
+    // キャンセルAPIが呼ばれ、終了APIは呼ばれず、完了画面も出ない
+    expect(repository.cancelledTripId, 42);
+    expect(repository.endedTripId, isNull);
+    expect(find.text('お疲れさまでした!'), findsNothing);
+    expect(find.text('案内開始'), findsOneWidget); // プレビュー画面に戻る
   });
 
   testWidgets('未ログインで案内開始: 記録APIは呼ばず、案内モードには入れる',
@@ -605,8 +643,8 @@ void main() {
     expect(repository.loggedLocations.first['userId'], 7);
     expect(repository.loggedLocations.first['tripId'], 42);
 
-    // 案内終了
-    await tester.tap(find.text('案内を終了'));
+    // 到着・完了
+    await tester.tap(find.text('到着・完了'));
     await tester.pumpAndSettle();
 
     expect(repository.endedTripId, 42);

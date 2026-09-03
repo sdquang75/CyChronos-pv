@@ -181,4 +181,15 @@ class RouteRepository {
       },
     );
   }
+
+  /// トリップをキャンセル(論理削除)する。案内開始直後に中止した場合などに使う
+  Future<void> cancelTrip({
+    required int userId,
+    required int tripId,
+  }) async {
+    await _dio.delete(
+      '/api/trips/$tripId',
+      queryParameters: {'user_id': userId},
+    );
+  }
 }

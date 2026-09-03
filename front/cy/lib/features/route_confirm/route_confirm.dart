@@ -874,6 +874,147 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     );
   }
 
+  /// 案内を中止する(走行記録を破棄し、履歴には残さない)
+  Future<void> _cancelNavigation() async {
+    if (_busy) return;
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _busy = true;
+      _userPanned = false;
+    });
+
+    final authState = ref.read(authProvider);
+    final userId =
+        authState is AuthAuthenticated ? authState.user.userId : null;
+    final tripId = _tripId;
+    final endedStage = _stage;
+
+    final stopPositionUpdates = _positionSubscription?.cancel();
+    _positionSubscription = null;
+    _stayTimer?.cancel();
+
+    try {
+      if (tripId != null && userId != null) {
+        await _repository.cancelTrip(
+          userId: userId,
+          tripId: tripId,
+        );
+        _tripId = null;
+      }
+    } catch (error) {
+      debugPrint('trip cancel error: $error');
+    } finally {
+      if (stopPositionUpdates != null) unawaited(stopPositionUpdates);
+      unawaited(_announcer.stop());
+      unawaited(_disableWakeLock('navigation cancel'));
+      _lastLoggedPosition = null;
+      _lastLoggedAt = null;
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _arrivalHandling = false;
+          _navigationSnapshot = null;
+          _currentPosition = null;
+          _navigationStatusMessage = null;
+          _rerouting = false;
+          // 復路案内中に終了した場合は復路プレビューへ、それ以外は往路プレビューへ戻す
+          _stage =
+              endedStage == _RouteStage.returnNavigating
+                  ? _RouteStage.returnPreview
+                  : _RouteStage.outboundPreview;
+        });
+        _syncNavigatingState();
+      }
+    }
+
+    if (!mounted) return;
+    AppToast.clear();
+    _showMessage('案内をキャンセルしました（履歴には保存されません）');
+  }
+
+  /// 「案内を終了」がタップされた時の処理。
+  /// 直前のキャンセル(「遠すぎる」「押し間違い」等)なら即座に破棄し、
+  /// ある程度走行していた場合は保存するか破棄するかを確認する
+  Future<void> _onEndNavigationPressed() async {
+    if (_busy) return;
+    final startedAt = _navigationStartedAt;
+    final elapsed =
+        startedAt == null ? Duration.zero : DateTime.now().difference(startedAt);
+
+    // 開始から2分未満かつ座標ログが記録されていない場合は、
+    // 「開始直後に遠すぎると感じて中止した」または「誤タップ」と判断して即座に破棄する
+    final isQuickCancel = elapsed.inSeconds < 120 && _lastLoggedPosition == null;
+
+    if (isQuickCancel) {
+      await _cancelNavigation();
+      return;
+    }
+
+    // すでにある程度走行していた場合は、Appleスタイルのダイアログで確認
+    final shouldSave = await showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text(
+              '案内を終了しますか？',
+              style: TextStyle(
+                fontFamily: 'HankenGrotesk',
+                fontFamilyFallback: ['NotoSansJP'],
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+              ),
+            ),
+            content: const Text(
+              'ここまでの走行記録を履歴に保存しますか？\n破棄すると履歴には残りません。',
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.4,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(null), // 案内継続
+                child: const Text(
+                  '案内を続ける',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false), // 破棄
+                child: const Text(
+                  '破棄して終了',
+                  style: TextStyle(
+                    color: AppColors.danger,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true), // 保存
+                child: const Text(
+                  '保存して終了',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+    );
+
+    if (shouldSave == null) return; // 案内継続
+    if (shouldSave) {
+      await _endNavigation(isAutoArrival: false);
+    } else {
+      await _cancelNavigation();
+    }
+  }
+
   void _showMessage(String message) {
     if (!mounted) return;
     AppToast.show(context, message);
@@ -1493,7 +1634,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
           Expanded(
             child: _buildDangerOutlineButton(
               label: '案内を終了',
-              onPressed: _busy ? null : _endNavigation,
+              onPressed: _busy ? null : _onEndNavigationPressed,
             ),
           ),
           const SizedBox(width: 12),
@@ -1590,7 +1731,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
               Expanded(
                 child: _buildDangerOutlineButton(
                   label: '案内を終了',
-                  onPressed: _busy ? null : _endNavigation,
+                  onPressed: _busy ? null : _onEndNavigationPressed,
                 ),
               ),
               const SizedBox(width: 12),
@@ -1654,50 +1795,46 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     );
   }
 
-  /// 案内モード中の下部: 片道・復路案内の洗練されたAppleフローティングボタン
+  /// 案内モード中の下部: 片道・復路案内の統一Apple Floating Dock (案内を終了 + 到着・完了)
   Widget _buildEndButton() {
-    return Center(
+    return Container(
       key: const ValueKey('end-button'),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 24),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: _busy ? null : _endNavigation,
-            borderRadius: BorderRadius.circular(9999),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-              decoration: BoxDecoration(
-                color: AppColors.danger,
-                borderRadius: BorderRadius.circular(9999),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.danger.withValues(alpha: 0.35),
-                    blurRadius: 14,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.close_rounded, color: Colors.white, size: 20),
-                  SizedBox(width: 8),
-                  Text(
-                    '案内を終了',
-                    style: TextStyle(
-                      fontFamily: 'HankenGrotesk',
-                      fontFamilyFallback: ['NotoSansJP'],
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: AppColors.border.withValues(alpha: 0.5),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildDangerOutlineButton(
+              label: '案内を終了',
+              onPressed: _busy ? null : _onEndNavigationPressed,
             ),
           ),
-        ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 2,
+            child: AppButton(
+              label: '到着・完了',
+              icon: Icons.check_circle_outline_rounded,
+              height: 46,
+              borderRadius: 14,
+              onPressed: _busy ? null : () => _endNavigation(isAutoArrival: true),
+            ),
+          ),
+        ],
       ),
     );
   }
