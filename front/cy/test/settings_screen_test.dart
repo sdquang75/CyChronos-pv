@@ -62,7 +62,6 @@ void main() {
     // タイトルと各セクションヘッダーが表示されていること
     expect(find.text('設定'), findsOneWidget);
     expect(find.text('ナビゲーション設定'), findsOneWidget);
-    expect(find.text('スポット提案・探索設定'), findsOneWidget);
     expect(find.text('地図表示設定'), findsOneWidget);
     expect(find.text('サポート & ストレージ'), findsOneWidget);
     expect(find.text('アプリ情報'), findsOneWidget);
@@ -71,14 +70,11 @@ void main() {
     expect(find.text('テストライダー'), findsOneWidget);
     expect(find.text('rider@example.com'), findsOneWidget);
 
-    // ナビゲーション設定の各項目
+    // ナビゲーション設定の各項目 (4項目統一カード)
     expect(find.text('音声案内'), findsOneWidget);
     expect(find.text('画面の常時点灯'), findsOneWidget);
     expect(find.text('自動リルート'), findsOneWidget);
-
-    // スポット提案・探索設定
-    expect(find.text('訪問済みスポットを含める'), findsOneWidget);
-    expect(find.text('過去に訪れた目的地も再訪候補として提案に含めます'), findsOneWidget);
+    expect(find.text('訪問済みスポット'), findsOneWidget);
 
     // 地図タイプ
     expect(find.text('地図タイプ'), findsOneWidget);
@@ -103,7 +99,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final rowFinder = find.ancestor(
-      of: find.text('訪問済みスポットを含める'),
+      of: find.text('訪問済みスポット'),
       matching: find.byType(Row),
     );
     expect(rowFinder, findsWidgets);

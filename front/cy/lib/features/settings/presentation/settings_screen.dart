@@ -293,13 +293,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
               const SizedBox(height: 24),
 
-              // Suggestion & Exploration section
-              const Text('スポット提案・探索設定', style: AppTypography.sectionLabel),
-              const SizedBox(height: AppSpacing.sm),
-              _buildSuggestionCard(settings),
-
-              const SizedBox(height: 24),
-
               // Map section
               const Text('地図表示設定', style: AppTypography.sectionLabel),
               const SizedBox(height: AppSpacing.sm),
@@ -453,24 +446,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ref.read(settingsProvider.notifier).setAutoReroute(val);
             },
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSuggestionCard(SettingsState settings) {
-    return AppCard(
-      padding: EdgeInsets.zero,
-      borderRadius: 24,
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
+          const Divider(height: 1, indent: 56, endIndent: 16),
           _SettingsSwitchRow(
             icon: Icons.history_rounded,
-            iconBgColor: AppColors.accentBg,
-            iconColor: AppColors.primary,
-            title: '訪問済みスポットを含める',
-            subtitle: '過去に訪れた目的地も再訪候補として提案に含めます',
+            iconBgColor: const Color(0xFF5856D6).withValues(alpha: 0.12),
+            iconColor: const Color(0xFF5856D6),
+            title: '訪問済みスポット',
             value: settings.includeVisitedPlaces,
             onChanged: (val) {
               ref.read(settingsProvider.notifier).setIncludeVisitedPlaces(val);
@@ -656,13 +637,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 }
 
-// Apple iOS-style clean switch row
+// Apple iOS-style clean switch row (zero cluttered subtext)
 class _SettingsSwitchRow extends StatelessWidget {
   final IconData icon;
   final Color iconBgColor;
   final Color iconColor;
   final String title;
-  final String? subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
 
@@ -671,7 +651,6 @@ class _SettingsSwitchRow extends StatelessWidget {
     required this.iconBgColor,
     required this.iconColor,
     required this.title,
-    this.subtitle,
     required this.value,
     required this.onChanged,
   });
@@ -693,33 +672,15 @@ class _SettingsSwitchRow extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontFamily: 'HankenGrotesk',
-                    fontFamilyFallback: ['NotoSansJP'],
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
-                  ),
-                ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle!,
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontFamilyFallback: ['NotoSansJP'],
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ],
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontFamily: 'HankenGrotesk',
+                fontFamilyFallback: ['NotoSansJP'],
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+              ),
             ),
           ),
           Switch.adaptive(
