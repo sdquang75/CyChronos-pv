@@ -502,8 +502,17 @@ class _DestinationCard extends StatelessWidget {
             : '所要時間不明';
 
     // カロリー計算に使用する距離(m)と所要時間(秒)
-    final dynamic rawDistanceM = destination['distanceM'];
-    final dynamic rawDurationSec = destination['durationSec'];
+    // 往復モードの場合は、行き＋帰りの距離・走行時間を使用する
+    final bool isRoundTrip =
+        destination['tripMode'] == 'round_trip';
+
+    final dynamic rawDistanceM = isRoundTrip
+        ? destination['roundTripDistanceM']
+        : destination['distanceM'];
+
+    final dynamic rawDurationSec = isRoundTrip
+        ? destination['roundTripDurationSec']
+        : destination['durationSec'];
 
     final double? distanceM = rawDistanceM is num
         ? rawDistanceM.toDouble()
