@@ -16,6 +16,7 @@ import '../../../core/widgets/app_screen_frame.dart';
 import '../../../core/widgets/app_toast.dart';
 import '../../../core/widgets/app_top_bar.dart';
 import '../data/history_repository.dart';
+import '../../settings/data/settings_service.dart';
 import 'providers/history_provider.dart';
 
 /// 走行記録の詳細画面。
@@ -336,7 +337,10 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
       northeast: LatLng(maxLat, maxLng),
     );
 
+    final mapType = ref.watch(settingsProvider).googleMapType;
+
     return GoogleMap(
+      mapType: mapType,
       initialCameraPosition: CameraPosition(target: points.first, zoom: 14),
       onMapCreated: (controller) async {
         _mapController = controller;

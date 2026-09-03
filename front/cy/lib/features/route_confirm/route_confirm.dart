@@ -24,6 +24,7 @@ import '../home/data/location_service.dart';
 import 'data/navigation_announcer.dart';
 import 'data/route_repository.dart';
 import 'domain/navigation_engine.dart';
+import '../settings/data/settings_service.dart';
 import 'trip_summary_screen.dart';
 
 /// ルート確認画面が今どの段階にあるか。
@@ -379,7 +380,9 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     _navigationStatusMessage = null;
     _userPanned = false;
 
-    if (widget.keepScreenAwake) {
+    final keepAwake =
+        widget.keepScreenAwake && ref.read(settingsProvider).keepScreenAwake;
+    if (keepAwake) {
       try {
         await WakelockPlus.enable();
       } catch (e) {
@@ -537,6 +540,15 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     if (snapshot.offRouteDistanceM > _offRouteRadiusM) {
       _offRouteSamples += 1;
       if (_offRouteSamples >= 3) {
+        final autoReroute = ref.read(settingsProvider).autoRerouteEnabled;
+        if (!autoReroute) {
+          _offRouteSamples = 0;
+          setState(() {
+            _navigationStatusMessage = 'ルートから外れました。';
+          });
+          return;
+        }
+
         final now = DateTime.now();
         final last = _lastRerouteAt;
         if (last == null || now.difference(last) >= _rerouteCooldown) {
@@ -594,7 +606,8 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   }
 
   Future<void> _speak(String message, {bool urgent = false}) async {
-    if (!_voiceEnabled) return;
+    final voiceSetting = ref.read(settingsProvider).voiceGuidanceEnabled;
+    if (!_voiceEnabled || !voiceSetting) return;
     try {
       await _announcer.speak(message, urgent: urgent);
     } catch (e) {
@@ -1147,7 +1160,10 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
       northeast: LatLng(maxLat, maxLng),
     );
 
+    final mapType = ref.watch(settingsProvider).googleMapType;
+
     return GoogleMap(
+      mapType: mapType,
       initialCameraPosition: CameraPosition(
         target: routePoints.first,
         zoom: 13,

@@ -1,9 +1,7 @@
-//settings_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -13,6 +11,7 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_toast.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
+import '../data/settings_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -22,105 +21,10 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  static const String _averageSpeedKey = 'average_speed_kmh';
-
-  double _averageSpeedKmh = 18.0;
-
-  bool _isLoadingSpeed = true;
-  bool _isSavingSpeed = false;
   bool _isLoggingOut = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadAverageSpeed();
-  }
-
-  Future<void> _loadAverageSpeed() async {
-    try {
-      final SharedPreferences preferences =
-          await SharedPreferences.getInstance();
-
-      final double savedSpeed = preferences.getDouble(_averageSpeedKey) ?? 18.0;
-
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _averageSpeedKmh = savedSpeed.clamp(10.0, 30.0).toDouble();
-        _isLoadingSpeed = false;
-      });
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _isLoadingSpeed = false;
-      });
-
-      _showMessage('平均速度を読み込めませんでした', isError: true);
-    }
-  }
-
-  Future<void> _saveAverageSpeed() async {
-    if (_isSavingSpeed) {
-      return;
-    }
-
-    HapticFeedback.lightImpact();
-
-    setState(() {
-      _isSavingSpeed = true;
-    });
-
-    try {
-      final SharedPreferences preferences =
-          await SharedPreferences.getInstance();
-
-      await preferences.setDouble(_averageSpeedKey, _averageSpeedKmh);
-
-      if (!mounted) {
-        return;
-      }
-
-      _showMessage(
-        '平均速度を'
-        '${_averageSpeedKmh.toStringAsFixed(1)} km/h'
-        'に設定しました',
-      );
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-
-      _showMessage('平均速度を保存できませんでした', isError: true);
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSavingSpeed = false;
-        });
-      }
-    }
-  }
-
-  String get _speedLevel {
-    if (_averageSpeedKmh < 15.0) {
-      return 'ゆっくり';
-    }
-
-    if (_averageSpeedKmh <= 21.0) {
-      return '普通';
-    }
-
-    return '速い';
-  }
-
   Future<void> _showLogoutDialog() async {
-    if (_isLoggingOut) {
-      return;
-    }
+    if (_isLoggingOut) return;
 
     final bool? shouldLogout = await showDialog<bool>(
       context: context,
@@ -171,15 +75,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.of(dialogContext).pop(false);
-                    },
+                    onPressed: () => Navigator.of(dialogContext).pop(false),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.textSecondary,
                       side: BorderSide(
-                        color: AppColors.border.withValues(
-                          alpha: 0.65,
-                        ),
+                        color: AppColors.border.withValues(alpha: 0.65),
                       ),
                       minimumSize: const Size.fromHeight(48),
                       shape: RoundedRectangleBorder(
@@ -230,62 +130,131 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       },
     );
 
-    if (shouldLogout != true || !mounted) {
-      return;
-    }
-
+    if (shouldLogout != true || !mounted) return;
     await _logout();
   }
 
   Future<void> _logout() async {
-    setState(() {
-      _isLoggingOut = true;
-    });
-
+    setState(() => _isLoggingOut = true);
     try {
       await ref.read(authProvider.notifier).signOut();
-
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       context.go('/login');
     } catch (_) {
-      if (!mounted) {
-        return;
-      }
-
-      _showMessage('ログアウトに失敗しました。もう一度お試しください。', isError: true);
+      if (!mounted) return;
+      AppToast.show(context, 'ログアウトに失敗しました。もう一度お試しください。', isError: true);
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoggingOut = false;
-        });
-      }
+      if (mounted) setState(() => _isLoggingOut = false);
     }
   }
 
-  void _showMessage(String message, {bool isError = false}) {
-    AppToast.show(context, message, isError: isError);
+  Future<void> _showClearCacheDialog() async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text(
+          'キャッシュの削除',
+          style: TextStyle(
+            fontFamily: 'HankenGrotesk',
+            fontFamilyFallback: ['NotoSansJP'],
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: AppColors.primary,
+          ),
+        ),
+        content: const Text(
+          '一時保存された画像データを削除して端末のストレージを解放します。\n登録データや走行履歴は削除されません。',
+          style: TextStyle(
+            fontSize: 14,
+            color: AppColors.textSecondary,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('削除する'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final freedMb = ref.read(settingsProvider.notifier).clearImageCache();
+      HapticFeedback.lightImpact();
+      AppToast.show(context, 'キャッシュを削除しました (約$freedMb MB 解放)');
+    }
+  }
+
+  void _showPrivacyPolicyDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text(
+          '利用規約 & プライバシー',
+          style: TextStyle(
+            fontFamily: 'HankenGrotesk',
+            fontFamilyFallback: ['NotoSansJP'],
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: AppColors.primary,
+          ),
+        ),
+        content: const SingleChildScrollView(
+          child: Text(
+            '【位置情報の利用について】\n'
+            'CyChronosは、最適なサイクリングルートの提案、移動中の音声案内、および走行ログの記録のために現在地情報を取得します。\n\n'
+            '【外部サービスとの連携】\n'
+            'ルート計算およびスポット情報検索のため、MapboxおよびGoogle Maps PlatformのAPIを利用しています。第三者へ個人を特定可能な情報が提供されることはありません。\n\n'
+            '【走行データの保護】\n'
+            'ユーザーの走行履歴および座標データは暗号化通信により保護され、本人のアカウント管理下でのみ閲覧・削除が可能です。',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              height: 1.6,
+            ),
+          ),
+        ),
+        actions: [
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('閉じる'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final AuthState authState = ref.watch(authProvider);
+    final SettingsState settings = ref.watch(settingsProvider);
 
     final user = authState is AuthAuthenticated ? authState.user : null;
-
     final String userName =
         user?.name.isNotEmpty == true ? user!.name : 'CyChronos ライダー';
-
     final String userEmail = user?.email ?? '';
-
     final String? photoUrl = user?.photoUrl;
-
     final bool hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
 
-    // AppScreenFrame・下部メニューバーはHomeScreen(IndexedStackシェル)側で
-    // 一括して描画されるので、ここでは自分の中身だけを組み立てる
     return Scaffold(
       backgroundColor: AppColors.bgCool,
       body: SafeArea(
@@ -302,16 +271,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('設定', style: AppTypography.pageTitle),
-
               const SizedBox(height: AppSpacing.sm),
-
               const Text(
-                'アカウントや走行時の設定を管理できます。',
+                'アカウントや走行時のナビゲーションを管理できます。',
                 style: AppTypography.pageSubtitle,
               ),
 
               const SizedBox(height: AppSpacing.xxl + 4),
 
+              // アカウント情報カード
               _buildAccountCard(
                 userName: userName,
                 userEmail: userEmail,
@@ -321,38 +289,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
               const SizedBox(height: AppSpacing.xxl + 4),
 
-              const Text('走行設定', style: AppTypography.sectionLabel),
-
+              // ナビゲーション設定
+              const Text('ナビゲーション設定', style: AppTypography.sectionLabel),
               const SizedBox(height: AppSpacing.md),
-
-              _buildSpeedCard(),
+              _buildNavigationCard(settings),
 
               const SizedBox(height: AppSpacing.xxl + 4),
 
-              const Text('サポート', style: AppTypography.sectionLabel),
-
+              // 地図表示設定
+              const Text('地図表示設定', style: AppTypography.sectionLabel),
               const SizedBox(height: AppSpacing.md),
-
-              AppCard(
-                padding: EdgeInsets.zero,
-                borderRadius: 24,
-                clipBehavior: Clip.antiAlias,
-                child: _SettingsMenuRow(
-                  icon: Icons.mail_outline_rounded,
-                  title: 'お問い合わせ',
-                  subtitle: 'ご意見や不具合を送信します',
-                  onTap: () {
-                    context.push('/contact');
-                  },
-                ),
-              ),
+              _buildMapCard(settings),
 
               const SizedBox(height: AppSpacing.xxl + 4),
 
+              // ストレージ & サポート
+              const Text('サポート & ストレージ', style: AppTypography.sectionLabel),
+              const SizedBox(height: AppSpacing.md),
+              _buildSupportAndStorageCard(),
+
+              const SizedBox(height: AppSpacing.xxl + 4),
+
+              // アプリ情報
+              const Text('アプリ情報', style: AppTypography.sectionLabel),
+              const SizedBox(height: AppSpacing.md),
+              _buildAboutCard(),
+
+              const SizedBox(height: AppSpacing.xxl + 4),
+
+              // アカウント操作
               const Text('アカウント', style: AppTypography.sectionLabel),
-
               const SizedBox(height: AppSpacing.md),
-
               AppCard(
                 padding: EdgeInsets.zero,
                 borderRadius: 24,
@@ -363,17 +330,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   title: 'ログアウト',
                   titleColor: AppColors.error,
                   subtitle: '現在のアカウントからログアウトします',
-                  trailing:
-                      _isLoggingOut
-                          ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.4,
-                              color: AppColors.error,
-                            ),
-                          )
-                          : null,
+                  trailing: _isLoggingOut
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            color: AppColors.error,
+                          ),
+                        )
+                      : null,
                   onTap: _isLoggingOut ? null : _showLogoutDialog,
                 ),
               ),
@@ -398,18 +364,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             radius: 34,
             backgroundColor: AppColors.accentBg,
             backgroundImage: hasPhoto ? NetworkImage(photoUrl!) : null,
-            child:
-                hasPhoto
-                    ? null
-                    : const Icon(
-                      Icons.person_rounded,
-                      size: 36,
-                      color: AppColors.primary,
-                    ),
+            child: hasPhoto
+                ? null
+                : const Icon(
+                    Icons.person_rounded,
+                    size: 36,
+                    color: AppColors.primary,
+                  ),
           ),
-
           const SizedBox(width: 16),
-
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -426,7 +389,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: AppColors.primary,
                   ),
                 ),
-
                 if (userEmail.isNotEmpty) ...[
                   const SizedBox(height: 5),
                   Text(
@@ -449,196 +411,324 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildSpeedCard() {
+  Widget _buildNavigationCard(SettingsState settings) {
     return AppCard(
+      padding: EdgeInsets.zero,
       borderRadius: 24,
-      child:
-          _isLoadingSpeed
-              ? const SizedBox(
-                height: 150,
-                child: Center(
-                  child: CircularProgressIndicator(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          _SettingsSwitchRow(
+            icon: Icons.volume_up_rounded,
+            title: '音声案内',
+            subtitle: '走行中の交差点や曲がり角で音声案内を再生',
+            value: settings.voiceGuidanceEnabled,
+            onChanged: (val) {
+              ref.read(settingsProvider.notifier).setVoiceGuidance(val);
+            },
+          ),
+          const Divider(height: 1, indent: 68, endIndent: 20),
+          _SettingsSwitchRow(
+            icon: Icons.stay_current_portrait_rounded,
+            title: '画面の常時点灯',
+            subtitle: 'ナビゲーション中に画面がスリープするのを防止',
+            value: settings.keepScreenAwake,
+            onChanged: (val) {
+              ref.read(settingsProvider.notifier).setKeepScreenAwake(val);
+            },
+          ),
+          const Divider(height: 1, indent: 68, endIndent: 20),
+          _SettingsSwitchRow(
+            icon: Icons.alt_route_rounded,
+            title: '自動リルート',
+            subtitle: 'コースを外れたときに自動で新しいルートを再検索',
+            value: settings.autoRerouteEnabled,
+            onChanged: (val) {
+              ref.read(settingsProvider.notifier).setAutoReroute(val);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMapCard(SettingsState settings) {
+    final types = [
+      {'key': 'normal', 'label': '標準', 'icon': Icons.map_outlined},
+      {'key': 'satellite', 'label': '衛星写真', 'icon': Icons.satellite_alt_rounded},
+      {'key': 'terrain', 'label': '地形', 'icon': Icons.terrain_rounded},
+    ];
+
+    return AppCard(
+      padding: const EdgeInsets.all(18),
+      borderRadius: 24,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.accentBg,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.layers_rounded,
+                  color: AppColors.primary,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '地図タイプ',
+                      style: TextStyle(
+                        fontFamily: 'HankenGrotesk',
+                        fontFamilyFallback: ['NotoSansJP'],
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      'Google Mapsの表示スタイルを選択します',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontFamilyFallback: ['NotoSansJP'],
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: types.map((item) {
+              final key = item['key'] as String;
+              final label = item['label'] as String;
+              final icon = item['icon'] as IconData;
+              final isSelected = settings.mapTypeKey == key;
+
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      ref.read(settingsProvider.notifier).setMapType(key);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppColors.primary : AppColors.accentBg,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.border.withValues(alpha: 0.5),
+                          width: isSelected ? 1.5 : 1,
+                        ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(alpha: 0.2),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            icon,
+                            size: 20,
+                            color: isSelected ? Colors.white : AppColors.primary,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            label,
+                            style: TextStyle(
+                              fontFamily: 'HankenGrotesk',
+                              fontFamilyFallback: const ['NotoSansJP'],
+                              fontSize: 12,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: isSelected
+                                  ? Colors.white
+                                  : AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSupportAndStorageCard() {
+    return AppCard(
+      padding: EdgeInsets.zero,
+      borderRadius: 24,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          _SettingsMenuRow(
+            icon: Icons.mail_outline_rounded,
+            title: 'お問い合わせ',
+            subtitle: 'ご意見や不具合を送信します',
+            onTap: () => context.push('/contact'),
+          ),
+          const Divider(height: 1, indent: 68, endIndent: 20),
+          _SettingsMenuRow(
+            icon: Icons.cleaning_services_rounded,
+            title: 'キャッシュを削除',
+            subtitle: '一時保存された画像データを解放します',
+            onTap: _showClearCacheDialog,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAboutCard() {
+    return AppCard(
+      padding: EdgeInsets.zero,
+      borderRadius: 24,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          _SettingsMenuRow(
+            icon: Icons.description_outlined,
+            title: 'オープンソースライセンス',
+            subtitle: '使用しているライブラリの権利表記',
+            onTap: () {
+              showLicensePage(
+                context: context,
+                applicationName: 'CyChronos',
+                applicationVersion: 'v1.0.0',
+                applicationLegalese: '© 2026 CyChronos Team',
+              );
+            },
+          ),
+          const Divider(height: 1, indent: 68, endIndent: 20),
+          _SettingsMenuRow(
+            icon: Icons.privacy_tip_outlined,
+            title: '利用規約 & プライバシー',
+            subtitle: '位置情報の取り扱いと利用規約',
+            onTap: _showPrivacyPolicyDialog,
+          ),
+          const Divider(height: 1, indent: 68, endIndent: 20),
+          const _SettingsMenuRow(
+            icon: Icons.info_outline_rounded,
+            title: 'バージョン',
+            subtitle: 'CyChronos for Mobile',
+            trailing: Text(
+              'v1.0.0 (42)',
+              style: TextStyle(
+                fontFamily: 'JetBrainsMono',
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            onTap: null,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsSwitchRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _SettingsSwitchRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.accentBg,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: AppColors.primary, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: 'HankenGrotesk',
+                    fontFamilyFallback: ['NotoSansJP'],
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.primary,
                   ),
                 ),
-              )
-              : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: AppColors.accentBg,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Icon(
-                          Icons.speed_rounded,
-                          size: 24,
-                          color: AppColors.primary,
-                        ),
-                      ),
-
-                      const SizedBox(width: 14),
-
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '平均速度',
-                              style: TextStyle(
-                                fontFamily: 'HankenGrotesk',
-                                fontFamilyFallback: ['NotoSansJP'],
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                            SizedBox(height: 3),
-                            Text(
-                              '目的地までの所要時間計算に使用します',
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontFamilyFallback: ['NotoSansJP'],
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                                height: 1.4,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontFamilyFallback: ['NotoSansJP'],
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    height: 1.35,
                   ),
-
-                  const SizedBox(height: 22),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 7,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.accentBg,
-                          borderRadius: BorderRadius.circular(9999),
-                          border: Border.all(
-                            color: AppColors.primary.withValues(
-                              alpha: 0.15,
-                            ),
-                          ),
-                        ),
-                        child: Text(
-                          _speedLevel,
-                          style: const TextStyle(
-                            fontFamily: 'HankenGrotesk',
-                            fontFamilyFallback: ['NotoSansJP'],
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-
-                      Text(
-                        '${_averageSpeedKmh.toStringAsFixed(1)} km/h',
-                        style: const TextStyle(
-                          fontFamily: 'JetBrainsMono',
-                          fontSize: 21,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  Slider(
-                    value: _averageSpeedKmh,
-                    min: 10.0,
-                    max: 30.0,
-                    divisions: 40,
-                    activeColor: AppColors.primary,
-                    inactiveColor: AppColors.border.withValues(
-                      alpha: 0.55,
-                    ),
-                    onChanged: (value) {
-                      setState(() {
-                        _averageSpeedKmh = value;
-                      });
-                    },
-                  ),
-
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 4),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '10 km/h',
-                          style: TextStyle(
-                            fontFamily: 'JetBrainsMono',
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        Text(
-                          '30 km/h',
-                          style: TextStyle(
-                            fontFamily: 'JetBrainsMono',
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: FilledButton.icon(
-                      onPressed: _isSavingSpeed ? null : _saveAverageSpeed,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: AppColors.primary
-                            .withValues(alpha: 0.55),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      icon:
-                          _isSavingSpeed
-                              ? const SizedBox(
-                                width: 19,
-                                height: 19,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.3,
-                                  color: Colors.white,
-                                ),
-                              )
-                              : const Icon(Icons.check_rounded, size: 20),
-                      label: Text(
-                        _isSavingSpeed ? '保存しています' : '平均速度を保存',
-                        style: const TextStyle(
-                          fontFamily: 'HankenGrotesk',
-                          fontFamilyFallback: ['NotoSansJP'],
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Switch(
+            value: value,
+            activeThumbColor: Colors.white,
+            activeTrackColor: AppColors.primary,
+            onChanged: (newVal) {
+              HapticFeedback.lightImpact();
+              onChanged(newVal);
+            },
+          ),
+        ],
+      ),
     );
   }
 }
@@ -667,15 +757,14 @@ class _SettingsMenuRow extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap:
-            onTap == null
-                ? null
-                : () {
-                  HapticFeedback.selectionClick();
-                  onTap!();
-                },
+        onTap: onTap == null
+            ? null
+            : () {
+                HapticFeedback.selectionClick();
+                onTap!();
+              },
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           child: Row(
             children: [
               Container(
@@ -685,11 +774,9 @@ class _SettingsMenuRow extends StatelessWidget {
                   color: iconColor.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(icon, color: iconColor, size: 23),
+                child: Icon(icon, color: iconColor, size: 22),
               ),
-
               const SizedBox(width: 14),
-
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -699,14 +786,12 @@ class _SettingsMenuRow extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: 'HankenGrotesk',
                         fontFamilyFallback: const ['NotoSansJP'],
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: titleColor,
                       ),
                     ),
-
-                    const SizedBox(height: 4),
-
+                    const SizedBox(height: 3),
                     Text(
                       subtitle,
                       style: const TextStyle(
@@ -714,19 +799,17 @@ class _SettingsMenuRow extends StatelessWidget {
                         fontFamilyFallback: ['NotoSansJP'],
                         fontSize: 12,
                         color: AppColors.textSecondary,
-                        height: 1.4,
+                        height: 1.35,
                       ),
                     ),
                   ],
                 ),
               ),
-
               const SizedBox(width: 10),
-
               if (trailing != null)
                 trailing!
-              else
-                Icon(Icons.chevron_right_rounded, color: iconColor, size: 26),
+              else if (onTap != null)
+                Icon(Icons.chevron_right_rounded, color: iconColor, size: 24),
             ],
           ),
         ),
