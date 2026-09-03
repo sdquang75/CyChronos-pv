@@ -13,3 +13,6 @@ node_modules/
 **/GoogleService-Info.plist
 claude.md
 back/HANDOFF.md
+
+# デプロイ手順書(ローカル管理。リポジトリには含めない)
+back/docs/DEPLOY.md
