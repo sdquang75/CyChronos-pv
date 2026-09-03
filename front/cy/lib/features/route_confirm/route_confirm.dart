@@ -450,7 +450,6 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     });
     _syncNavigatingState();
     await _activateNavigation();
-    _showMessage('帰りの案内を開始しました。');
   }
 
   Future<void> _activateNavigation() async {
@@ -735,7 +734,6 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     unawaited(_disableWakeLock('stay begin'));
 
     if (!mounted) return;
-    _showMessage('案内を一時停止しました。滞在を開始します。');
 
     if (_plannedStayMinutes == 0) {
       await _prepareReturnRoute();
@@ -778,7 +776,6 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         _busy = false;
       });
       _syncNavigatingState();
-      _showMessage('帰りのルートを表示しました。');
     } catch (error) {
       debugPrint('return route load error: $error');
       if (!mounted) return;
@@ -938,7 +935,6 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
 
     if (!mounted) return;
     AppToast.clear();
-    _showMessage('案内をキャンセルしました（履歴には保存されません）');
   }
 
   /// 「案内を終了」がタップされた時の処理。
@@ -1519,11 +1515,11 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     );
   }
 
-  /// 通常時の下部バー: 目的地情報+距離・時間+ボタン(Apple Maps風ボトムシート)
+  /// 通常時の下部バー: 目的地情報+距離・時間+ボタン(Apple Floating Summary Card)
   Widget _buildInfoPanel() {
     return Container(
       key: const ValueKey('info-panel'), // AnimatedSwitcherが切り替えを認識するための目印
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 26),
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 26),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
@@ -1539,18 +1535,6 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Apple Home Indicatorバー
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 14),
-              decoration: BoxDecoration(
-                color: AppColors.border.withValues(alpha: 0.8),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
           // 目的地の名前(復路プレビュー中は「出発地点へ戻る」に差し替える)
           Text(
             _isReturnRoute ? '出発地点へ戻る' : _name,

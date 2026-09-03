@@ -55,7 +55,7 @@ Tất cả các trạng thái trong chuyến đi (**Một chiều, Khứ hồi l
   - **Hành động: KHÔNG LƯU VÀO LỊCH SỬ!**
   - Gọi `cancelTrip` (DELETE `/api/trips/:tripId`) để xóa bản ghi tạm trên server. Địa điểm đó không bị đánh dấu là "đã đến" và vẫn được gợi ý trong tương lai.
   - KHÔNG mở màn hình tổng kết chúc mừng.
-  - Quay về màn hình xem trước và hiện thông báo: `"案内をキャンセルしました（履歴には保存されません）"`.
+  - Quay về màn hình xem trước tức thì, không hiện toast dư thừa làm che khuất bản đồ (Zero Noise).
 - **Trường hợp B: Đã đạp xe một quãng đường nhưng muốn dừng giữa chừng (Mid-Ride Termination)**
   - Điều kiện: Đã đạp xe `>= 2 phút` và có GPS log thực tế.
   - Hiển thị hộp thoại xác nhận tối giản chuẩn Apple (Tối giản tuyệt đối với **đúng 2 nút đối xứng**, tránh gây rối mắt khi lái xe):
