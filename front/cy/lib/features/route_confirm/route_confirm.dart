@@ -1472,32 +1472,119 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   Widget _buildOutboundNavigationButtons() {
     return Container(
       key: const ValueKey('outbound-navigation-buttons'),
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 26),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: AppColors.border.withValues(alpha: 0.5),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.14),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildDangerOutlineButton(
+              label: '案内を終了',
+              onPressed: _busy ? null : _endNavigation,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 2,
+            child: AppButton(
+              label: '到着・滞在を開始',
+              icon: Icons.flag_rounded,
+              height: 46,
+              borderRadius: 14,
+              onPressed: _busy ? null : _beginStay,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 滞在中(往復モードのみ)の下部: Appleスタイルの洗練された滞在状況 + 案内を終了 / 今すぐ折り返す
+  Widget _buildStayPanel() {
+    return Container(
+      key: const ValueKey('stay-panel'),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: AppColors.border.withValues(alpha: 0.5),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 14),
-              decoration: BoxDecoration(
-                color: AppColors.border.withValues(alpha: 0.8),
-                borderRadius: BorderRadius.circular(2),
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF9500).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.coffee_rounded,
+                  color: Color(0xFFFF9500),
+                  size: 18,
+                ),
               ),
-            ),
+              const SizedBox(width: 10),
+              const Text(
+                '滞在中',
+                style: TextStyle(
+                  fontFamily: 'HankenGrotesk',
+                  fontFamilyFallback: ['NotoSansJP'],
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.accentBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _plannedStayMinutes == 0
+                      ? '⏱️ まもなく折り返し'
+                      : '⏱️ $_plannedStayMinutes分',
+                  style: const TextStyle(
+                    fontFamily: 'JetBrainsMono',
+                    fontFamilyFallback: ['NotoSansJP'],
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
           ),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
@@ -1510,89 +1597,10 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
               Expanded(
                 flex: 2,
                 child: AppButton(
-                  label: '到着・滞在を開始',
-                  icon: Icons.flag_rounded,
-                  height: 52,
-                  borderRadius: 18,
-                  onPressed: _busy ? null : _beginStay,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 滞在中(往復モードのみ)の下部: 残り滞在時間の案内 + 案内を終了 / 今すぐ折り返す
-  Widget _buildStayPanel() {
-    return Container(
-      key: const ValueKey('stay-panel'),
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 26),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.14),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 14),
-              decoration: BoxDecoration(
-                color: AppColors.border.withValues(alpha: 0.8),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const Text(
-            '滞在中',
-            style: TextStyle(
-              fontFamily: 'HankenGrotesk',
-              fontFamilyFallback: ['NotoSansJP'],
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _plannedStayMinutes == 0
-                ? '案内を停止しています。まもなく帰りのルートを表示します。'
-                : '案内を停止しています。$_plannedStayMinutes分後に帰りのルートを表示します。',
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontFamilyFallback: ['NotoSansJP'],
-              fontSize: 13,
-              color: AppColors.textSecondary,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: _buildDangerOutlineButton(
-                  label: '案内を終了',
-                  onPressed: _busy ? null : _endNavigation,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: AppButton(
                   label: '今すぐ折り返す',
-                  height: 52,
-                  borderRadius: 18,
+                  icon: Icons.replay_rounded,
+                  height: 46,
+                  borderRadius: 14,
                   onPressed: _busy ? null : _prepareReturnRoute,
                 ),
               ),
@@ -1603,43 +1611,90 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     );
   }
 
-  /// 「案内を終了」用の赤い縁取りボタン(_buildEndButtonの塗りつぶし版とは別に、
-  /// 他のボタンと並べて出すとき用の控えめなスタイル)
+  /// 「案内を終了」用の赤い縁取りボタン (Appleスタイル・Material InkWell)
   Widget _buildDangerOutlineButton({
     required String label,
     required VoidCallback? onPressed,
   }) {
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        minimumSize: const Size(0, 52),
-        side: const BorderSide(color: AppColors.danger, width: 1.5),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          height: 46,
+          decoration: BoxDecoration(
+            color: AppColors.danger.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: AppColors.danger.withValues(alpha: 0.3),
+              width: 1.2,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.close_rounded, size: 16, color: AppColors.danger),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontFamily: 'HankenGrotesk',
+                  fontFamilyFallback: ['NotoSansJP'],
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.danger,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-      child: Text(label, style: const TextStyle(fontSize: 15, color: AppColors.danger, fontWeight: FontWeight.w700)),
     );
   }
 
-  /// 案内モード中の下部: 「案内を終了」ボタンだけ(バーは消えて全画面)
+  /// 案内モード中の下部: 片道・復路案内の洗練されたAppleフローティングボタン
   Widget _buildEndButton() {
-    return Padding(
-      key: const ValueKey('end-button'), // AnimatedSwitcherが切り替えを認識するための目印
-      padding: const EdgeInsets.only(bottom: 24),
-      child: Center(
-        child: ElevatedButton.icon(
-          onPressed: _busy ? null : _endNavigation,
-          icon: const Icon(Icons.close, color: Colors.white),
-          label: const Text(
-            '案内を終了',
-            style: TextStyle(fontSize: 16, color: Colors.white),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.danger, // Googleマップの終了ボタンと同じ赤系
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(9999),
+    return Center(
+      key: const ValueKey('end-button'),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 24),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _busy ? null : _endNavigation,
+            borderRadius: BorderRadius.circular(9999),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              decoration: BoxDecoration(
+                color: AppColors.danger,
+                borderRadius: BorderRadius.circular(9999),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.danger.withValues(alpha: 0.35),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.close_rounded, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    '案内を終了',
+                    style: TextStyle(
+                      fontFamily: 'HankenGrotesk',
+                      fontFamilyFallback: ['NotoSansJP'],
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
