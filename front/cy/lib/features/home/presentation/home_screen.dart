@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_bottom_navigation.dart';
 import '../../../core/widgets/app_screen_frame.dart';
 import '../../history/presentation/history_screen.dart';
+import '../../history/presentation/providers/history_provider.dart';
 import '../../route_confirm/presentation/providers/navigation_state_provider.dart';
 import '../../settings/presentation/settings_screen.dart';
 import 'widgets/ride_flow.dart';
@@ -43,6 +44,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
       _rideFlowNavigatorKey.currentState?.popUntil((route) => route.isFirst);
       return;
+    }
+    if (index == 1) {
+      // HISTORYタブをタップした時は常に最新の履歴をサーバーから静かに同期する
+      ref.read(historyProvider.notifier).loadTrips();
     }
     setState(() => _currentTab = index);
   }

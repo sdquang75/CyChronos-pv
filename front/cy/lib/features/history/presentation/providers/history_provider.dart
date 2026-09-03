@@ -15,7 +15,16 @@ final historyRepositoryProvider = Provider<HistoryRepository>(
 /// HISTORYタブが裏に常駐したままでもサーバー側の最新状態を反映できる
 /// (取得元は常にGET /api/trips=サーバー。ローカルに書き足したりはしない)
 final historyProvider = StateNotifierProvider<HistoryNotifier, HistoryState>(
-  (ref) => HistoryNotifier(ref),
+  (ref) {
+    final notifier = HistoryNotifier(ref);
+    // ログイン完了やセッション復帰時に自動で最新の履歴をサーバーから取得する
+    ref.listen<AuthState>(authProvider, (previous, next) {
+      if (next is AuthAuthenticated) {
+        notifier.loadTrips();
+      }
+    });
+    return notifier;
+  },
 );
 
 class HistoryNotifier extends StateNotifier<HistoryState> {
@@ -36,14 +45,19 @@ class HistoryNotifier extends StateNotifier<HistoryState> {
       return;
     }
 
-    state = const HistoryLoading();
+    // すでにデータがある場合はスピナーで画面を白飛びさせず、裏で静かに最新化する(Apple Optimistic UX)
+    if (state is! HistoryLoaded) {
+      state = const HistoryLoading();
+    }
     try {
       final trips = await _ref
           .read(historyRepositoryProvider)
           .fetchTrips(userId: userId);
       state = HistoryLoaded(trips);
     } catch (_) {
-      state = const HistoryError('履歴を取得できませんでした。通信環境をご確認のうえ、もう一度お試しください。');
+      if (state is! HistoryLoaded) {
+        state = const HistoryError('履歴を取得できませんでした。通信環境をご確認のうえ、もう一度お試しください。');
+      }
     }
   }
 
