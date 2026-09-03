@@ -112,12 +112,10 @@ class _DestinationListScreenState extends ConsumerState<DestinationListScreen> {
 
                           Expanded(
                             child: _ActionButton(
-                              text: _isRefreshing ? '検索中...' : '再提案',
-                              icon:
-                                  _isRefreshing
-                                      ? Icons.hourglass_top_rounded
-                                      : Icons.refresh_rounded,
+                              text: _isRefreshing ? '検索中' : '再提案',
+                              icon: Icons.refresh_rounded,
                               isPrimary: true,
+                              isLoading: _isRefreshing,
                               onPressed: () {
                                 _refreshRecommendations();
                               },
@@ -319,12 +317,6 @@ class _DestinationListScreenState extends ConsumerState<DestinationListScreen> {
       _isRefreshing = true;
     });
 
-    _showMessage(
-      context,
-      'おすすめスポットを検索しています。'
-      '少々お待ちください。',
-    );
-
     try {
       // 現在地をもう一度取得する
       final position =
@@ -369,12 +361,6 @@ class _DestinationListScreenState extends ConsumerState<DestinationListScreen> {
 
       if (newPlaces.isEmpty) {
         _showMessage(context, '条件に合う目的地が見つかりませんでした。');
-      } else {
-        _showMessage(
-          context,
-          'お待たせしました。'
-          'おすすめスポットを再提案しました。',
-        );
       }
     } on LocationServiceDisabledException {
       if (!mounted) {
@@ -495,11 +481,7 @@ class _DestinationCard extends StatelessWidget {
             : int.tryParse(rawDuration?.toString() ?? '');
 
     final String durationText =
-        durationMinutes != null
-            ? destination['tripMode'] == 'round_trip'
-                ? '往復 約$durationMinutes分'
-                : '約$durationMinutes分'
-            : '所要時間不明';
+        durationMinutes != null ? '約$durationMinutes分' : '所要時間不明';
 
     // カード全体をタップして詳細画面へ移動できる
     return GestureDetector(
@@ -738,12 +720,14 @@ class _ActionButton extends StatelessWidget {
   final String text;
   final IconData icon;
   final bool isPrimary;
+  final bool isLoading;
   final VoidCallback onPressed;
 
   const _ActionButton({
     required this.text,
     required this.icon,
     required this.isPrimary,
+    this.isLoading = false,
     required this.onPressed,
   });
 
@@ -756,7 +740,7 @@ class _ActionButton extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onPressed,
+        onTap: isLoading ? null : onPressed,
         borderRadius: BorderRadius.circular(9999),
         child: Container(
           height: 52,
@@ -775,24 +759,38 @@ class _ActionButton extends StatelessWidget {
                     ]
                     : null,
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 18, color: foregroundColor),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            child: Row(
+              key: ValueKey(isLoading),
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (isLoading)
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: foregroundColor,
+                    ),
+                  )
+                else
+                  Icon(icon, size: 18, color: foregroundColor),
 
-              const SizedBox(width: 7),
+                const SizedBox(width: 7),
 
-              Text(
-                text,
-                style: TextStyle(
-                  fontFamily: 'HankenGrotesk',
-                  fontFamilyFallback: const ['NotoSansJP'],
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                  color: foregroundColor,
+                Text(
+                  text,
+                  style: TextStyle(
+                    fontFamily: 'HankenGrotesk',
+                    fontFamilyFallback: const ['NotoSansJP'],
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                    color: foregroundColor,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

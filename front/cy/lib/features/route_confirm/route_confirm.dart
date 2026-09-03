@@ -79,6 +79,8 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   bool _rerouting = false;
   bool _arrivalHandling = false;
   bool _completedOnReturn = false;
+  bool _allowPop = false;
+  bool _exitDialogVisible = false;
   int _offRouteSamples = 0;
   int _arrivalSamples = 0;
   int? _guidanceStepIndex;
@@ -112,6 +114,12 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   bool get _isNavigating =>
       _stage == _RouteStage.outboundNavigating ||
       _stage == _RouteStage.returnNavigating;
+
+  bool get _shouldGuardBack =>
+      _busy ||
+      _tripId != null ||
+      _isNavigating ||
+      _stage == _RouteStage.staying;
 
   bool get _isReturnRoute =>
       _stage == _RouteStage.returnPreview ||
@@ -218,8 +226,10 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     setState(() => _busy = true);
 
     // プレビューを開いてから移動している可能性があるため、案内開始地点を取り直す。
+    Position? navigationStartPosition;
     try {
       final position = await _locationService.getCurrentPosition();
+      navigationStartPosition = position;
       final toLat = _destLat;
       final toLng = _destLng;
       if (toLat == null || toLng == null) {
@@ -248,6 +258,13 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
       _errorMessage = null;
     } catch (error) {
       debugPrint('route refresh on navigation start error: $error');
+      // 経路の再取得だけ失敗しても、往復の帰着地点には実際に案内を始めた地点を使う。
+      final position = navigationStartPosition;
+      if (position != null) {
+        _originLat = position.latitude;
+        _originLng = position.longitude;
+        _currentPosition = position;
+      }
       if (_route == null || _originLat == null || _originLng == null) {
         if (!mounted) return;
         setState(() {
@@ -596,6 +613,9 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     setState(() {
       _completedOnReturn = completedOnReturn;
       _stage = _RouteStage.completed;
+      _rerouting = false;
+      _offRouteSamples = 0;
+      _navigationStatusMessage = null;
       _navigationSnapshot = NavigationSnapshot(
         nearestSegmentIndex:
             _navigationSnapshot?.nearestSegmentIndex ??
@@ -645,6 +665,21 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         setState(() => _navigationStatusMessage = '到着しましたが、走行記録の保存に失敗しました。');
       }
     }
+  }
+
+  Future<void> _finishCompletedFlow() async {
+    if (_busy) return;
+    if (_tripId != null) {
+      setState(() => _busy = true);
+      await _finishTripRecord();
+      if (!mounted) return;
+      setState(() => _busy = false);
+      if (_tripId != null) {
+        _showMessage('走行記録を保存できませんでした。通信を確認してもう一度お試しください。');
+        return;
+      }
+    }
+    if (mounted) context.go('/home');
   }
 
   String _spokenDistance(double meters) {
@@ -737,8 +772,8 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   }
 
   /// 案内終了: バーを戻す。トリップ記録中ならバックに終了も記録する
-  Future<void> _endNavigation() async {
-    if (_busy) return; // 二度押しガード
+  Future<bool> _endNavigation() async {
+    if (_busy) return false; // 二度押しガード
     setState(() {
       _busy = true;
       _arrivalHandling = true;
@@ -752,17 +787,22 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     final stopPositionUpdates = _positionSubscription?.cancel();
     _positionSubscription = null;
     _stayTimer?.cancel();
+    var recordEnded = true;
 
     try {
       if (tripId != null && userId != null) {
         await _repository.endTrip(userId: userId, tripId: tripId);
         _tripId = null;
         _showMessage('お疲れさまでした!走行を記録しました');
+      } else if (tripId != null) {
+        recordEnded = false;
+        _showMessage('ログイン情報を確認できず、走行記録を終了できませんでした');
       } else {
         _showMessage('案内を終了しました');
       }
     } catch (error) {
       debugPrint('trip end error: $error');
+      recordEnded = false;
       _showMessage('走行記録の終了に失敗しました');
     } finally {
       if (stopPositionUpdates != null) unawaited(stopPositionUpdates);
@@ -783,6 +823,59 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         });
       }
     }
+    return recordEnded;
+  }
+
+  Future<void> _handleBackAttempt() async {
+    if (_allowPop || _exitDialogVisible) return;
+    if (_busy) {
+      _showMessage('処理中です。少し待ってからもう一度お試しください。');
+      return;
+    }
+
+    _exitDialogVisible = true;
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text('案内を終了しますか？'),
+            content: const Text('前の画面に戻ると、案内と走行記録を終了します。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('キャンセル'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFD93A2A),
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('終了して戻る'),
+              ),
+            ],
+          ),
+    );
+    _exitDialogVisible = false;
+    if (!mounted || shouldExit != true) return;
+
+    final recordEnded = await _endNavigation();
+    if (!mounted) return;
+    if (!recordEnded) {
+      _showMessage('走行記録を終了できなかったため、画面を移動しませんでした。もう一度お試しください。');
+      return;
+    }
+
+    setState(() => _allowPop = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) {
+        navigator.pop();
+      } else {
+        context.go('/home');
+      }
+    });
   }
 
   void _showMessage(String message) {
@@ -821,7 +914,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppScreenFrame(
+    final screen = AppScreenFrame(
       child: Scaffold(
         // 案内モード中はロゴバーも消して全画面にする
         appBar:
@@ -934,6 +1027,13 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
           ],
         ),
       ),
+    );
+    return PopScope<Object?>(
+      canPop: _allowPop || !_shouldGuardBack,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) unawaited(_handleBackAttempt());
+      },
+      child: screen,
     );
   }
 
@@ -1122,6 +1222,13 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         travelledEnd >= 2
             ? routePoints.take(travelledEnd).toList()
             : const <LatLng>[];
+    final currentPosition = _currentPosition;
+    final currentMarkerPosition =
+        currentPosition != null
+            ? LatLng(currentPosition.latitude, currentPosition.longitude)
+            : _originLat != null && _originLng != null
+            ? LatLng(_originLat!, _originLng!)
+            : null;
 
     return GoogleMap(
       initialCameraPosition: CameraPosition(
@@ -1163,32 +1270,25 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
             color: const Color(0xFF9AA0A6),
           ),
       },
-      // 出発地(青)と目的地(赤=デフォルト)のマーカー
+      // 現在地(青)と目的地(赤=デフォルト)のマーカー
       markers: {
-        Marker(
-          markerId: const MarkerId('start'),
-          position: routePoints.first,
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueAzure,
-          ),
-        ),
         Marker(
           markerId: const MarkerId('destination'),
           position: routePoints.last,
         ),
-        if (_currentPosition != null)
+        if (currentMarkerPosition != null)
           Marker(
             markerId: const MarkerId('current-position'),
-            position: LatLng(
-              _currentPosition!.latitude,
-              _currentPosition!.longitude,
-            ),
+            position: currentMarkerPosition,
             icon: BitmapDescriptor.defaultMarkerWithHue(
               BitmapDescriptor.hueAzure,
             ),
-            rotation: _currentPosition!.heading,
-            flat: true,
-            anchor: const Offset(0.5, 0.5),
+            rotation: currentPosition?.heading ?? 0,
+            flat: currentPosition != null,
+            anchor:
+                currentPosition != null
+                    ? const Offset(0.5, 0.5)
+                    : const Offset(0.5, 1),
             zIndexInt: 10,
           ),
       },
@@ -1498,7 +1598,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () => context.go('/home'),
+              onPressed: _busy ? null : _finishCompletedFlow,
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(0, 50),
                 backgroundColor: const Color.fromARGB(255, 9, 31, 156),
@@ -1506,9 +1606,9 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text(
-                '完了',
-                style: TextStyle(fontSize: 16, color: Colors.white),
+              child: Text(
+                _tripId != null ? '記録保存を再試行' : '完了',
+                style: const TextStyle(fontSize: 16, color: Colors.white),
               ),
             ),
           ),

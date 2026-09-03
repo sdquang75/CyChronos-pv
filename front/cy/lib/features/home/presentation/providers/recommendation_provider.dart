@@ -56,8 +56,11 @@ class RecommendationNotifier extends StateNotifier<RecommendationState> {
       state = const RecommendationPermissionDeniedForever();
     } on LocationPermissionDeniedException {
       state = const RecommendationPermissionDenied();
-    } catch (e) {
-      state = RecommendationError(e.toString());
+    } catch (error) {
+      debugPrint('[recommendation] fetch failed: $error');
+      state = const RecommendationError(
+        'おすすめスポットを取得できませんでした。通信環境を確認して、もう一度お試しください。',
+      );
     }
   }
 }
