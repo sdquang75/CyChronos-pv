@@ -321,7 +321,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
               const SizedBox(height: AppSpacing.xxl + 4),
 
-              const Text('RIDE SETTINGS', style: AppTypography.sectionLabel),
+              const Text('走行設定', style: AppTypography.sectionLabel),
 
               const SizedBox(height: AppSpacing.md),
 
@@ -329,7 +329,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
               const SizedBox(height: AppSpacing.xxl + 4),
 
-              const Text('SUPPORT', style: AppTypography.sectionLabel),
+              const Text('サポート', style: AppTypography.sectionLabel),
 
               const SizedBox(height: AppSpacing.md),
 
@@ -349,7 +349,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
               const SizedBox(height: AppSpacing.xxl + 4),
 
-              const Text('ACCOUNT', style: AppTypography.sectionLabel),
+              const Text('アカウント', style: AppTypography.sectionLabel),
 
               const SizedBox(height: AppSpacing.md),
 

@@ -49,6 +49,7 @@ class AppTypography {
   /// 英大文字ラベル用であることが多い
   static const sectionLabel = TextStyle(
     fontFamily: _mono,
+    fontFamilyFallback: _jaFallback,
     fontWeight: FontWeight.w500,
     fontSize: 13,
     letterSpacing: 0.7,

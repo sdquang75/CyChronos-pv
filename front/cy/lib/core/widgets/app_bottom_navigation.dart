@@ -80,19 +80,19 @@ class AppBottomNavigation extends StatelessWidget {
                   MainAxisAlignment.spaceAround,
               children: [
                 _BottomNavItem(
-                  label: 'HOME',
+                  label: 'ホーム',
                   svgData: _kHomeTabSvg,
                   isSelected: currentIndex == 0,
                   onTap: () => _handleTap(0),
                 ),
                 _BottomNavItem(
-                  label: 'HISTORY',
+                  label: '履歴',
                   svgData: _kHistoryTabSvg,
                   isSelected: currentIndex == 1,
                   onTap: () => _handleTap(1),
                 ),
                 _BottomNavItem(
-                  label: 'SETTINGS',
+                  label: '設定',
                   icon: Icons.settings_outlined,
                   isSelected: currentIndex == 2,
                   onTap: () => _handleTap(2),
@@ -160,6 +160,7 @@ class _BottomNavItem extends StatelessWidget {
                 label,
                 style: TextStyle(
                   fontFamily: 'JetBrainsMono',
+                  fontFamilyFallback: const ['NotoSansJP'],
                   fontWeight: isSelected
                       ? FontWeight.w700
                       : FontWeight.w500,
