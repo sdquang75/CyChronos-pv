@@ -72,9 +72,7 @@ void main() {
     expect(find.text('片道'), findsOneWidget);
     expect(find.text('往復'), findsOneWidget);
     expect(find.text('所要時間'), findsOneWidget);
-    expect(find.text('希望の所要時間'), findsOneWidget);
     expect(find.text('ジャンル'), findsOneWidget);
-    expect(find.text('行きたいスポット'), findsOneWidget);
     expect(find.text('ルートを検索'), findsOneWidget);
 
     // デフォルト所要時間は45分
@@ -110,10 +108,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // 画面を少し下にスクロールして+15分をタップ (60分 = 1時間0分にする)
-    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -120));
+    // スクロールしてステッパーを浮動CTAより上に持ってくる
+    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -100));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('+15分'));
+
+    // +ステッパーをタップ (60分 = 1時間0分にする)
+    await tester.tap(find.byIcon(Icons.add_rounded));
     await tester.pumpAndSettle();
 
     expect(find.text('1'), findsAtLeastNWidgets(1));
