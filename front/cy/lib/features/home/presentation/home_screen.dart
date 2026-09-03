@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_bottom_navigation.dart';
 import '../../../core/widgets/app_screen_frame.dart';
 import '../../history/presentation/history_screen.dart';
+import '../../route_confirm/presentation/providers/navigation_state_provider.dart';
 import '../../settings/presentation/settings_screen.dart';
 import 'widgets/ride_flow.dart';
 
@@ -12,14 +14,14 @@ import 'widgets/ride_flow.dart';
 /// RideFlowの中でpushした画面など)を保持したままにする。
 /// go_routerの'/home'ルートはこのシェル1枚だけで、タブ切り替え自体は
 /// ページ遷移ではなくIndexedStackのインデックス変更で行う
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   // 0: HOME(RideFlow), 1: HISTORY, 2: SETTINGS
   int _currentTab = 0;
 
@@ -31,9 +33,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _handleTabTap(int index) {
     // 既にHOMEタブを表示中に、もう一度HOMEを押した場合。
-    // 目的地一覧/詳細/ルート確認まで何段階pushしていても、
-    // 都度「戻る」を連打させずに一気にプランナー画面まで戻す
+    // 通常はプランナー画面まで一気に戻すが、案内・走行中は誤タップで
+    // ナビゲーションが終了してしまう重大な事故を防ぐため無効化する
     if (index == 0 && _currentTab == 0) {
+      final isNavigating = ref.read(isTripNavigatingProvider);
+      if (isNavigating) {
+        // 案内中・走行中の誤タップを防止
+        return;
+      }
       _rideFlowNavigatorKey.currentState?.popUntil((route) => route.isFirst);
       return;
     }

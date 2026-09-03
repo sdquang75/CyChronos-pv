@@ -24,6 +24,7 @@ import 'data/navigation_announcer.dart';
 import 'data/route_preload_service.dart';
 import 'data/route_repository.dart';
 import 'domain/navigation_engine.dart';
+import 'presentation/providers/navigation_state_provider.dart';
 import '../settings/data/settings_service.dart';
 import 'trip_summary_screen.dart';
 
@@ -202,12 +203,25 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   }
 
   @override
+  void deactivate() {
+    ref.read(isTripNavigatingProvider.notifier).state = false;
+    super.deactivate();
+  }
+
+  @override
   void dispose() {
     _positionSubscription?.cancel();
     _stayTimer?.cancel();
     unawaited(_announcer.stop());
     unawaited(_disableWakeLock('screen dispose'));
     super.dispose();
+  }
+
+  void _syncNavigatingState() {
+    final active = _stage == _RouteStage.outboundNavigating ||
+        _stage == _RouteStage.staying ||
+        _stage == _RouteStage.returnNavigating;
+    ref.read(isTripNavigatingProvider.notifier).state = active;
   }
 
   Future<void> _disableWakeLock(String reason) async {
@@ -414,6 +428,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
           _outboundDurationSec ??= _displayDurationSec;
           _stage = _RouteStage.outboundNavigating; // 記録の成否に関わらず案内モードに入る
         });
+        _syncNavigatingState();
         await _activateNavigation();
       }
     }
@@ -424,6 +439,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     setState(() {
       _stage = _RouteStage.returnNavigating;
     });
+    _syncNavigatingState();
     await _activateNavigation();
     _showMessage('帰りの案内を開始しました。');
   }
@@ -701,6 +717,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     if (!_isRoundTrip || _stage != _RouteStage.outboundNavigating) return;
     if (!mounted) return;
     setState(() => _stage = _RouteStage.staying);
+    _syncNavigatingState();
 
     await _positionSubscription?.cancel();
     _positionSubscription = null;
@@ -751,6 +768,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         _loading = false;
         _busy = false;
       });
+      _syncNavigatingState();
       _showMessage('帰りのルートを表示しました。');
     } catch (error) {
       debugPrint('return route load error: $error');
@@ -832,6 +850,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                   ? _RouteStage.returnPreview
                   : _RouteStage.outboundPreview;
         });
+        _syncNavigatingState();
       }
     }
 
@@ -1001,9 +1020,12 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   @override
   Widget build(BuildContext context) {
     // AppScreenFrameはHomeScreen(IndexedStackシェル)側で一括して描画されるので、
-    // ここでは自分の中身だけを組み立てる
-    return Scaffold(
-      backgroundColor: AppColors.bgCool,
+    // ここでは自分の中身だけを組み立てる。
+    // 案内中は誤操作(OSの戻るボタン等)で画面が閉じてしまう事故を防ぐ
+    return PopScope(
+      canPop: !_isNavigating,
+      child: Scaffold(
+        backgroundColor: AppColors.bgCool,
       // ヘッダーはappBar(bodyの高さを変えてしまい、案内開始/終了のたびに
       // マップの表示領域が伸縮してズレて見える原因になっていた)ではなく、
       // マップの上に被さるオーバーレイとして出す。案内モード中はこれごと消して全画面にする
@@ -1142,8 +1164,9 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   /// 下部バーの中身を現在のステージに応じて切り替える
   Widget _buildBottomPanel() {
