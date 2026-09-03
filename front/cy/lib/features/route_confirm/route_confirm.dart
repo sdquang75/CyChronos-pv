@@ -340,8 +340,8 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         50;
   }
 
-  /// 案内開始: 下のバーを消して全画面の案内モードへ。
-  /// ログイン済みならトリップ開始も記録する(訪問済み除外が効くようになる)
+  /// 案内開始: 下のバーを消して全画面の案内モードへ即時突入(0ms Latency)。
+  /// ログイン済みならトリップ開始も非同期で記録する(訪問済み除外が効くようになる)
   Future<void> _startNavigation() async {
     if (_busy) return; // 二度押しガード
 
@@ -352,49 +352,61 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     }
 
     HapticFeedback.mediumImpact();
+
+    // 0ms Optimistic UI: すでにプレビューで取得済みのルートを用いて
+    // GPS衛星捕捉や通信を待たずに即座に案内モードへ突入する(ラグを完全解消)
+    if (_route != null) {
+      _navigationEngine = NavigationEngine(_route!);
+      setState(() {
+        _stage = _RouteStage.outboundNavigating;
+        _navigationStartedAt ??= DateTime.now();
+        _outboundDistanceM ??= _displayDistanceM;
+        _outboundDurationSec ??= _displayDurationSec;
+        _errorMessage = null;
+      });
+      _syncNavigatingState();
+      unawaited(_activateNavigation());
+    }
+
     setState(() => _busy = true);
 
-    // プレビューを開いてから移動している可能性があるため、案内開始地点を取り直す。
     try {
-      final position = await _locationService.getCurrentPosition();
-      final toLat = _destLat;
-      final toLng = _destLng;
-      if (toLat == null || toLng == null) {
-        throw StateError('目的地の座標がありません');
+      // プレビュー表示後の微小移動を高速位置情報(RAM/OSキャッシュ, 0〜50ms)で反映
+      Position? position;
+      try {
+        position = await _locationService.getFastPosition();
+      } catch (_) {
+        position = _currentPosition;
       }
-      final route =
-          _canReuseRouteFrom(position)
-              ? _route!
-              : await _repository.fetchCyclingRoute(
-                fromLat: position.latitude,
-                fromLng: position.longitude,
-                toLat: toLat,
-                toLng: toLng,
-              );
-      if (!mounted) return;
-      _originLat = position.latitude;
-      _originLng = position.longitude;
-      _currentPosition = position;
-      _route = route;
-      if (!_canReuseRouteFrom(position)) {
-        _routeFromLat = position.latitude;
-        _routeFromLng = position.longitude;
-        _routeFetchedAt = DateTime.now();
+
+      if (position != null) {
+        _originLat = position.latitude;
+        _originLng = position.longitude;
+        _currentPosition = position;
+
+        // すでにルートが無い、または大幅に離れた場合のみ再取得
+        if (_route == null || !_canReuseRouteFrom(position)) {
+          final toLat = _destLat;
+          final toLng = _destLng;
+          if (toLat != null && toLng != null) {
+            final newRoute = await _repository.fetchCyclingRoute(
+              fromLat: position.latitude,
+              fromLng: position.longitude,
+              toLat: toLat,
+              toLng: toLng,
+            );
+            if (mounted) {
+              _route = newRoute;
+              _routeFromLat = position.latitude;
+              _routeFromLng = position.longitude;
+              _routeFetchedAt = DateTime.now();
+              _navigationEngine = NavigationEngine(newRoute);
+            }
+          }
+        }
       }
-      _navigationEngine = NavigationEngine(route);
-      _errorMessage = null;
     } catch (error) {
-      debugPrint('route refresh on navigation start error: $error');
-      if (_route == null || _originLat == null || _originLng == null) {
-        if (!mounted) return;
-        setState(() {
-          _busy = false;
-          _errorMessage = '案内開始地点からのルートを取得できませんでした。通信と位置情報を確認してください。';
-        });
-        return;
-      }
-      _navigationEngine = NavigationEngine(_route!);
-      _navigationStatusMessage = '開始地点の再計算に失敗したため、表示中のルートで案内します。';
+      debugPrint('route check on navigation start error: $error');
     }
 
     // ログイン済みユーザーの user_id を取る(取れなければ記録なしで案内だけする)
@@ -414,22 +426,19 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         _showMessage('ログイン情報が取得できないため、走行記録なしで案内します');
       }
     } catch (error) {
-      // 記録に失敗しても案内自体は始める(記録はおまけ、案内が主目的)
+      // 記録に失敗しても案内自体は継続(案内が主目的)
       debugPrint('trip start error: $error');
       _showMessage('走行記録の開始に失敗しました(記録なしで案内します)');
     } finally {
       if (mounted) {
         setState(() {
           _busy = false;
-          // 完了画面用に、往路の距離・時間と開始時刻をここで確定させておく
-          // (この後は復路取得で_routeが上書きされるため、今のうちに控えておく)
-          _navigationStartedAt ??= DateTime.now();
-          _outboundDistanceM ??= _displayDistanceM;
-          _outboundDurationSec ??= _displayDurationSec;
-          _stage = _RouteStage.outboundNavigating; // 記録の成否に関わらず案内モードに入る
+          _stage = _RouteStage.outboundNavigating;
         });
         _syncNavigatingState();
-        await _activateNavigation();
+        if (_positionSubscription == null) {
+          await _activateNavigation();
+        }
       }
     }
   }
