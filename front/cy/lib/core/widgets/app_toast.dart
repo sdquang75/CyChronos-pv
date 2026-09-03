@@ -17,8 +17,7 @@ class AppToast {
   /// トーストを表示する。連続で呼ばれた場合は前のトーストを即座に消して
   /// 出し直す(SnackBarのclearSnackBars()相当)
   static void show(BuildContext context, String message, {bool isError = false}) {
-    _current?.remove();
-    _current = null;
+    clear();
 
     final overlayState = Overlay.of(context, rootOverlay: true);
     late final OverlayEntry entry;
@@ -37,6 +36,12 @@ class AppToast {
     );
     _current = entry;
     overlayState.insert(entry);
+  }
+
+  /// 現在表示中のトーストを即座に消去する
+  static void clear() {
+    _current?.remove();
+    _current = null;
   }
 }
 

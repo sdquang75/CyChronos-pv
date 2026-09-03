@@ -3,15 +3,12 @@ import 'package:flutter/services.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
-import '../../core/theme/app_typography.dart';
 import '../../core/widgets/app_bottom_navigation.dart';
 import '../../core/widgets/app_button.dart';
+import '../../core/widgets/app_toast.dart';
+import '../../core/widgets/tap_scale.dart';
 
-/// 走行終了後に出す完了画面。以前はトースト1本(「案内を終了しました」等)で
-/// 済ませていたが、達成感が伝わらないので専用の画面に差し替えた。
-/// 距離・時間・平均速度は現状すべて推定値(Mapboxのルート距離+実経過時間)。
-/// バックエンドがGPSログから実測値を返せるようになったら差し替える想定。
-/// 将来ストリーク(連続日数)や実績バッジを足すなら、この画面の統計エリアに追加していく
+/// 走行終了後に出す完了画面 (Apple Fitnessスタイルの達成感あふれる画面).
 class TripSummaryScreen extends StatefulWidget {
   const TripSummaryScreen({
     super.key,
@@ -47,13 +44,11 @@ class _TripSummaryScreenState extends State<TripSummaryScreen>
     duration: const Duration(milliseconds: 900),
   );
 
-  // チェックマークの丸: ポンと弾むように出す
   late final Animation<double> _circleScale = CurvedAnimation(
     parent: _controller,
     curve: const Interval(0.0, 0.55, curve: Curves.elasticOut),
   );
 
-  // 丸の外側に広がって消えていく波紋
   late final Animation<double> _ringScale = Tween<double>(
     begin: 0.7,
     end: 1.6,
@@ -63,13 +58,11 @@ class _TripSummaryScreenState extends State<TripSummaryScreen>
     end: 0.0,
   ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
-  // チェックのアイコン: 少し遅れてフワッと出す
   late final Animation<double> _checkFade = CurvedAnimation(
     parent: _controller,
     curve: const Interval(0.35, 0.85, curve: Curves.easeIn),
   );
 
-  // テキスト・統計・完了ボタン: 下からフワッとスライドイン
   late final Animation<double> _contentFade = CurvedAnimation(
     parent: _controller,
     curve: const Interval(0.3, 0.9, curve: Curves.easeOut),
@@ -87,6 +80,8 @@ class _TripSummaryScreenState extends State<TripSummaryScreen>
   @override
   void initState() {
     super.initState();
+    // 完了画面の達成感・余韻を邪魔しないよう、残っているトースト通知を即時消去する
+    AppToast.clear();
     HapticFeedback.mediumImpact();
     _controller.forward();
   }
@@ -97,14 +92,12 @@ class _TripSummaryScreenState extends State<TripSummaryScreen>
     super.dispose();
   }
 
-  // 距離(メートル)を「X.Xkm」の形式にする。未計測なら「--」
   String _distanceText() {
     final meters = widget.distanceM;
     if (meters == null) return '--';
     return '${(meters / 1000).toStringAsFixed(1)}km';
   }
 
-  // 所要時間を「○時間○分」または「○分」にする。未計測なら「--」
   String _durationText() {
     final duration = widget.duration;
     if (duration == null) return '--';
@@ -114,16 +107,12 @@ class _TripSummaryScreenState extends State<TripSummaryScreen>
     return '$hours時間$minutes分';
   }
 
-  // 平均速度(km/h)を小数1桁で出す。未計測なら「--」
   String _speedText() {
     final speed = widget.averageSpeedKmh;
     if (speed == null) return '--';
     return speed.toStringAsFixed(1);
   }
 
-  // 「完了」を押したとき: RideFlowのスタックを先頭(HomeTabView)まで
-  // 全部popして戻す。案内モード中の中途半端なRouteConfirmScreenを
-  // 経由させずに一発で初期状態へ復帰させる
   void _finish() {
     HapticFeedback.lightImpact();
     Navigator.of(context).popUntil((route) => route.isFirst);
@@ -131,18 +120,13 @@ class _TripSummaryScreenState extends State<TripSummaryScreen>
 
   @override
   Widget build(BuildContext context) {
-    // 画面下部の共通ナビゲーションバー(HOME・HISTORY・SETTINGS)が
-    // 浮かんでいるため、完了ボタンが隠れないようにその分の高さを余白として確保する
     final bottomClearance =
         AppBottomNavigation.barHeightFor(context) + AppSpacing.md;
 
     return PopScope(
-      // 端末の戻る操作では閉じさせず、必ず「完了」ボタンから戻す
-      // (途中の状態のままRideFlowに戻ると表示が中途半端になるため)
       canPop: false,
       child: Scaffold(
-        // 通常の背景(bgCool)ではなく、達成感を出すためあえて真っ白にする
-        backgroundColor: AppColors.surface,
+        backgroundColor: Colors.white,
         body: SafeArea(
           bottom: false,
           child: LayoutBuilder(
@@ -154,9 +138,9 @@ class _TripSummaryScreenState extends State<TripSummaryScreen>
                   child: IntrinsicHeight(
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(
-                        AppSpacing.xxl,
+                        24,
                         0,
-                        AppSpacing.xxl,
+                        24,
                         bottomClearance,
                       ),
                       child: Column(
@@ -204,7 +188,7 @@ class _TripSummaryScreenState extends State<TripSummaryScreen>
                               ],
                             ),
                           ),
-                          const SizedBox(height: AppSpacing.xxl),
+                          const SizedBox(height: 28),
                           FadeTransition(
                             opacity: _contentFade,
                             child: SlideTransition(
@@ -213,20 +197,33 @@ class _TripSummaryScreenState extends State<TripSummaryScreen>
                                 children: [
                                   const Text(
                                     'お疲れさまでした!',
-                                    style: AppTypography.pageTitle,
+                                    style: TextStyle(
+                                      fontFamily: 'HankenGrotesk',
+                                      fontFamilyFallback: ['NotoSansJP'],
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.primary,
+                                      letterSpacing: -0.6,
+                                    ),
                                     textAlign: TextAlign.center,
                                   ),
-                                  const SizedBox(height: AppSpacing.sm),
+                                  const SizedBox(height: 8),
                                   Text(
                                     widget.isArrival
                                         ? '目的地に到着しました'
                                         : (widget.isRoundTrip
                                             ? '${widget.destinationName}への往復ライドが完了しました'
                                             : '${widget.destinationName}へのライドが完了しました'),
-                                    style: AppTypography.pageSubtitle,
+                                    style: const TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontFamilyFallback: ['NotoSansJP'],
+                                      fontSize: 14,
+                                      color: AppColors.textSecondary,
+                                      height: 1.4,
+                                    ),
                                     textAlign: TextAlign.center,
                                   ),
-                                  const SizedBox(height: AppSpacing.xxxl),
+                                  const SizedBox(height: 36),
                                   Row(
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceEvenly,
@@ -258,9 +255,14 @@ class _TripSummaryScreenState extends State<TripSummaryScreen>
                             opacity: _contentFade,
                             child: SizedBox(
                               width: double.infinity,
-                              child: AppButton(
-                                label: '完了',
-                                onPressed: _finish,
+                              child: TapScale(
+                                onTap: _finish,
+                                child: AppButton(
+                                  label: '完了',
+                                  height: 52,
+                                  borderRadius: 18,
+                                  onPressed: _finish,
+                                ),
                               ),
                             ),
                           ),
@@ -278,7 +280,7 @@ class _TripSummaryScreenState extends State<TripSummaryScreen>
   }
 }
 
-// 統計1件分(アイコン+数値+ラベル)
+// Apple Fitnessスタイルの統計タイル
 class _StatTile extends StatelessWidget {
   const _StatTile({
     required this.icon,
@@ -299,28 +301,48 @@ class _StatTile extends StatelessWidget {
         Container(
           width: 48,
           height: 48,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppColors.accentBg,
-            shape: BoxShape.circle,
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Icon(icon, color: AppColors.primary, size: 22),
         ),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: 10),
         Text.rich(
           TextSpan(
             text: value,
-            style: AppTypography.stat.copyWith(
+            style: const TextStyle(
+              fontFamily: 'JetBrainsMono',
               fontSize: 18,
-              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primary,
             ),
-            children:
-                unit == null
-                    ? null
-                    : [TextSpan(text: ' $unit', style: AppTypography.label)],
+            children: unit == null
+                ? null
+                : [
+                    TextSpan(
+                      text: ' $unit',
+                      style: const TextStyle(
+                        fontFamily: 'HankenGrotesk',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
           ),
         ),
-        const SizedBox(height: 2),
-        Text(label, style: AppTypography.label),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'HankenGrotesk',
+            fontFamilyFallback: ['NotoSansJP'],
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textSecondary,
+          ),
+        ),
       ],
     );
   }

@@ -749,7 +749,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
       }
     } catch (error) {
       debugPrint('trip end error: $error');
-      _showMessage('走行記録の終了に失敗しました');
+      // 完了画面の達成感・余韻を損なわないよう、トースト通知は出さない
     } finally {
       if (stopPositionUpdates != null) unawaited(stopPositionUpdates);
       unawaited(_announcer.stop());
@@ -775,7 +775,9 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
 
     if (!mounted) return;
 
-    // 「案内を終了しました」のトーストの代わりに、達成感のある完了画面へ遷移する。
+    // 完了画面を開く前に、残っているトースト通知があれば即座に消去する
+    AppToast.clear();
+
     Navigator.of(context).push(
       MaterialPageRoute(
         builder:
