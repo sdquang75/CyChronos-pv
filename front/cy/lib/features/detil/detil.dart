@@ -7,6 +7,9 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_top_bar.dart';
 import '../../core/widgets/tap_scale.dart';
+import '../home/data/location_service.dart';
+import '../route_confirm/data/route_preload_service.dart';
+import '../route_confirm/data/route_repository.dart';
 import '../route_confirm/route_confirm.dart';
 
 // Google Placesの英語ジャンル(type) → 画面表示用の日本語ラベルの変換表
@@ -24,7 +27,9 @@ const Map<String, String> _genreLabels = {
 };
 
 /// スポット詳細画面 (Apple Mapsのミニマリズム思想に基づく洗練された詳細ビュー).
-class DetilScreen extends StatelessWidget {
+/// この画面を見ている間に裏で次画面のルート情報を事前取得(Preload)し、
+/// 「ルートを見る」を押した瞬間に0msでルート確認画面を表示する。
+class DetilScreen extends StatefulWidget {
   final String name;
   final String address;
   final String genre; // Google Placesの英語ジャンル(例: cafe)。表示時に日本語へ変換する
@@ -45,6 +50,70 @@ class DetilScreen extends StatelessWidget {
     this.rating,
     this.destination = const {},
   });
+
+  @override
+  State<DetilScreen> createState() => _DetilScreenState();
+}
+
+class _DetilScreenState extends State<DetilScreen> {
+  CyclingRoute? _preloadedRoute;
+  Future<CyclingRoute>? _preloadedRouteFuture;
+
+  String get name => widget.name;
+  String get address => widget.address;
+  String get genre => widget.genre;
+  String? get imageUrl => widget.imageUrl;
+  int? get durationSec => widget.durationSec;
+  int? get distanceMeter => widget.distanceMeter;
+  double? get rating => widget.rating;
+  Map<String, dynamic> get destination => widget.destination;
+
+  @override
+  void initState() {
+    super.initState();
+    _startPreloadingRoute();
+  }
+
+  /// 詳細画面を開いた瞬間に裏で目的地へのルートを事前読み込み
+  void _startPreloadingRoute() async {
+    final destLat = (widget.destination['lat'] as num?)?.toDouble();
+    final destLng = (widget.destination['lng'] as num?)?.toDouble();
+    if (destLat == null || destLng == null) return;
+
+    try {
+      final pos = await LocationService().getFastPosition();
+      final future = RoutePreloadService.preloadRoute(
+        fromLat: pos.latitude,
+        fromLng: pos.longitude,
+        toLat: destLat,
+        toLng: destLng,
+      );
+      if (!mounted) return;
+      setState(() {
+        _preloadedRouteFuture = future;
+      });
+      final route = await future;
+      if (!mounted) return;
+      setState(() {
+        _preloadedRoute = route;
+      });
+    } catch (_) {
+      // 事前読み込み失敗は無視(ルート確認画面の通常読み込みに委ねる)
+    }
+  }
+
+  void _openRouteConfirm() {
+    HapticFeedback.mediumImpact();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RouteConfirmScreen(
+          destination: destination,
+          initialRoute: _preloadedRoute,
+          preloadedRouteFuture: _preloadedRouteFuture,
+        ),
+      ),
+    );
+  }
 
   String _genreLabel() {
     if (genre.isEmpty) return 'ジャンル';
@@ -256,31 +325,13 @@ class DetilScreen extends StatelessWidget {
                     const SizedBox(height: 24),
 
                     TapScale(
-                      onTap: () {
-                        HapticFeedback.mediumImpact();
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => RouteConfirmScreen(
-                              destination: destination,
-                            ),
-                          ),
-                        );
-                      },
+                      onTap: _openRouteConfirm,
                       child: AppButton(
                         label: 'ルートを見る',
                         icon: Icons.navigation_rounded,
                         height: 52,
                         borderRadius: 18,
-                        onPressed: () {
-                          HapticFeedback.mediumImpact();
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => RouteConfirmScreen(
-                                destination: destination,
-                              ),
-                            ),
-                          );
-                        },
+                        onPressed: _openRouteConfirm,
                       ),
                     ),
 

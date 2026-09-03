@@ -21,6 +21,7 @@ import '../auth/presentation/providers/auth_provider.dart';
 import '../history/presentation/providers/history_provider.dart';
 import '../home/data/location_service.dart';
 import 'data/navigation_announcer.dart';
+import 'data/route_preload_service.dart';
 import 'data/route_repository.dart';
 import 'domain/navigation_engine.dart';
 import '../settings/data/settings_service.dart';
@@ -49,6 +50,8 @@ class RouteConfirmScreen extends ConsumerStatefulWidget {
   final NavigationAnnouncer? announcer; // テスト時は端末TTSを呼ばない偽物へ差し替える
   final bool useMapTiles; // テスト時はfalse(Google Maps SDKが動かないため簡易描画に切り替える)
   final bool keepScreenAwake; // テスト時はfalseにしてプラットフォーム通信を避ける
+  final CyclingRoute? initialRoute; // 事前読み込み済みルート(DetilScreenから引き継ぎ)
+  final Future<CyclingRoute>? preloadedRouteFuture; // 事前読み込み中Future(DetilScreenから引き継ぎ)
 
   const RouteConfirmScreen({
     super.key,
@@ -58,6 +61,8 @@ class RouteConfirmScreen extends ConsumerStatefulWidget {
     this.announcer,
     this.useMapTiles = true,
     this.keepScreenAwake = true,
+    this.initialRoute,
+    this.preloadedRouteFuture,
   });
 
   @override
@@ -180,7 +185,20 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   @override
   void initState() {
     super.initState();
-    _loadRoute();
+    // 1. すでに事前読み込み済みのルートがあれば0msで即時適用
+    if (widget.initialRoute != null) {
+      _route = widget.initialRoute;
+      _loading = false;
+      if (_route!.points.isNotEmpty) {
+        _originLng ??= _route!.points.first[0];
+        _originLat ??= _route!.points.first[1];
+        _routeFromLat = _originLat;
+        _routeFromLng = _originLng;
+        _routeFetchedAt = DateTime.now();
+      }
+    } else {
+      _loadRoute();
+    }
   }
 
   @override
@@ -215,10 +233,54 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
       return;
     }
 
+    // 2. 事前読み込み中のFutureがあればそれを最優先で待つ(通信の二重発火を防止)
+    if (widget.preloadedRouteFuture != null) {
+      try {
+        final route = await widget.preloadedRouteFuture!;
+        if (!mounted) return;
+        setState(() {
+          _route = route;
+          if (route.points.isNotEmpty) {
+            _originLng ??= route.points.first[0];
+            _originLat ??= route.points.first[1];
+            _routeFromLat = _originLat;
+            _routeFromLng = _originLng;
+          }
+          _routeFetchedAt = DateTime.now();
+          _loading = false;
+        });
+        return;
+      } catch (_) {
+        // 事前読み込みが失敗した場合は通常の取得へフォールバック
+      }
+    }
+
     try {
-      final position = await _locationService.getCurrentPosition();
+      // 3. 高速位置情報(直近キャッシュまたはOSのlastKnown)を取得
+      final position = await _locationService.getFastPosition();
       _originLat ??= position.latitude;
       _originLng ??= position.longitude;
+
+      // 4. RoutePreloadServiceのキャッシュに既存のルートがあるか確認
+      final cachedFuture = RoutePreloadService.getCachedRouteFuture(
+        fromLat: position.latitude,
+        fromLng: position.longitude,
+        toLat: toLat,
+        toLng: toLng,
+      );
+      if (cachedFuture != null) {
+        final route = await cachedFuture;
+        if (!mounted) return;
+        setState(() {
+          _route = route;
+          _routeFromLat = position.latitude;
+          _routeFromLng = position.longitude;
+          _routeFetchedAt = DateTime.now();
+          _loading = false;
+        });
+        return;
+      }
+
       final route = await _repository.fetchCyclingRoute(
         fromLat: position.latitude,
         fromLng: position.longitude,

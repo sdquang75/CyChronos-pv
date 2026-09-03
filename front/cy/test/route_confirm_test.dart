@@ -76,6 +76,14 @@ class _FakeLocationService implements LocationService {
        positions = positions ?? const Stream.empty();
 
   @override
+  Position? get cachedPosition => _currentPositions.first;
+
+  @override
+  Future<Position> getFastPosition({
+    Duration maxAge = const Duration(minutes: 5),
+  }) => getCurrentPosition();
+
+  @override
   Future<Position> getCurrentPosition() async {
     final index =
         _currentPositionIndex < _currentPositions.length
