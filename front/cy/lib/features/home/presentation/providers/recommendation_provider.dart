@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/location_service.dart';
 import '../../data/recommendation_repository.dart';
 import '../../domain/recommendation_state.dart';
+import '../../../settings/data/settings_service.dart';
 
 final locationServiceProvider = Provider<LocationService>(
   (_) => LocationService(),
@@ -17,14 +18,16 @@ final recommendationProvider =
       (ref) => RecommendationNotifier(
         ref.watch(locationServiceProvider),
         ref.watch(recommendationRepositoryProvider),
+        ref,
       ),
     );
 
 class RecommendationNotifier extends StateNotifier<RecommendationState> {
   final LocationService _locationService;
   final RecommendationRepository _repo;
+  final Ref? _ref;
 
-  RecommendationNotifier(this._locationService, this._repo)
+  RecommendationNotifier(this._locationService, this._repo, [this._ref])
     : super(const RecommendationInitial());
 
   Future<void> fetchForCurrentLocation({
@@ -32,6 +35,7 @@ class RecommendationNotifier extends StateNotifier<RecommendationState> {
     required String type,
     required String mode,
     required int stayMinutes,
+    bool? includeVisited,
   }) async {
     state = const RecommendationLocating();
     try {
@@ -39,6 +43,9 @@ class RecommendationNotifier extends StateNotifier<RecommendationState> {
       debugPrint(
         '[recommendation] got position: ${position.latitude}, ${position.longitude}',
       );
+
+      final shouldIncludeVisited = includeVisited ??
+          (_ref?.read(settingsProvider).includeVisitedPlaces ?? false);
 
       state = const RecommendationLoading();
       final data = await _repo.fetchRecommendations(
@@ -48,6 +55,7 @@ class RecommendationNotifier extends StateNotifier<RecommendationState> {
         minutes: minutes,
         mode: mode,
         stayMinutes: stayMinutes,
+        includeVisited: shouldIncludeVisited,
       );
       state = RecommendationLoaded(data);
     } on LocationServiceDisabledException {

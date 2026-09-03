@@ -117,8 +117,25 @@ router.get("/", async (req, res) => {
     }
 
 
-    // user_id があれば訪問済みの place_id を取得(なければ除外なし=空配列)
-    const visitedPlaceIds = userId === null ? [] : await visits.getVisitedPlaceIds(userId);
+    // 訪問済みスポットの扱い:
+    // 1. クエリパラメータ include_visited=true が指定されている
+    // 2. またはユーザー設定(user_settings.include_visited_places)が有効
+    // いずれかの場合は訪問済みを除外せず全候補から提案する
+    let includeVisited =
+      req.query.include_visited === "true" || req.query.include_visited === "1";
+    if (!includeVisited && userId !== null) {
+      const [settings] = await pool.query(
+        "SELECT include_visited_places FROM user_settings WHERE user_id = ?",
+        [userId]
+      );
+      if (settings.length > 0 && Boolean(settings[0].include_visited_places)) {
+        includeVisited = true;
+      }
+    }
+
+    // user_id があり、かつ訪問済みを含める設定でなければ訪問済みの place_id を取得
+    const visitedPlaceIds =
+      userId === null || includeVisited ? [] : await visits.getVisitedPlaceIds(userId);
 
     const filterdPlaces = mode === "round_trip"
       ? places.filterWithinRoundTripMinutes(candidates.normalizedPlaces, minutes)

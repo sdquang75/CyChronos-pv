@@ -57,6 +57,7 @@ class _FakeRecommendationNotifier extends RecommendationNotifier {
     required String type,
     required String mode,
     required int stayMinutes,
+    bool? includeVisited,
   }) async {
     state = RecommendationLoaded({'places': _places});
   }

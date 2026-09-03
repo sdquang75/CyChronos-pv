@@ -14,6 +14,7 @@ class RecommendationRepository {
     required int minutes,
     required String mode,
     required int stayMinutes,
+    bool includeVisited = false,
   }) async {
     final response = await _dio.get(
       '/api/suggest',
@@ -24,6 +25,7 @@ class RecommendationRepository {
         'minutes': minutes,
         'mode': mode,
         'stayMinutes': stayMinutes,
+        if (includeVisited) 'include_visited': 'true',
       },
     );
     return response.data;

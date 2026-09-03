@@ -23,6 +23,7 @@ app.use("/api/suggest", optionalAppUser, require("./routes/suggest"));
 // 走行データは本人のものしか触らせない(user_id は検証済みトークンから引く)
 app.use("/api/trips", requireAppUser, tripsRouter);
 app.use("/api/locations", requireAppUser, locationsRouter);
+app.use("/api/settings", requireAppUser, require("./routes/settings"));
 
 // 単体テスト用の簡易フロント(http://localhost:3000/test/)。
 // 認証なしでAPIを叩ける画面なので、本番では配信しない

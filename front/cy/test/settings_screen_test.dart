@@ -62,6 +62,7 @@ void main() {
     // タイトルと各セクションヘッダーが表示されていること
     expect(find.text('設定'), findsOneWidget);
     expect(find.text('ナビゲーション設定'), findsOneWidget);
+    expect(find.text('スポット提案・探索設定'), findsOneWidget);
     expect(find.text('地図表示設定'), findsOneWidget);
     expect(find.text('サポート & ストレージ'), findsOneWidget);
     expect(find.text('アプリ情報'), findsOneWidget);
@@ -74,6 +75,10 @@ void main() {
     expect(find.text('音声案内'), findsOneWidget);
     expect(find.text('画面の常時点灯'), findsOneWidget);
     expect(find.text('自動リルート'), findsOneWidget);
+
+    // スポット提案・探索設定
+    expect(find.text('訪問済みスポットを含める'), findsOneWidget);
+    expect(find.text('過去に訪れた目的地も再訪候補として提案に含めます'), findsOneWidget);
 
     // 地図タイプ
     expect(find.text('地図タイプ'), findsOneWidget);
@@ -92,7 +97,29 @@ void main() {
     expect(find.text('v1.0.0 (42)'), findsOneWidget);
   });
 
-  testWidgets('Tapping map type chip updates the selected state',
+  testWidgets('Toggling include visited places updates user setting',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(_wrapSettings());
+    await tester.pumpAndSettle();
+
+    final rowFinder = find.ancestor(
+      of: find.text('訪問済みスポットを含める'),
+      matching: find.byType(Row),
+    );
+    expect(rowFinder, findsWidgets);
+
+    final switchWidget = find.descendant(
+      of: rowFinder.first,
+      matching: find.byType(Switch),
+    );
+    await tester.tap(switchWidget);
+    await tester.pumpAndSettle();
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('user_1_include_visited_places'), true);
+  });
+
+  testWidgets('Tapping map type chip updates the selected state per user',
       (WidgetTester tester) async {
     await tester.pumpWidget(_wrapSettings());
     await tester.pumpAndSettle();
@@ -103,7 +130,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getString('settings_map_type'), 'satellite');
+    expect(prefs.getString('user_1_map_type'), 'satellite');
   });
 
   testWidgets('Tapping clear cache opens confirmation dialog and clears cache',
