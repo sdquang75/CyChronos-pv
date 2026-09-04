@@ -19,6 +19,31 @@ if (localPropertiesFile.exists()) {
 }
 val mapsApiKey: String = localProperties.getProperty("MAPS_API_KEY") ?: ""
 
+// キーが無くてもビルドは通ってしまい、実行して初めて「Googleロゴだけの灰色の地図」に気づく。
+// 気づくのが遅れるとバグ調査に時間を取られるので、ビルド時にはっきり知らせる。
+//
+// flutter コマンドは Gradle を -q(QUIETレベル)で呼ぶため logger.warn は表示されない。
+// QUIETレベルでも出る logger.quiet を使う
+if (mapsApiKey.isBlank()) {
+    logger.quiet(
+        """
+        |
+        |============================================================
+        | 警告: MAPS_API_KEY が設定されていません
+        |------------------------------------------------------------
+        | ルート確認・ナビ画面の地図が表示されません
+        | (Googleのロゴだけが出た灰色の画面になります)
+        |
+        | android/local.properties に次の1行を追加してください:
+        |   MAPS_API_KEY=AIza...
+        |
+        | キーはGoogle Cloudで「Maps SDK for Android」を有効化して発行します
+        |============================================================
+        |
+        """.trimMargin()
+    )
+}
+
 android {
     namespace = "com.cychronos.cy"
     compileSdk = flutter.compileSdkVersion
