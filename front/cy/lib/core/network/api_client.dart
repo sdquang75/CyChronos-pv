@@ -8,6 +8,12 @@ class ApiClient {
   // back の既定ポートは 3000(back/.env の PORT)
   static const _envBaseUrl = String.fromEnvironment('API_BASE_URL');
 
+  /// 通信が「必ず失敗する」構成になっている場合の説明文(問題なければ null)。
+  ///
+  /// 実機で接続先が未指定のときなど、電波ではなく設定が原因のケースがある。
+  /// エラー表示でこの文言を出して、通信環境の問題と切り分けられるようにする
+  static String? configWarning;
+
   /// 実機(Android/iOS)では "localhost" は端末自身を指すため PC のバックエンドに繋がらない。
   /// 実機で動かす場合は起動時に指定する(PCのLAN IPに置き換える):
   ///   flutter run --dart-define=API_BASE_URL=http://PCのLAN_IP:3000
@@ -82,12 +88,13 @@ class ApiClient {
         // エミュレータ: 10.0.2.2 がホストPCを指す
         return 'http://10.0.2.2:3000';
       }
-      // 実機: LAN 経由で PC に接続する必要がある
-      debugPrint(
-        'ApiClient: Android実機では --dart-define=API_BASE_URL=http://PCのLAN_IP:3000 '
-        'を指定しないとバックエンドに接続できません。',
-      );
-      return 'http://10.0.2.2:3000'; // 接続不可だが明示的なエラーになるよう既定値を返す
+      configWarning =
+          '実機では起動時に接続先の指定が必要です: '
+          'flutter run --dart-define=API_BASE_URL=http://PCのLAN_IP:3000';
+      debugPrint('ApiClient: $configWarning');
+      // 10.0.2.2 はエミュレータ専用のアドレスで実機からは到達できない。
+      // ここに来た時点で通信は必ず失敗するが、configWarning で理由を表示する
+      return 'http://10.0.2.2:3000';
     }
 
     if (defaultTargetPlatform == TargetPlatform.iOS) {
@@ -96,10 +103,11 @@ class ApiClient {
         // シミュレータ: ホストと localhost を共有
         return 'http://localhost:3000';
       }
-      debugPrint(
-        'ApiClient: iOS実機では --dart-define=API_BASE_URL=http://PCのLAN_IP:3000 '
-        'を指定しないとバックエンドに接続できません。',
-      );
+      configWarning =
+          '実機では起動時に接続先の指定が必要です: '
+          'flutter run --dart-define=API_BASE_URL=http://PCのLAN_IP:3000';
+      debugPrint('ApiClient: $configWarning');
+      // localhost は端末自身を指すため、実機からPCのバックエンドには繋がらない
       return 'http://localhost:3000';
     }
 

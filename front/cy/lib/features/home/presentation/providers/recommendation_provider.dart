@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/network/api_error_message.dart';
 import '../../data/location_service.dart';
 import '../../data/recommendation_repository.dart';
 import '../../domain/recommendation_state.dart';
@@ -64,8 +65,15 @@ class RecommendationNotifier extends StateNotifier<RecommendationState> {
       state = const RecommendationPermissionDeniedForever();
     } on LocationPermissionDeniedException {
       state = const RecommendationPermissionDenied();
-    } catch (e) {
-      state = RecommendationError(e.toString());
+    } catch (error) {
+      debugPrint('[recommendation] fetch failed: $error');
+      // 失敗理由(サーバー未起動・接続先設定ミス・外部APIの障害など)を切り分けて表示する
+      state = RecommendationError(
+        describeApiError(
+          error,
+          fallback: 'おすすめスポットを取得できませんでした。時間をおいてもう一度お試しください。',
+        ),
+      );
     }
   }
 }

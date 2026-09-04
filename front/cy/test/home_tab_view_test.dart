@@ -12,9 +12,6 @@ class _FakeWeatherNotifier extends StateNotifier<WeatherState>
 
   @override
   Future<void> fetchForCurrentLocation() async {}
-
-  @override
-  Future<void> refresh() async {}
 }
 
 Widget _wrapHome({

@@ -70,6 +70,10 @@ dependencies:
   # Map (Google Maps。Android/iOS/Web対応。Windowsデスクトップでは動かない点に注意)
   google_maps_flutter: ^2.10.0
 
+  # 走行履歴のルート地図表示
+  flutter_map: ^8.3.1
+  latlong2: ^0.10.1
+
   # Firebase (uncomment when ready to integrate)
   # cloud_firestore: ^5.6.5
   # firebase_storage: ^12.4.4

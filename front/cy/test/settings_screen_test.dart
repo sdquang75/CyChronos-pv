@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cy/features/auth/data/auth_repository.dart';
 import 'package:cy/features/auth/domain/auth_state.dart';
 import 'package:cy/features/auth/presentation/providers/auth_provider.dart';
-import 'package:cy/features/settings/data/settings_service.dart';
 import 'package:cy/features/settings/presentation/settings_screen.dart';
 
 class _FakeAuthNotifier extends StateNotifier<AuthState>
