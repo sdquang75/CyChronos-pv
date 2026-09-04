@@ -18,3 +18,5 @@ back/HANDOFF.md
 back/docs/DEPLOY.md
 output/pdf/Api定義書.pdf
 upload_apk.py
+__pycache__/
+*.pyc
