@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/network/api_error_message.dart';
 import '../../../core/widgets/app_bottom_navigation.dart';
 import '../../../core/widgets/app_screen_frame.dart';
 import '../../auth/domain/auth_state.dart';
@@ -63,12 +64,15 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         _trips = trips;
         _isLoading = false;
       });
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
 
       setState(() {
         _isLoading = false;
-        _errorMessage = '履歴を取得できませんでした。通信環境をご確認のうえ、もう一度お試しください。';
+        _errorMessage = describeApiError(
+          error,
+          fallback: '履歴を取得できませんでした。時間をおいてもう一度お試しください。',
+        );
       });
     }
   }

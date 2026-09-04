@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/utils/calorie_calculator.dart';
+import '../../../core/network/api_error_message.dart';
 import '../../../core/network/place_photo.dart';
 import '../../../core/widgets/app_bottom_navigation.dart';
 import '../../../core/widgets/app_screen_frame.dart';
@@ -395,8 +396,7 @@ class _DestinationListScreenState extends ConsumerState<DestinationListScreen> {
 
       _showMessage(
         context,
-        '再提案に失敗しました。'
-        '通信環境を確認して、もう一度お試しください。',
+        describeApiError(error, fallback: '再提案に失敗しました。時間をおいてもう一度お試しください。'),
       );
     } finally {
       if (mounted) {
@@ -485,37 +485,37 @@ class _DestinationCard extends StatelessWidget {
 
     // カロリー計算に使用する距離(m)と所要時間(秒)
     // 往復モードの場合は、行き＋帰りの距離・走行時間を使用する
-    final bool isRoundTrip =
-        destination['tripMode'] == 'round_trip';
+    final bool isRoundTrip = destination['tripMode'] == 'round_trip';
 
-    final dynamic rawDistanceM = isRoundTrip
-        ? destination['roundTripDistanceM']
-        : destination['distanceM'];
+    final dynamic rawDistanceM =
+        isRoundTrip
+            ? destination['roundTripDistanceM']
+            : destination['distanceM'];
 
-    final dynamic rawDurationSec = isRoundTrip
-        ? destination['roundTripDurationSec']
-        : destination['durationSec'];
+    final dynamic rawDurationSec =
+        isRoundTrip
+            ? destination['roundTripDurationSec']
+            : destination['durationSec'];
 
-    final double? distanceM = rawDistanceM is num
-        ? rawDistanceM.toDouble()
-        : double.tryParse(rawDistanceM?.toString() ?? '');
+    final double? distanceM =
+        rawDistanceM is num
+            ? rawDistanceM.toDouble()
+            : double.tryParse(rawDistanceM?.toString() ?? '');
 
-    final double? durationSec = rawDurationSec is num
-        ? rawDurationSec.toDouble()
-        : double.tryParse(rawDurationSec?.toString() ?? '');
+    final double? durationSec =
+        rawDurationSec is num
+            ? rawDurationSec.toDouble()
+            : double.tryParse(rawDurationSec?.toString() ?? '');
 
     final int? calories =
         distanceM != null && durationSec != null
             ? CalorieCalculator.calculate(
-                distanceM: distanceM,
-                durationSec: durationSec,
-              )
+              distanceM: distanceM,
+              durationSec: durationSec,
+            )
             : null;
 
-    final String calorieText =
-        calories != null
-            ? '約$calories kcal'
-            : '-- kcal';
+    final String calorieText = calories != null ? '約$calories kcal' : '-- kcal';
 
     // カード全体をタップして詳細画面へ移動できる
     return GestureDetector(
@@ -523,11 +523,7 @@ class _DestinationCard extends StatelessWidget {
       onTap: () {
         _openDetail(context);
       },
-      child: _buildCard(
-        context,
-        durationText,
-        calorieText,
-      ),
+      child: _buildCard(context, durationText, calorieText),
     );
   }
 
@@ -541,8 +537,7 @@ class _DestinationCard extends StatelessWidget {
     String durationText,
     String calorieText,
   ) {
-    final String name =
-        destination['name']?.toString() ?? '名称不明';
+    final String name = destination['name']?.toString() ?? '名称不明';
 
     return Container(
       width: double.infinity,

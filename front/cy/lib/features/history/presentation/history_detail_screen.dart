@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 // LatLngだけ取り込む(このパッケージのPathクラスがFlutter標準のPathと名前衝突するため)
 import 'package:latlong2/latlong.dart' show LatLng;
 
+import '../../../core/network/api_error_message.dart';
 import '../../../core/widgets/app_screen_frame.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
@@ -81,11 +82,14 @@ class _HistoryDetailScreenState extends ConsumerState<HistoryDetailScreen> {
         _trip = trip;
         _isLoading = false;
       });
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = '走行記録を取得できませんでした。通信環境をご確認のうえ、もう一度お試しください。';
+        _errorMessage = describeApiError(
+          error,
+          fallback: '走行記録を取得できませんでした。時間をおいてもう一度お試しください。',
+        );
       });
     }
   }

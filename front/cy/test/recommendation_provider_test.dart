@@ -25,8 +25,11 @@ class _FakeLocationService extends LocationService {
   }
 }
 
+// 指定した DioException を投げるリポジトリ
 class _FailingRecommendationRepository extends RecommendationRepository {
-  _FailingRecommendationRepository() : super(dio: Dio());
+  _FailingRecommendationRepository(this.error) : super(dio: Dio());
+
+  final DioException error;
 
   @override
   Future<dynamic> fetchRecommendations({
@@ -37,35 +40,92 @@ class _FailingRecommendationRepository extends RecommendationRepository {
     required String mode,
     required int stayMinutes,
   }) {
-    throw DioException(
-      requestOptions: RequestOptions(path: '/api/suggest'),
-      type: DioExceptionType.connectionError,
-      message: 'Connection refused',
-    );
+    throw error;
   }
 }
 
+Future<String> _messageFor(DioException error) async {
+  final notifier = RecommendationNotifier(
+    _FakeLocationService(),
+    _FailingRecommendationRepository(error),
+  );
+
+  await notifier.fetchForCurrentLocation(
+    minutes: 45,
+    type: 'cafe',
+    mode: 'one_way',
+    stayMinutes: 0,
+  );
+
+  final state = notifier.state;
+  expect(state, isA<RecommendationError>());
+  final message = (state as RecommendationError).message;
+
+  // 例外の内部情報はユーザーに見せない
+  expect(message, isNot(contains('DioException')));
+  expect(message, isNot(contains('Exception')));
+
+  notifier.dispose();
+  return message;
+}
+
 void main() {
-  test('通信失敗時はDioExceptionを画面向け状態に露出しない', () async {
-    final notifier = RecommendationNotifier(
-      _FakeLocationService(),
-      _FailingRecommendationRepository(),
+  test('サーバーへ届かないときは「接続できない」と伝える(電波のせいにしない)', () async {
+    final message = await _messageFor(
+      DioException(
+        requestOptions: RequestOptions(path: '/api/suggest'),
+        type: DioExceptionType.connectionError,
+        message: 'Connection refused',
+      ),
     );
 
-    await notifier.fetchForCurrentLocation(
-      minutes: 45,
-      type: 'cafe',
-      mode: 'one_way',
-      stayMinutes: 0,
-    );
-
-    final state = notifier.state;
-    expect(state, isA<RecommendationError>());
-    final message = (state as RecommendationError).message;
-    expect(message, contains('通信環境を確認'));
-    expect(message, isNot(contains('DioException')));
+    // バックエンド未起動や接続先の設定ミスが原因なので、そこへ誘導する
+    expect(message, contains('サーバーに接続できませんでした'));
+    expect(message, contains('バックエンド'));
     expect(message, isNot(contains('Connection refused')));
+  });
 
-    notifier.dispose();
+  test('応答が返らないときはタイムアウトとして伝える', () async {
+    final message = await _messageFor(
+      DioException(
+        requestOptions: RequestOptions(path: '/api/suggest'),
+        type: DioExceptionType.receiveTimeout,
+      ),
+    );
+
+    expect(message, contains('応答がありませんでした'));
+  });
+
+  test('サーバーがエラー文言を返したときはそれをそのまま見せる', () async {
+    final message = await _messageFor(
+      DioException(
+        requestOptions: RequestOptions(path: '/api/suggest'),
+        type: DioExceptionType.badResponse,
+        response: Response(
+          requestOptions: RequestOptions(path: '/api/suggest'),
+          statusCode: 502,
+          data: {'error': 'Mapbox APIの呼び出しに失敗しました'},
+        ),
+      ),
+    );
+
+    // 外部API障害と通信不良は原因が違うので、区別できる文言にする
+    expect(message, 'Mapbox APIの呼び出しに失敗しました');
+  });
+
+  test('認証切れは再ログインへ誘導する', () async {
+    final message = await _messageFor(
+      DioException(
+        requestOptions: RequestOptions(path: '/api/suggest'),
+        type: DioExceptionType.badResponse,
+        response: Response(
+          requestOptions: RequestOptions(path: '/api/suggest'),
+          statusCode: 401,
+          data: 'Unauthorized',
+        ),
+      ),
+    );
+
+    expect(message, contains('ログイン'));
   });
 }
