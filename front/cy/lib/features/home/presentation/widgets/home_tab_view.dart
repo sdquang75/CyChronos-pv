@@ -205,44 +205,22 @@ class _HomeTabViewState extends ConsumerState<HomeTabView> {
   }
 
   Widget _buildHeroHeader() {
-    return Column(
+    return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Text(
-              'CyChronos',
-              style: TextStyle(
-                fontFamily: 'HankenGrotesk',
-                fontFamilyFallback: ['NotoSansJP'],
-                fontWeight: FontWeight.w800,
-                fontSize: 32,
-                letterSpacing: -0.8,
-                color: AppColors.primary,
-              ),
-            ),
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.accentBg,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                ),
-              ),
-              child: const Icon(
-                Icons.directions_bike_rounded,
-                color: AppColors.primary,
-                size: 20,
-              ),
-            ),
-          ],
+        Text(
+          'CyChronos',
+          style: TextStyle(
+            fontFamily: 'HankenGrotesk',
+            fontFamilyFallback: ['NotoSansJP'],
+            fontWeight: FontWeight.w800,
+            fontSize: 32,
+            letterSpacing: -0.8,
+            color: AppColors.primary,
+          ),
         ),
-        const SizedBox(height: 16),
-        const WeatherHeaderCard(),
+        SizedBox(height: 16),
+        WeatherHeaderCard(),
       ],
     );
   }

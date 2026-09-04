@@ -107,6 +107,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   double? _outboundDurationSec;
   StreamSubscription<Position>? _positionSubscription; // 走行中位置更新用
   Timer? _stayTimer; // 滞在時間経過後に自動で復路を用意するタイマー
+  Timer? _cameraFollowTimer; // 案内開始時のパディング反映後に下部1/3へ追従させるタイマー
   GoogleMapController? _mapController;
   NavigationEngine? _navigationEngine;
   NavigationSnapshot? _navigationSnapshot;
@@ -127,6 +128,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   Position? _lastLoggedPosition;
   DateTime? _lastLoggedAt;
   bool _userPanned = false;
+  double _currentBearing = 0.0;
 
   // ---- destination(Map)から表示用の値を取り出すヘルパーたち ----
 
@@ -212,6 +214,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   void dispose() {
     _positionSubscription?.cancel();
     _stayTimer?.cancel();
+    _cameraFollowTimer?.cancel();
     unawaited(_announcer.stop());
     unawaited(_disableWakeLock('screen dispose'));
     super.dispose();
@@ -438,6 +441,11 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         _syncNavigatingState();
         if (_positionSubscription == null) {
           await _activateNavigation();
+        } else {
+          final pos = _currentPosition;
+          if (pos != null && !_userPanned) {
+            _followCurrentPosition(pos);
+          }
         }
       }
     }
@@ -456,6 +464,16 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     final route = _route;
     if (route != null && route.points.length >= 2) {
       _navigationEngine = NavigationEngine(route);
+      // まだ走行開始していない時は、ルートの最初の直線の向きを初期カメラ角度とする
+      final initialBearing = Geolocator.bearingBetween(
+        route.points[0][1],
+        route.points[0][0],
+        route.points[1][1],
+        route.points[1][0],
+      );
+      if (initialBearing.isFinite) {
+        _currentBearing = (initialBearing + 360) % 360;
+      }
     }
     _guidanceStepIndex = null;
     _announcedPrepare = false;
@@ -464,6 +482,40 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     _arrivalSamples = 0;
     _navigationStatusMessage = null;
     _userPanned = false;
+
+    // 「案内開始」を押した瞬間に即座にカメラを3D視点＆進行方向へ旋回させる(手動ボタン押し不要)
+    void follow() {
+      if (!mounted || !_isNavigating || _userPanned) return;
+      final pos = _currentPosition;
+      if (pos != null) {
+        _followCurrentPosition(pos);
+      } else if (_originLat != null && _originLng != null) {
+        final startPos = Position(
+          latitude: _originLat!,
+          longitude: _originLng!,
+          timestamp: DateTime.now(),
+          accuracy: 1,
+          altitude: 0,
+          altitudeAccuracy: 1,
+          heading: _currentBearing,
+          headingAccuracy: 1,
+          speed: 0,
+          speedAccuracy: 1,
+        );
+        _currentPosition = startPos;
+        _followCurrentPosition(startPos);
+      }
+    }
+
+    // 1. 初回フレームで即座に追従アニメーション開始(0msの即応性)
+    WidgetsBinding.instance.addPostFrameCallback((_) => follow());
+
+    // 2. 地図のPlatformViewパディング確定および下部UIのアニメーション(300ms)完了後に、
+    //    確実に自車位置が画面下部1/3の位置(Y ≈ 66.7%)に収まるよう再追従・補正
+    if (widget.useMapTiles) {
+      _cameraFollowTimer?.cancel();
+      _cameraFollowTimer = Timer(const Duration(milliseconds: 350), follow);
+    }
 
     final keepAwake =
         widget.keepScreenAwake && ref.read(settingsProvider).keepScreenAwake;
@@ -559,11 +611,107 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   void _followCurrentPosition(Position position) {
     final controller = _mapController;
     if (controller == null || !widget.useMapTiles || _userPanned) return;
+
+    // 進行方向(heading)が有効な場合、角速度・速度ノイズをフィルタリングして向きを更新
+    // 速度が0.5m/s(約1.8km/h)以上出ているとき、または初回取得時に向きを反映(停止時のブレ防止)
+    if (position.heading.isFinite && position.heading >= 0) {
+      if (position.speed >= 0.5 || _currentBearing == 0.0) {
+        _currentBearing = position.heading;
+      }
+    }
+
     unawaited(
       controller.animateCamera(
-        CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)),
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: LatLng(position.latitude, position.longitude),
+            zoom: 17.5,
+            tilt: 45.0, // 3D鳥瞰視点
+            bearing: _currentBearing, // 進行方向が常に画面上部を向く
+          ),
+        ),
       ),
     );
+  }
+
+  /// 案内終了・キャンセル時にカメラを通常プレビュー(2D全体表示・北向き)へスムーズに戻す
+  Future<void> _resetCameraToOverview() async {
+    final controller = _mapController;
+    final route = _route;
+    if (controller == null ||
+        !widget.useMapTiles ||
+        route == null ||
+        route.points.isEmpty) {
+      return;
+    }
+
+    _currentBearing = 0.0;
+    _userPanned = false;
+    _cameraFollowTimer?.cancel();
+
+    // プレビュー時のパディング(top: 100, bottom: 260 + barHeight)の反映を少し待つ
+    await Future.delayed(const Duration(milliseconds: 150));
+    if (!mounted || _isNavigating) return;
+
+    final routePoints =
+        route.points.map((point) => LatLng(point[1], point[0])).toList();
+
+    var minLat = routePoints.first.latitude;
+    var maxLat = minLat;
+    var minLng = routePoints.first.longitude;
+    var maxLng = minLng;
+    for (final point in routePoints) {
+      if (point.latitude < minLat) minLat = point.latitude;
+      if (point.latitude > maxLat) maxLat = point.latitude;
+      if (point.longitude < minLng) minLng = point.longitude;
+      if (point.longitude > maxLng) maxLng = point.longitude;
+    }
+    final bounds = LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
+
+    final spanMeters = Geolocator.distanceBetween(
+      bounds.southwest.latitude,
+      bounds.southwest.longitude,
+      bounds.northeast.latitude,
+      bounds.northeast.longitude,
+    );
+
+    try {
+      if (spanMeters < _minBoundsSpanMeters) {
+        await controller.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: routePoints.first,
+              zoom: _lastZoom ?? _fallbackZoom,
+              tilt: 0.0,
+              bearing: 0.0,
+            ),
+          ),
+        );
+      } else {
+        await controller.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: LatLng(
+                (minLat + maxLat) / 2,
+                (minLng + maxLng) / 2,
+              ),
+              zoom: _lastZoom ?? 13.0,
+              tilt: 0.0,
+              bearing: 0.0,
+            ),
+          ),
+        );
+        if (!mounted || _isNavigating) return;
+        await controller.animateCamera(
+          CameraUpdate.newLatLngBounds(bounds, 48),
+        );
+      }
+    } catch (e) {
+      debugPrint('resetCameraToOverview error: $e');
+    }
   }
 
   void _handleGuidance(NavigationSnapshot snapshot) {
@@ -857,6 +1005,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                   : _RouteStage.outboundPreview;
         });
         _syncNavigatingState();
+        unawaited(_resetCameraToOverview());
       }
     }
 
@@ -930,6 +1079,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                   : _RouteStage.outboundPreview;
         });
         _syncNavigatingState();
+        unawaited(_resetCameraToOverview());
       }
     }
 
@@ -1294,12 +1444,7 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                   setState(() => _userPanned = false);
                   final pos = _currentPosition;
                   if (pos != null) {
-                    _mapController?.animateCamera(
-                      CameraUpdate.newLatLngZoom(
-                        LatLng(pos.latitude, pos.longitude),
-                        16.5,
-                      ),
-                    );
+                    _followCurrentPosition(pos);
                   }
                 },
                 child: const Icon(Icons.my_location_rounded, size: 22),
@@ -1425,93 +1570,132 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     );
 
     final mapType = ref.watch(settingsProvider).googleMapType;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final navBottomPadding = AppBottomNavigation.barHeightFor(context) + 24;
+    // 画面下部1/3の位置(Y ≈ 66.7%)に自車位置を配置するためのパディング
+    // Center_Y = (top - bottom + H) / 2 = (2/3) * H  =>  top = bottom + (1/3) * H
+    final navTopPadding = navBottomPadding + (screenHeight * 0.34);
 
-    return GoogleMap(
-      mapType: mapType,
-      initialCameraPosition: CameraPosition(
-        target: routePoints.first,
-        zoom: 13,
-      ),
-      // 下の情報バー・画面下部メニューバー・上のチップに隠れないよう、
-      // 地図の見える中心を上下にずらす
-      padding: EdgeInsets.only(
-        top: 100,
-        bottom: 260 + AppBottomNavigation.barHeightFor(context),
-      ),
-      onCameraMoveStarted: () {
-        if (_isNavigating && !_userPanned) {
+    return Listener(
+      onPointerMove: (event) {
+        if (_isNavigating && !_userPanned && event.delta.distance > 1.5) {
           setState(() => _userPanned = true);
         }
       },
-      onMapCreated: (controller) async {
-        _mapController = controller;
-        // 地図のレイアウト確定前にbounds指定すると失敗することがあるので少し待つ
-        await Future.delayed(const Duration(milliseconds: 100));
-        // 待っている間に画面が閉じられていたら、破棄済みの地図を触らない
-        if (!mounted) return;
+      child: GoogleMap(
+        mapType: mapType,
+        initialCameraPosition: CameraPosition(
+          target: routePoints.first,
+          zoom: 13,
+        ),
+        // 下の情報バー・画面下部メニューバー・上のチップに隠れないよう、地図の見える中心を調整。
+        // 案内モード中は上部の曲がり案内と下部のApple Dockを考慮し、自車位置が画面下部1/3に収まるようパディング設定
+        padding: EdgeInsets.only(
+          top: _isNavigating ? navTopPadding : 100,
+          bottom: _isNavigating
+              ? navBottomPadding
+              : 260 + AppBottomNavigation.barHeightFor(context),
+        ),
+        onCameraMoveStarted: () {
+          // カメラ移動開始。
+          // _userPannedは画面上の指ドラッグを感知するListener(onPointerMove)のみで判定し、
+          // プログラムによるカメラアニメーションで自動追従が誤解除されるのを防ぐ
+        },
+        onMapCreated: (controller) async {
+          _mapController = controller;
+          // 地図のレイアウト確定前にbounds指定すると失敗することがあるので少し待つ
+          await Future.delayed(const Duration(milliseconds: 100));
+          // 待っている間に画面が閉じられていたら、破棄済みの地図を触らない
+          if (!mounted) return;
 
-        // bboxの対角線距離が極端に短い(出発地と目的地がほぼ同じ地点)ときは、
-        // newLatLngBoundsに任せると最大ズームまで寄ってしまうため、
-        // 直前にフィットしたズーム(無ければ既定値)でその場を映すだけにする
-        final spanMeters = Geolocator.distanceBetween(
-          bounds.southwest.latitude,
-          bounds.southwest.longitude,
-          bounds.northeast.latitude,
-          bounds.northeast.longitude,
-        );
-        if (spanMeters < _minBoundsSpanMeters) {
-          await controller.moveCamera(
-            CameraUpdate.newLatLngZoom(
-              routePoints.first,
-              _lastZoom ?? _fallbackZoom,
-            ),
+          final current = _currentPosition;
+          if (_isNavigating && current != null) {
+            _followCurrentPosition(current);
+            return;
+          }
+
+          // bboxの対角線距離が極端に短い(出発地と目的地がほぼ同じ地点)ときは、
+          // newLatLngBoundsに任せると最大ズームまで寄ってしまうため、
+          // 直前にフィットしたズーム(無ければ既定値)でその場を映すだけにする
+          final spanMeters = Geolocator.distanceBetween(
+            bounds.southwest.latitude,
+            bounds.southwest.longitude,
+            bounds.northeast.latitude,
+            bounds.northeast.longitude,
           );
-          return;
-        }
+          if (spanMeters < _minBoundsSpanMeters) {
+            await controller.moveCamera(
+              CameraUpdate.newLatLngZoom(
+                routePoints.first,
+                _lastZoom ?? _fallbackZoom,
+              ),
+            );
+            return;
+          }
 
-        // ルート全体が画面に収まるようにカメラを合わせ、
-        // 実際に落ち着いたズームを次回(復路など)のフォールバック用に覚えておく
-        await controller.moveCamera(CameraUpdate.newLatLngBounds(bounds, 48));
-        if (!mounted) return;
-        _lastZoom = await controller.getZoomLevel();
-      },
-      // ルートの線
-      polylines: {
-        Polyline(
-          polylineId: const PolylineId('route'),
-          points: routePoints,
-          width: 5,
-          color: AppColors.primary,
-        ),
-      },
-      // 出発地(青)と目的地(赤=デフォルト)のマーカー
-      markers: {
-        Marker(
-          markerId: const MarkerId('start'),
-          position: routePoints.first,
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueAzure,
+          // ルート全体が画面に収まるようにカメラを合わせ、
+          // 実際に落ち着いたズームを次回(復路など)のフォールバック用に覚えておく
+          await controller.moveCamera(CameraUpdate.newLatLngBounds(bounds, 48));
+          if (!mounted) return;
+          _lastZoom = await controller.getZoomLevel();
+        },
+        // ルートの線
+        polylines: {
+          Polyline(
+            polylineId: const PolylineId('route'),
+            points: routePoints,
+            width: 5,
+            color: AppColors.primary,
           ),
-        ),
-        Marker(
-          markerId: const MarkerId('destination'),
-          position: routePoints.last,
-        ),
-        if (_currentPosition != null)
+        },
+        // 出発地(青)と目的地(赤=デフォルト)のマーカー
+        // 案内中は自車マーカーと青丸が重ならないよう、出発地ピンを非表示にする
+        markers: {
+          if (!_isNavigating)
+            Marker(
+              markerId: const MarkerId('start'),
+              position: routePoints.first,
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueAzure,
+              ),
+            ),
           Marker(
-            markerId: const MarkerId('current-location'),
-            position: LatLng(
-              _currentPosition!.latitude,
-              _currentPosition!.longitude,
-            ),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueCyan,
-            ),
+            markerId: const MarkerId('destination'),
+            position: routePoints.last,
           ),
-      },
-      zoomControlsEnabled: false,
-      myLocationButtonEnabled: false,
-      mapToolbarEnabled: false,
+          if (_isNavigating && _currentPosition != null)
+            Marker(
+              markerId: const MarkerId('current-location'),
+              position: LatLng(
+                _currentPosition!.latitude,
+                _currentPosition!.longitude,
+              ),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueCyan,
+              ),
+              rotation: _currentBearing,
+              flat: true,
+              anchor: const Offset(0.5, 0.5),
+              zIndexInt: 10,
+            )
+          else if (_isNavigating && _originLat != null && _originLng != null)
+            Marker(
+              markerId: const MarkerId('current-location'),
+              position: LatLng(_originLat!, _originLng!),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueCyan,
+              ),
+              rotation: _currentBearing,
+              flat: true,
+              anchor: const Offset(0.5, 0.5),
+              zIndexInt: 10,
+            ),
+        },
+        zoomControlsEnabled: false,
+        myLocationButtonEnabled: false,
+        mapToolbarEnabled: false,
+        compassEnabled: true,
+      ),
     );
   }
 
