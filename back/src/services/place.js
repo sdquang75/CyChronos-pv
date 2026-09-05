@@ -40,6 +40,11 @@ async function getNearbyPlaces(lng, lat, radius, type, { includeNextPage = true 
   const token = process.env.GOOGLE_PLACES_API_KEY;
 
   // Nearby Search のURLを組み立てる。location は「緯度,経度」の順（Mapboxと逆なので注意）
+  // キー未設定だと Google は「invalid key」としか返さず原因が分かりにくいので、ここで明示する
+  if (!token) {
+    throw new Error("Google Maps API error: GOOGLE_PLACES_API_KEY が設定されていません(back/.env を確認)");
+  }
+
   const url = new URL(`${BASE_URL}/maps/api/place/nearbysearch/json`);
   url.searchParams.set("location", `${lat},${lng}`); // 検索の中心座標
   url.searchParams.set("radius", radius);            // 検索半径(m)
@@ -127,7 +132,10 @@ async function fetchPlacesJson(url) {
     return data;
   }
 
-  throw new Error(`Google Maps API error: ${data.status}`);
+  // REQUEST_DENIED などの理由は error_message に入る
+  // (例: APIキーのIP制限で拒否、キーが無効)。原因を追えるよう status と一緒に残す
+  const reason = data.error_message ? ` - ${data.error_message}` : "";
+  throw new Error(`Google Maps API error: ${data.status}${reason}`);
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
