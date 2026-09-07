@@ -120,6 +120,26 @@ LOCK TABLES `users` WRITE;
 INSERT INTO `users` VALUES (1,'firebase_uid_dummy_001','testuser1@example.com','テストユーザー1','https://example.com/images/user1.png','2026-06-26 11:51:47','2026-06-26 11:51:47',NULL),(2,'firebase_uid_dummy_002','testuser2@example.com','テストユーザー2','https://example.com/images/user2.png','2026-06-26 11:51:47','2026-06-26 11:51:47',NULL),(3,'e6jzCHkYLHMJDYOaVzXWMfcR7ax2','tk196vvv@gmail.com','あああ','https://lh3.googleusercontent.com/a/ACg8ocJa93DCvrd3ME9OB-j5ecjNlq4dcTDrD732P1vvwmPmQVdFuQ=s96-c','2026-07-07 23:15:55','2026-07-07 23:15:55',NULL);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `user_settings`
+--
+
+DROP TABLE IF EXISTS `user_settings`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_settings` (
+  `user_id` bigint unsigned NOT NULL,
+  `include_visited_places` tinyint(1) NOT NULL DEFAULT '0',
+  `voice_guidance_enabled` tinyint(1) NOT NULL DEFAULT '1',
+  `keep_screen_awake` tinyint(1) NOT NULL DEFAULT '1',
+  `auto_reroute_enabled` tinyint(1) NOT NULL DEFAULT '1',
+  `map_type` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'normal',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `fk_user_settings_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

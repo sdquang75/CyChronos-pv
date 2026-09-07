@@ -30,7 +30,9 @@
 | 到達圏取得 | GET | `/api/maps/isochrone` | lng, lat, minutes(クエリ) |
 | 自転車ルート取得 | GET | `/api/maps/route` | fromLng, fromLat, toLng, toLat(クエリ) |
 | 周辺スポット検索 | GET | `/api/maps/places` | lng, lat, radius, type(クエリ) |
-| スポット提案 | GET | `/api/suggest` | lng, lat, minutes, type(クエリ) |
+| スポット提案 | GET | `/api/suggest` | lng, lat, minutes, type, include_visited(クエリ) |
+| ユーザー設定取得 | GET | `/api/settings` | (認証のみ) |
+| ユーザー設定更新 | PUT | `/api/settings` | 設定オブジェクト(ボディ) |
 
 認証系の想定フロー: フロントでGoogleサインイン(Firebase Auth)→ 初回のみ**アカウント作成**で `users` に登録 → 2回目以降はアプリ起動時に**ログイン**でプロフィールを取得 → 以降のAPIは毎回 IDトークンを `Authorization` ヘッダーに付けて呼び出す。
 

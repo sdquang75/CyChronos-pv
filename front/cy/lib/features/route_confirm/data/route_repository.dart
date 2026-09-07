@@ -145,8 +145,51 @@ class RouteRepository {
     return (response.data['trip_id'] as num).toInt();
   }
 
+  /// 走行中の現在地座標をバックに保存する(POST /api/locations)
+  Future<void> logLocation({
+    required int userId,
+    required int tripId,
+    required double lat,
+    required double lng,
+  }) async {
+    await _dio.post(
+      '/api/locations',
+      data: {
+        'user_id': userId,
+        'trip_id': tripId,
+        'lat': lat,
+        'lng': lng,
+      },
+    );
+  }
+
   /// トリップ終了をバックに記録する(statusがcompletedになり走行履歴として残る)
-  Future<void> endTrip({required int userId, required int tripId}) async {
-    await _dio.post('/api/trips/$tripId/end', data: {'user_id': userId});
+  Future<void> endTrip({
+    required int userId,
+    required int tripId,
+    int? totalDistanceM,
+    int? durationSec,
+    double? averageSpeedKmh,
+  }) async {
+    await _dio.post(
+      '/api/trips/$tripId/end',
+      data: {
+        'user_id': userId,
+        if (totalDistanceM != null) 'total_distance_m': totalDistanceM,
+        if (durationSec != null) 'duration_sec': durationSec,
+        if (averageSpeedKmh != null) 'average_speed_kmh': averageSpeedKmh,
+      },
+    );
+  }
+
+  /// トリップをキャンセル(論理削除)する。案内開始直後に中止した場合などに使う
+  Future<void> cancelTrip({
+    required int userId,
+    required int tripId,
+  }) async {
+    await _dio.delete(
+      '/api/trips/$tripId',
+      queryParameters: {'user_id': userId},
+    );
   }
 }

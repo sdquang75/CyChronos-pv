@@ -1,138 +1,52 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../core/network/api_error_message.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_bottom_navigation.dart';
-import '../../../core/widgets/app_screen_frame.dart';
-import '../../auth/domain/auth_state.dart';
-import '../../auth/presentation/providers/auth_provider.dart';
-import '../data/history_repository.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_state_view.dart';
+import '../../../core/widgets/app_toast.dart';
+import '../../../core/widgets/tap_scale.dart';
+import '../domain/history_state.dart';
+import 'providers/history_provider.dart';
+import 'trip_detail_screen.dart';
 
-/// 走行履歴画面。
+/// 走行履歴画面 (Appleのミニマリズム思想に基づく洗練されたアクティビティ履歴)。
 /// back/docs/API.md「2. ログ全件取得」(GET /api/trips)の実データを表示する。
-class HistoryScreen extends ConsumerStatefulWidget {
+class HistoryScreen extends ConsumerWidget {
   const HistoryScreen({super.key});
 
   @override
-  ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final historyState = ref.watch(historyProvider);
 
-class _HistoryScreenState extends ConsumerState<HistoryScreen> {
-  final HistoryRepository _repository = HistoryRepository();
-
-  bool _isLoading = true;
-  String? _errorMessage;
-  List<Map<String, dynamic>> _trips = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadTrips();
-  }
-
-  /// ログイン中ユーザーの user_id(バックエンド users テーブルのID)を取り出す
-  int? _currentUserId() {
-    final authState = ref.read(authProvider);
-    if (authState is! AuthAuthenticated) return null;
-    return authState.user.userId;
-  }
-
-  Future<void> _loadTrips() async {
-    final userId = _currentUserId();
-
-    if (userId == null) {
-      // 未ログイン、またはバックエンド未接続で user_id が取れていない
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'ユーザー情報を取得できませんでした。再度ログインしてください。';
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final trips = await _repository.fetchTrips(userId: userId);
-
-      if (!mounted) return;
-
-      setState(() {
-        _trips = trips;
-        _isLoading = false;
-      });
-    } catch (error) {
-      if (!mounted) return;
-
-      setState(() {
-        _isLoading = false;
-        _errorMessage = describeApiError(
-          error,
-          fallback: '履歴を取得できませんでした。時間をおいてもう一度お試しください。',
-        );
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AppScreenFrame(
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF8F9FE),
-        body: Stack(
-          children: [
-            Positioned.fill(
-              bottom: AppBottomNavigation.barHeight,
-              child: SafeArea(
-                bottom: false,
-                child: Column(
-                  children: [
-                    _buildLogo(),
-
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildHeader(),
-
-                            const SizedBox(height: 20),
-
-                            Expanded(child: _buildBody()),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+    return Scaffold(
+      backgroundColor: AppColors.bgCool,
+      body: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: EdgeInsets.only(
+            bottom: AppBottomNavigation.barHeightFor(context),
+          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: 18),
+                      Expanded(child: _buildBody(ref, historyState)),
+                    ],
+                  ),
                 ),
               ),
-            ),
-
-            const Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: AppBottomNavigation.barHeight,
-              child: AppBottomNavigation(current: AppTab.history),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLogo() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-      child: Center(
-        child: Image.asset(
-          'assets/logo_long.png',
-          width: 200,
-          fit: BoxFit.contain,
+            ],
+          ),
         ),
       ),
     );
@@ -147,94 +61,233 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           style: TextStyle(
             fontFamily: 'HankenGrotesk',
             fontFamilyFallback: ['NotoSansJP'],
-            fontWeight: FontWeight.w700,
-            fontSize: 28,
-            color: Color(0xFF19005C),
-            height: 1.25,
-          ),
-        ),
-        SizedBox(height: 8),
-        Text(
-          'これまでの走行記録',
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontFamilyFallback: ['NotoSansJP'],
-            fontWeight: FontWeight.w400,
-            fontSize: 14,
-            color: Color(0xFF484553),
-            height: 1.5,
+            fontWeight: FontWeight.w800,
+            fontSize: 32,
+            letterSpacing: -0.8,
+            color: AppColors.primary,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildBody() {
-    if (_isLoading) {
+  Widget _buildBody(WidgetRef ref, HistoryState state) {
+    if (state is HistoryLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF19005C)),
+        child: CircularProgressIndicator(color: AppColors.primary),
       );
     }
 
-    final errorMessage = _errorMessage;
-    if (errorMessage != null) {
-      return _HistoryMessageView(
+    if (state is HistoryError) {
+      return AppStateView(
         icon: Icons.error_outline_rounded,
         title: '履歴を表示できません',
-        message: errorMessage,
-        onRetry: _loadTrips,
+        message: state.message,
+        retryLabel: '再読み込み',
+        onRetry: () => ref.read(historyProvider.notifier).loadTrips(),
       );
     }
 
-    if (_trips.isEmpty) {
-      return const _HistoryMessageView(
+    final trips = state is HistoryLoaded ? state.trips : const [];
+    if (trips.isEmpty) {
+      return const AppStateView(
         icon: Icons.directions_bike_rounded,
         title: '走行記録はまだありません',
         message: 'サイクリングに出かけると、ここに走行記録が表示されます。',
       );
     }
 
+    final now = DateTime.now();
+    final monday = DateTime(now.year, now.month, now.day)
+        .subtract(Duration(days: now.weekday - 1));
+    final nextMonday = monday.add(const Duration(days: 7));
+
+    double weekDistanceM = 0;
+    int weekTripCount = 0;
+    int weekDurationSec = 0;
+
+    for (final raw in trips) {
+      if (raw is! Map<String, dynamic>) continue;
+      final startTimeStr = raw['start_time']?.toString();
+      if (startTimeStr == null) continue;
+      final tripDate = DateTime.tryParse(startTimeStr)?.toLocal();
+      if (tripDate != null &&
+          !tripDate.isBefore(monday) &&
+          tripDate.isBefore(nextMonday)) {
+        weekTripCount++;
+        final dist = raw['total_distance_m'];
+        if (dist is num) weekDistanceM += dist.toDouble();
+        final dur = raw['duration_sec'];
+        if (dur is num) weekDurationSec += dur.toInt();
+      }
+    }
+
     return RefreshIndicator(
-      color: const Color(0xFF19005C),
-      onRefresh: _loadTrips,
+      color: AppColors.primary,
+      onRefresh: () {
+        HapticFeedback.lightImpact();
+        return ref.read(historyProvider.notifier).loadTrips();
+      },
       child: ListView.builder(
-        padding: const EdgeInsets.only(top: 4, bottom: 16),
+        padding: const EdgeInsets.only(top: 2, bottom: 20),
         physics: const AlwaysScrollableScrollPhysics(
           parent: BouncingScrollPhysics(),
         ),
-        itemCount: _trips.length,
+        itemCount: trips.length + 1,
         itemBuilder: (context, index) {
-          final trip = _trips[index];
-          final tripId = trip['trip_id'];
-
-          return _TripCard(
-            trip: trip,
-            // trip_id が取れるものだけ詳細へ飛べるようにする(取れなければタップ不可)
-            onTap:
-                tripId is num
-                    ? () => context.push('/history/${tripId.toInt()}')
-                    : null,
-          );
+          if (index == 0) {
+            return _WeeklySummaryCard(
+              distanceM: weekDistanceM,
+              tripCount: weekTripCount,
+              durationSec: weekDurationSec,
+            );
+          }
+          return _TripCard(trip: trips[index - 1] as Map<String, dynamic>);
         },
       ),
     );
   }
 }
 
-/// トリップ1件分のカード(GET /api/trips の1要素を表示する)
-class _TripCard extends StatelessWidget {
+/// 今週のアクティビティ概要カード (Apple Fitness風の洗練されたウィジェット)
+class _WeeklySummaryCard extends StatelessWidget {
+  final double distanceM;
+  final int tripCount;
+  final int durationSec;
+
+  const _WeeklySummaryCard({
+    required this.distanceM,
+    required this.tripCount,
+    required this.durationSec,
+  });
+
+  String _formatDuration(int seconds) {
+    if (seconds == 0) return '0分';
+    final hours = seconds ~/ 3600;
+    final minutes = (seconds % 3600) ~/ 60;
+    if (hours == 0) return '$minutes分';
+    return '$hours時間$minutes分';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final km = (distanceM / 1000).toStringAsFixed(1);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primary,
+            Color(0xFF1B4332),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.28),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.directions_bike_rounded,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                '今週のアクティビティ',
+                style: TextStyle(
+                  fontFamily: 'HankenGrotesk',
+                  fontFamilyFallback: ['NotoSansJP'],
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildStatMetric('走行距離', '${km}km'),
+              Container(
+                width: 1,
+                height: 28,
+                color: Colors.white.withValues(alpha: 0.18),
+              ),
+              _buildStatMetric('ライド回数', '$tripCount回'),
+              Container(
+                width: 1,
+                height: 28,
+                color: Colors.white.withValues(alpha: 0.18),
+              ),
+              _buildStatMetric('走行時間', _formatDuration(durationSec)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatMetric(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            fontFamily: 'JetBrainsMono',
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'HankenGrotesk',
+            fontFamilyFallback: const ['NotoSansJP'],
+            color: Colors.white.withValues(alpha: 0.72),
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// トリップ1件分のカード (Apple Minimalism風の整理されたカード)
+class _TripCard extends ConsumerWidget {
   final Map<String, dynamic> trip;
-  final VoidCallback? onTap; // 走行軌跡の詳細画面へ移動する
 
-  const _TripCard({required this.trip, this.onTap});
+  const _TripCard({required this.trip});
 
-  // 目的地名。未設定(空文字)のトリップは「目的地未設定」と表示する
   String _titleText() {
     final name = trip['destination_name']?.toString() ?? '';
     return name.isNotEmpty ? name : '目的地未設定';
   }
 
-  // 開始日時を「YYYY/MM/DD」の形にする(端末のタイムゾーンに変換)
   String _dateText() {
     final raw = trip['start_time']?.toString();
     if (raw == null) return '--';
@@ -247,14 +300,12 @@ class _TripCard extends StatelessWidget {
     return '${dateTime.year}/$month/$day';
   }
 
-  // 走行距離(total_distance_m)をkm表示にする。未計測は「--」
   String _distanceText() {
     final meters = trip['total_distance_m'];
     if (meters is! num) return '--';
     return '${(meters / 1000).toStringAsFixed(1)} km';
   }
 
-  // 走行時間(duration_sec)を「H:MM:SS」にする。未計測は「--」
   String _durationText() {
     final seconds = trip['duration_sec'];
     if (seconds is! num) return '--';
@@ -266,7 +317,6 @@ class _TripCard extends StatelessWidget {
     return '$hours:$minutes:$secs';
   }
 
-  // 平均速度(average_speed_kmh)。未計測は「--」
   String _speedText() {
     final speed = trip['average_speed_kmh'];
     if (speed is! num) return '--';
@@ -274,83 +324,188 @@ class _TripCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: const Color(0xFFC9C4D5).withValues(alpha: 0.35),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tripId = (trip['trip_id'] as num).toInt();
+
+    return Dismissible(
+      key: ValueKey('trip-$tripId'),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (direction) async {
+        HapticFeedback.lightImpact();
+        return showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            title: const Text(
+              '走行記録の削除',
+              style: TextStyle(
+                fontFamily: 'HankenGrotesk',
+                fontFamilyFallback: ['NotoSansJP'],
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+                color: AppColors.primary,
+              ),
+            ),
+            content: const Text(
+              'この走行記録を削除しますか？\n削除した記録は元に戻せません。',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+                height: 1.5,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('キャンセル'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.error,
+                ),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('削除する'),
+              ),
+            ],
           ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF2E0094).withValues(alpha: 0.04),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+        );
+      },
+      onDismissed: (direction) async {
+        final success =
+            await ref.read(historyProvider.notifier).deleteTrip(tripId: tripId);
+        if (context.mounted) {
+          if (success) {
+            AppToast.show(context, '走行記録を削除しました');
+          } else {
+            AppToast.show(context, '削除に失敗しました');
+          }
+        }
+      },
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+        decoration: BoxDecoration(
+          color: AppColors.error,
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.delete_outline_rounded, color: Colors.white, size: 22),
+            SizedBox(width: 8),
+            Text(
+              '削除',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: TapScale(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => TripDetailScreen(trip: trip),
+              ),
+            );
+          },
+          child: AppCard(
+            borderRadius: 22,
+            padding: const EdgeInsets.all(16),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    _titleText(),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: 'HankenGrotesk',
-                      fontFamilyFallback: ['NotoSansJP'],
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                      color: Color(0xFF19005C),
-                      height: 1.3,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppColors.accentBg,
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: const Icon(
+                        Icons.directions_bike_rounded,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
                     ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _titleText(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'HankenGrotesk',
+                              fontFamilyFallback: ['NotoSansJP'],
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _dateText(),
+                            style: TextStyle(
+                              fontFamily: 'JetBrainsMono',
+                              fontSize: 11.5,
+                              color: AppColors.textSecondary
+                                  .withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      size: 20,
+                      color: AppColors.textSecondary,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.bgCool,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildStatItem('距離', _distanceText()),
+                      _buildStatItem('時間', _durationText()),
+                      _buildStatItem('平均速度', _speedText()),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                Text(
-                  _dateText(),
-                  style: TextStyle(
-                    fontFamily: 'JetBrainsMono',
-                    fontSize: 12,
-                    color: const Color(0xFF484553).withValues(alpha: 0.6),
-                  ),
-                ),
-                // タップで詳細に入れることを示す
-                if (onTap != null)
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    size: 20,
-                    color: const Color(0xFF484553).withValues(alpha: 0.45),
-                  ),
               ],
             ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildStat('距離', _distanceText()),
-                _buildStat('時間', _durationText()),
-                _buildStat('平均速度', _speedText()),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildStat(String label, String value) {
+  Widget _buildStatItem(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -359,8 +514,9 @@ class _TripCard extends StatelessWidget {
           style: TextStyle(
             fontFamily: 'HankenGrotesk',
             fontFamilyFallback: const ['NotoSansJP'],
-            fontSize: 12,
-            color: const Color(0xFF484553).withValues(alpha: 0.6),
+            fontSize: 11,
+            color: AppColors.textSecondary.withValues(alpha: 0.75),
+            fontWeight: FontWeight.w500,
           ),
         ),
         const SizedBox(height: 2),
@@ -368,98 +524,12 @@ class _TripCard extends StatelessWidget {
           value,
           style: const TextStyle(
             fontFamily: 'JetBrainsMono',
+            fontSize: 14,
             fontWeight: FontWeight.w700,
-            fontSize: 15,
-            color: Color(0xFF191C1F),
+            color: AppColors.primary,
           ),
         ),
       ],
-    );
-  }
-}
-
-/// 空状態・エラー状態の共通表示
-class _HistoryMessageView extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String message;
-  final VoidCallback? onRetry;
-
-  const _HistoryMessageView({
-    required this.icon,
-    required this.title,
-    required this.message,
-    this.onRetry,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: const Color(0xFFC9C4D5).withValues(alpha: 0.35),
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 42, color: const Color(0xFF19005C)),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'HankenGrotesk',
-                fontFamilyFallback: ['NotoSansJP'],
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                color: Color(0xFF19005C),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontFamilyFallback: ['NotoSansJP'],
-                fontWeight: FontWeight.w400,
-                fontSize: 13,
-                color: Color(0xFF484553),
-                height: 1.5,
-              ),
-            ),
-            if (onRetry != null) ...[
-              const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: onRetry,
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF19005C),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text(
-                  '再読み込み',
-                  style: TextStyle(
-                    fontFamily: 'HankenGrotesk',
-                    fontFamilyFallback: ['NotoSansJP'],
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
     );
   }
 }

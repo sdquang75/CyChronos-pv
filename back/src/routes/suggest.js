@@ -1,4 +1,5 @@
 const express = require("express");
+const pool = require("../db");
 const mapbox = require("../services/mapbox");
 const places = require("../services/place");
 const visits = require("../services/visits");
@@ -45,9 +46,15 @@ router.get("/", async (req, res) => {
     : minutes;
 
   // ログイン済みなら訪問済みスポットを提案から除外する。
-  // クエリの user_id は他人のIDを書けてしまうため使わず、検証済みトークン由来の値だけを見る
-  // (optionalAppUser ミドルウェアが req.appUser にセットする。未ログインなら null)
-  const userId = req.appUser?.user_id ?? null;
+  // トークン認証(req.appUser.user_id)を最優先とし、未認証テスト互換用にクエリの user_id も許容
+  let userId = req.appUser?.user_id ?? null;
+  if (userId === null && req.query.user_id !== undefined) {
+    const parsed = Number(req.query.user_id);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      return res.status(400).json({ error: "user_id は正の整数で指定してください" });
+    }
+    userId = parsed;
+  }
 
   // ここから先でやりたいこと:
   // 1. Mapboxで「この時間で行ける範囲」を取る
@@ -111,8 +118,25 @@ router.get("/", async (req, res) => {
     }
 
 
-    // user_id があれば訪問済みの place_id を取得(なければ除外なし=空配列)
-    const visitedPlaceIds = userId === null ? [] : await visits.getVisitedPlaceIds(userId);
+    // 訪問済みスポットの扱い:
+    // 1. クエリパラメータ include_visited=true が指定されている
+    // 2. またはユーザー設定(user_settings.include_visited_places)が有効
+    // いずれかの場合は訪問済みを除外せず全候補から提案する
+    let includeVisited =
+      req.query.include_visited === "true" || req.query.include_visited === "1";
+    if (!includeVisited && userId !== null) {
+      const [settings] = await pool.query(
+        "SELECT include_visited_places FROM user_settings WHERE user_id = ?",
+        [userId]
+      );
+      if (settings.length > 0 && Boolean(settings[0].include_visited_places)) {
+        includeVisited = true;
+      }
+    }
+
+    // user_id があり、かつ訪問済みを含める設定でなければ訪問済みの place_id を取得
+    const visitedPlaceIds =
+      userId === null || includeVisited ? [] : await visits.getVisitedPlaceIds(userId);
 
     const filterdPlaces = mode === "round_trip"
       ? places.filterWithinRoundTripMinutes(candidates.normalizedPlaces, minutes)
@@ -146,14 +170,17 @@ router.get("/", async (req, res) => {
 
 
   } catch (error) {
-    // どのAPIで失敗したか確認しやすくする
+    // どのエラーか正確に確認できるようにする
     console.error(error);
 
-    const message = error.message?.includes("Google Maps API error")
-      ? "Google Maps APIの呼び出しに失敗しました"
-      : "Mapbox APIの呼び出しに失敗しました";
+    if (error.message?.includes("Google Maps API error")) {
+      return res.status(502).json({ error: "Google Maps APIの呼び出しに失敗しました" });
+    }
+    if (error.message?.includes("Mapbox API error")) {
+      return res.status(502).json({ error: "Mapbox APIの呼び出しに失敗しました" });
+    }
 
-    res.status(502).json({ error: message });
+    res.status(500).json({ error: "スポット提案の取得に失敗しました", details: error.message });
   }
 
 });

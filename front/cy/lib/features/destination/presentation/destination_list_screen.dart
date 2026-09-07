@@ -1,31 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import '../../../core/utils/calorie_calculator.dart';
-import '../../../core/network/api_error_message.dart';
+
 import '../../../core/network/place_photo.dart';
+import '../../../core/utils/calorie_calculator.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_bottom_navigation.dart';
-import '../../../core/widgets/app_screen_frame.dart';
-import '../../home/data/location_service.dart';
+import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_state_view.dart';
+import '../../../core/widgets/app_top_bar.dart';
+import '../../../core/widgets/staggered_entrance.dart';
+import '../../../core/widgets/tap_scale.dart';
+import '../../detil/detil.dart';
+import '../../home/domain/recommendation_state.dart';
 import '../../home/presentation/providers/recommendation_provider.dart';
 
 class DestinationListScreen extends ConsumerStatefulWidget {
-  final List<dynamic> places;
-  final int? minutes;
-  final String tripMode;
-  final int stayMinutes;
+  final int minutes;
 
   // ホーム画面で選択したGoogle Placesの検索タイプ
   // 例：cafe、park、restaurant
   final String type;
 
+  // 'one_way'(片道) | 'round_trip'(往復)
+  final String tripMode;
+
+  // 往復時の滞在時間(分)。片道のときは0
+  final int stayMinutes;
+
   const DestinationListScreen({
     super.key,
-    required this.places,
+    required this.minutes,
     required this.type,
     this.tripMode = 'one_way',
     this.stayMinutes = 0,
-    this.minutes,
   });
 
   @override
@@ -33,113 +43,161 @@ class DestinationListScreen extends ConsumerStatefulWidget {
       _DestinationListScreenState();
 }
 
-class _DestinationListScreenState extends ConsumerState<DestinationListScreen> {
-  // 画面に表示する目的地一覧
-  late List<dynamic> _places;
-
-  // 再提案処理中かどうか
-  bool _isRefreshing = false;
-
+class _DestinationListScreenState
+    extends ConsumerState<DestinationListScreen> {
   @override
   void initState() {
     super.initState();
 
-    // 最初はホーム画面から渡された目的地一覧を表示する
-    _places = List<dynamic>.from(widget.places);
+    // この画面自体が検索の実行主体になる(reformと同じ構成)。
+    // ホーム画面ではローディング/エラーをトースト表示せず、
+    // ここに来た時点ですぐ検索を始めて、結果はこの画面の中で状態として出す
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _search();
+    });
+  }
+
+  void _search() {
+    ref
+        .read(recommendationProvider.notifier)
+        .fetchForCurrentLocation(
+          minutes: widget.minutes,
+          type: widget.type,
+          mode: widget.tripMode,
+          stayMinutes: widget.stayMinutes,
+        );
+  }
+
+  void _retry() {
+    HapticFeedback.lightImpact();
+    _search();
+  }
+
+  bool get _isLoading {
+    final state = ref.watch(recommendationProvider);
+    return state is RecommendationInitial ||
+        state is RecommendationLocating ||
+        state is RecommendationLoading;
+  }
+
+  // /api/suggest から取得できた目的地一覧(まだ結果が無ければ空)
+  List<dynamic> get _places {
+    final state = ref.watch(recommendationProvider);
+    if (state is! RecommendationLoaded) return const [];
+    final data = state.data;
+    if (data is! Map) return const [];
+    final rawPlaces = data['places'];
+    if (rawPlaces is! List) return const [];
+    return rawPlaces;
   }
 
   // 空き時間を「X時間YY分」の形にする
-  // 値を受け取れなかった場合は「--」を表示する
   String _freeTimeText() {
     final total = widget.minutes;
-
-    if (total == null) {
-      return '--';
-    }
-
     final hours = total ~/ 60;
     final minutes = (total % 60).toString().padLeft(2, '0');
 
     return '$hours時間$minutes分';
   }
 
+  // 「情報変更」を押したときの処理
+  // RideFlow(HOMEタブ専用の入れ子Navigator)からpushされてきた画面なので、
+  // popすればHOMEタブのプランナー画面(入力した時間やジャンルはそのまま)に戻る
+  void _goBackToHome() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AppScreenFrame(
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF8F9FE),
-        body: Stack(
+    // AppScreenFrame・下部メニューバーはHomeScreen(IndexedStackシェル)側で
+    // 一括して描画されるので、ここでは自分の中身だけを組み立てる
+    final navBarHeight = AppBottomNavigation.barHeightFor(context);
+
+    return Scaffold(
+      backgroundColor: AppColors.bgCool,
+      body: SafeArea(
+        bottom: false,
+        child: Stack(
           children: [
-            Positioned.fill(
-              bottom: AppBottomNavigation.barHeight,
-              child: SafeArea(
-                bottom: false,
-                child: Column(
-                  children: [
-                    _buildLogo(),
-
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildHeader(),
-
-                            const SizedBox(height: 20),
-
-                            Expanded(child: _buildDestinationList()),
-                          ],
-                        ),
-                      ),
+            Column(
+              children: [
+                const AppTopBar(title: 'おすすめスポット'),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.xxl,
                     ),
-
-                    const SizedBox(height: 16),
-
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _ActionButton(
-                              text: '情報変更',
-                              icon: Icons.tune_rounded,
-                              isPrimary: false,
-                              onPressed: _goBackToHome,
-                            ),
-                          ),
-
-                          const SizedBox(width: 12),
-
-                          Expanded(
-                            child: _ActionButton(
-                              text: _isRefreshing ? '検索中' : '再提案',
-                              icon: Icons.refresh_rounded,
-                              isPrimary: true,
-                              isLoading: _isRefreshing,
-                              onPressed: () {
-                                _refreshRecommendations();
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: AppSpacing.lg),
+                        _buildSubHeader(),
+                        const SizedBox(height: AppSpacing.xl),
+                        Expanded(child: _buildBody()),
+                      ],
                     ),
+                  ),
+                ),
+              ],
+            ),
 
-                    const SizedBox(height: 16),
-                  ],
+            // Gradient Backdrop for Floating Action Buttons
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: navBarHeight + 96,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppColors.bgCool.withValues(alpha: 0.0),
+                        AppColors.bgCool.withValues(alpha: 0.85),
+                        AppColors.bgCool,
+                      ],
+                      stops: const [0.0, 0.45, 1.0],
+                    ),
+                  ),
                 ),
               ),
             ),
 
-            // 共通の画面下部メニューバー
-            // HOME・HISTORY・SETTINGS
-            const Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: AppBottomNavigation.barHeight,
-              child: AppBottomNavigation(current: AppTab.home),
+            // Floating Action Buttons (情報変更 & 再提案)
+            Positioned(
+              left: AppSpacing.xxl,
+              right: AppSpacing.xxl,
+              bottom: navBarHeight + 14,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: AppButton(
+                      label: '情報変更',
+                      icon: Icons.tune_rounded,
+                      variant: AppButtonVariant.secondary,
+                      onPressed: _goBackToHome,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: AppButton(
+                      label: _isLoading ? '検索中...' : '再提案',
+                      icon: _isLoading
+                          ? Icons.hourglass_top_rounded
+                          : Icons.refresh_rounded,
+                      onPressed: () {
+                        if (_isLoading) return;
+                        _retry();
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -147,59 +205,20 @@ class _DestinationListScreenState extends ConsumerState<DestinationListScreen> {
     );
   }
 
-  Widget _buildLogo() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-      child: Center(
-        child: Image.asset(
-          'assets/logo_long.png',
-          width: 200,
-          fit: BoxFit.contain,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  // タイトルはAppTopBarが表示するので、ここでは検索条件の要約バッジのみ
+  Widget _buildSubHeader() {
+    return Row(
       children: [
-        const Text(
-          'おすすめスポット',
-          style: TextStyle(
-            fontFamily: 'HankenGrotesk',
-            fontFamilyFallback: ['NotoSansJP'],
-            fontWeight: FontWeight.w700,
-            fontSize: 28,
-            color: Color(0xFF19005C),
-            height: 1.25,
-          ),
-        ),
-
-        const SizedBox(height: 8),
-
-        const Text(
-          '条件に合った目的地を選びましょう。',
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontFamilyFallback: ['NotoSansJP'],
-            fontWeight: FontWeight.w400,
-            fontSize: 14,
-            color: Color(0xFF484553),
-            height: 1.5,
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 7,
+          ),
           decoration: BoxDecoration(
-            color: const Color(0xFFF1EBFF),
+            color: AppColors.accentBg,
             borderRadius: BorderRadius.circular(9999),
             border: Border.all(
-              color: const Color(0xFF19005C).withValues(alpha: 0.18),
-              width: 1,
+              color: AppColors.primary.withValues(alpha: 0.15),
             ),
           ),
           child: Row(
@@ -207,47 +226,58 @@ class _DestinationListScreenState extends ConsumerState<DestinationListScreen> {
             children: [
               const Icon(
                 Icons.schedule_rounded,
-                size: 18,
-                color: Color(0xFF19005C),
+                size: 16,
+                color: AppColors.primary,
               ),
-
-              const SizedBox(width: 8),
-
-              const Text(
-                '空き時間',
-                style: TextStyle(
-                  fontFamily: 'HankenGrotesk',
-                  fontFamilyFallback: ['NotoSansJP'],
-                  fontWeight: FontWeight.w500,
-                  fontSize: 13,
-                  color: Color(0xFF484553),
-                ),
-              ),
-
-              const SizedBox(width: 8),
-
+              const SizedBox(width: 6),
               Text(
                 _freeTimeText(),
                 style: const TextStyle(
                   fontFamily: 'JetBrainsMono',
                   fontWeight: FontWeight.w700,
                   fontSize: 13,
-                  color: Color(0xFF19005C),
+                  color: AppColors.primary,
                 ),
               ),
             ],
           ),
         ),
         if (widget.tripMode == 'round_trip') ...[
-          const SizedBox(height: 10),
-          Text(
-            '往復・滞在${widget.stayMinutes}分',
-            style: const TextStyle(
-              fontFamily: 'HankenGrotesk',
-              fontFamilyFallback: ['NotoSansJP'],
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-              color: Color(0xFF19005C),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 7,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(9999),
+              border: Border.all(
+                color: AppColors.border.withValues(alpha: 0.6),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.sync_alt_rounded,
+                  size: 14,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  widget.stayMinutes == 0
+                      ? '往復'
+                      : '往復 (滞在${widget.stayMinutes}分)',
+                  style: const TextStyle(
+                    fontFamily: 'HankenGrotesk',
+                    fontFamilyFallback: ['NotoSansJP'],
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -255,13 +285,68 @@ class _DestinationListScreenState extends ConsumerState<DestinationListScreen> {
     );
   }
 
-  Widget _buildDestinationList() {
+  // 検索状態に応じて中身を切り替える(ローディング/エラー/空/一覧)。
+  // ホーム画面でトースト表示していた検索中・エラーの案内を、
+  // この画面自体の「状態として作り込まれた表示」に置き換えたもの
+  Widget _buildBody() {
+    final state = ref.watch(recommendationProvider);
+
+    if (state is RecommendationInitial ||
+        state is RecommendationLocating ||
+        state is RecommendationLoading) {
+      return const _SearchingIndicator();
+    }
+
+    if (state is RecommendationLocationServiceDisabled) {
+      return AppStateView(
+        icon: Icons.location_disabled_rounded,
+        title: '位置情報を確認してください',
+        message: '位置情報サービスが無効です。端末の設定をご確認ください。',
+        onRetry: _retry,
+      );
+    }
+
+    if (state is RecommendationPermissionDenied) {
+      return AppStateView(
+        icon: Icons.location_disabled_rounded,
+        title: '位置情報の利用を許可してください',
+        message: '位置情報を許可すると、現在地周辺のおすすめスポットを検索できます。',
+        onRetry: _retry,
+      );
+    }
+
+    if (state is RecommendationPermissionDeniedForever) {
+      return AppStateView(
+        icon: Icons.location_disabled_rounded,
+        title: '位置情報の利用が拒否されています',
+        message: '設定アプリから位置情報の利用を許可してください。',
+        onRetry: _retry,
+      );
+    }
+
+    if (state is RecommendationError) {
+      return AppStateView(
+        icon: Icons.error_outline_rounded,
+        title: '検索に失敗しました',
+        message: '通信環境をご確認のうえ、もう一度お試しください。',
+        onRetry: _retry,
+      );
+    }
+
+    // RecommendationLoaded
     if (_places.isEmpty) {
-      return const _EmptyDestinationView();
+      return const AppStateView(
+        icon: Icons.location_off_rounded,
+        title: '目的地が見つかりませんでした',
+        message: '時間やジャンルを変更して、もう一度お試しください。',
+      );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.only(top: 4, bottom: 8),
+      padding: EdgeInsets.only(
+        top: 4,
+        bottom: AppBottomNavigation.barHeightFor(context) + 76,
+      ),
       physics: const BouncingScrollPhysics(),
       itemCount: _places.length,
       itemBuilder: (context, index) {
@@ -277,152 +362,14 @@ class _DestinationListScreenState extends ConsumerState<DestinationListScreen> {
               ..['plannedTotalMinutes'] = widget.minutes
               ..['plannedStayMinutes'] = widget.stayMinutes;
 
-        return _DestinationCard(destination: destination);
-      },
-    );
-  }
-
-  // 「情報変更」を押したときの処理
-  void _goBackToHome() {
-    // ホーム画面からpushで移動してきた場合はpopで戻る
-    // popを使うことで、ホーム画面に入力した時間やジャンルが残る
-    if (context.canPop()) {
-      context.pop();
-      return;
-    }
-
-    // 一覧画面が直接開かれた場合の予備処理
-    context.go('/home');
-  }
-
-  // 「再提案」を押したときの処理
-  Future<void> _refreshRecommendations() async {
-    // 処理中にもう一度押されても二重実行しない
-    if (_isRefreshing) {
-      return;
-    }
-
-    final searchMinutes = widget.minutes;
-
-    // 検索時間を受け取れていない場合
-    if (searchMinutes == null || searchMinutes < 1) {
-      _showMessage(
-        context,
-        '検索条件を確認できませんでした。'
-        '情報変更から条件を設定してください。',
-      );
-      return;
-    }
-
-    setState(() {
-      _isRefreshing = true;
-    });
-
-    try {
-      // 現在地をもう一度取得する
-      final position =
-          await ref.read(locationServiceProvider).getCurrentPosition();
-
-      // ホーム画面と同じ目的地提案APIを呼び出す
-      final data = await ref
-          .read(recommendationRepositoryProvider)
-          .fetchRecommendations(
-            latitude: position.latitude,
-            longitude: position.longitude,
-            type: widget.type,
-            minutes: searchMinutes,
-            mode: widget.tripMode,
-            stayMinutes: widget.stayMinutes,
-          );
-
-      final List<dynamic> newPlaces;
-
-      // APIレスポンスからplacesを取り出す
-      if (data is Map) {
-        final rawPlaces = data['places'];
-
-        if (rawPlaces is List) {
-          newPlaces = List<dynamic>.from(rawPlaces);
-        } else {
-          newPlaces = <dynamic>[];
-        }
-      } else {
-        newPlaces = <dynamic>[];
-      }
-
-      // API通信中に画面が閉じられていた場合は更新しない
-      if (!mounted) {
-        return;
-      }
-
-      // 新しい検索結果へ一覧を差し替える
-      setState(() {
-        _places = newPlaces;
-      });
-
-      if (newPlaces.isEmpty) {
-        _showMessage(context, '条件に合う目的地が見つかりませんでした。');
-      }
-    } on LocationServiceDisabledException {
-      if (!mounted) {
-        return;
-      }
-
-      _showMessage(
-        context,
-        '位置情報サービスが無効です。'
-        '端末の設定をご確認ください。',
-      );
-    } on LocationPermissionDeniedForeverException {
-      if (!mounted) {
-        return;
-      }
-
-      _showMessage(
-        context,
-        '位置情報の利用が拒否されています。'
-        '設定アプリから許可してください。',
-      );
-    } on LocationPermissionDeniedException {
-      if (!mounted) {
-        return;
-      }
-
-      _showMessage(context, '位置情報の利用を許可してください。');
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      _showMessage(
-        context,
-        describeApiError(error, fallback: '再提案に失敗しました。時間をおいてもう一度お試しください。'),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isRefreshing = false;
-        });
-      }
-    }
-  }
-
-  void _showMessage(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).clearSnackBars();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(
-            fontFamily: 'HankenGrotesk',
-            fontFamilyFallback: ['NotoSansJP'],
+        return StaggeredEntrance(
+          key: ValueKey(destination['id'] ?? destination['name'] ?? index),
+          delay: Duration(milliseconds: 45 * index),
+          child: _DestinationCard(
+            destination: destination,
           ),
-        ),
-        backgroundColor: const Color(0xFF2A0088),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
+        );
+      },
     );
   }
 }
@@ -442,7 +389,9 @@ class _DestinationCard extends StatelessWidget {
   // distanceM
   final Map<String, dynamic> destination;
 
-  const _DestinationCard({required this.destination});
+  const _DestinationCard({
+    required this.destination,
+  });
 
   // カードのサムネイル
   // 写真があればバックエンド経由の実写真、
@@ -454,82 +403,128 @@ class _DestinationCard extends StatelessWidget {
       maxwidth: 200,
     );
 
-    if (photoUrl == null) {
-      return Image.asset('assets/logo.png', fit: BoxFit.cover);
-    }
+    final Widget imageWidget = photoUrl == null
+        ? Image.asset(
+            'assets/logo.png',
+            fit: BoxFit.cover,
+          )
+        : Image.network(
+            photoUrl,
+            fit: BoxFit.cover,
+            // 通信失敗時はロゴへ切り替える
+            errorBuilder: (context, error, stackTrace) {
+              return Image.asset(
+                'assets/logo.png',
+                fit: BoxFit.cover,
+              );
+            },
+          );
 
-    return Image.network(
-      photoUrl,
-      fit: BoxFit.cover,
-      // 通信失敗時はロゴへ切り替える
-      errorBuilder: (context, error, stackTrace) {
-        return Image.asset('assets/logo.png', fit: BoxFit.cover);
-      },
+    final tag = 'destination-photo-${destination['id'] ?? destination['name']}';
+    return Hero(
+      tag: tag,
+      child: imageWidget,
     );
+  }
+
+  bool get _isRoundTrip => destination['tripMode'] == 'round_trip';
+
+  // 分を「◯時間◯分」の文字列にする(1時間未満は「◯分」)。
+  // detil.dart・route_confirm.dartの所要時間表記と揃えている
+  String _formatMinutes(int totalMinutes) {
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+    if (hours == 0) return '$minutes分';
+    return '$hours時間$minutes分';
   }
 
   @override
   Widget build(BuildContext context) {
     final dynamic rawDuration =
-        destination['tripMode'] == 'round_trip'
+        _isRoundTrip
             ? destination['totalDurationMinutes']
             : destination['durationMinutes'];
 
-    final int? durationMinutes =
-        rawDuration is num
-            ? rawDuration.round()
-            : int.tryParse(rawDuration?.toString() ?? '');
+    final int? durationMinutes = rawDuration is num
+        ? rawDuration.round()
+        : int.tryParse(
+            rawDuration?.toString() ?? '',
+          );
 
     final String durationText =
-        durationMinutes != null ? '約$durationMinutes分' : '所要時間不明';
+        durationMinutes == null
+            ? '所要時間不明'
+            : _isRoundTrip
+            ? '往復 約${_formatMinutes(durationMinutes)}'
+            : '約${_formatMinutes(durationMinutes)}';
 
     // カロリー計算に使用する距離(m)と所要時間(秒)
     // 往復モードの場合は、行き＋帰りの距離・走行時間を使用する
-    final bool isRoundTrip = destination['tripMode'] == 'round_trip';
+    final dynamic rawDistanceM = _isRoundTrip
+        ? destination['roundTripDistanceM']
+        : destination['distanceM'];
+    final dynamic rawDurationSec = _isRoundTrip
+        ? destination['roundTripDurationSec']
+        : destination['durationSec'];
 
-    final dynamic rawDistanceM =
-        isRoundTrip
-            ? destination['roundTripDistanceM']
-            : destination['distanceM'];
+    final double? distanceM = rawDistanceM is num
+        ? rawDistanceM.toDouble()
+        : double.tryParse(rawDistanceM?.toString() ?? '');
+    final double? durationSec = rawDurationSec is num
+        ? rawDurationSec.toDouble()
+        : double.tryParse(rawDurationSec?.toString() ?? '');
 
-    final dynamic rawDurationSec =
-        isRoundTrip
-            ? destination['roundTripDurationSec']
-            : destination['durationSec'];
-
-    final double? distanceM =
-        rawDistanceM is num
-            ? rawDistanceM.toDouble()
-            : double.tryParse(rawDistanceM?.toString() ?? '');
-
-    final double? durationSec =
-        rawDurationSec is num
-            ? rawDurationSec.toDouble()
-            : double.tryParse(rawDurationSec?.toString() ?? '');
-
-    final int? calories =
-        distanceM != null && durationSec != null
-            ? CalorieCalculator.calculate(
-              distanceM: distanceM,
-              durationSec: durationSec,
-            )
-            : null;
+    final int? calories = distanceM != null && durationSec != null
+        ? CalorieCalculator.calculate(
+            distanceM: distanceM,
+            durationSec: durationSec,
+          )
+        : null;
 
     final String calorieText = calories != null ? '約$calories kcal' : '-- kcal';
 
-    // カード全体をタップして詳細画面へ移動できる
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    // カード全体をタップして詳細画面へ移動できる(押下時に軽く縮小+触覚フィードバック)
+    return TapScale(
       onTap: () {
         _openDetail(context);
       },
-      child: _buildCard(context, durationText, calorieText),
+      child: _buildCard(
+        context,
+        durationText,
+        calorieText,
+      ),
     );
   }
 
-  // 選択した目的地を詳細画面へ渡す
+  // 選択した目的地を詳細画面へ渡す(RideFlowの入れ子Navigatorでpush。
+  // 元はapp_router.dartの/detilルートが持っていた変換ロジックをここに移した)
   void _openDetail(BuildContext context) {
-    context.push('/detil', extra: destination);
+    // 数値はAPIの都合で int でも double でも来るので num で受けてから変換する
+    final durationSec = destination['durationSec'] as num?;
+    final distanceM = destination['distanceM'] as num?;
+    final rating = destination['rating'] as num?;
+
+    // 写真は photoReference をバックの写真プロキシのURLに変換して渡す。
+    // 写真なしのスポットは null になり、詳細画面側で仮画像が表示される
+    final imageUrl = placePhotoUrl(
+      destination['photoReference']?.toString(),
+    );
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (_) => DetilScreen(
+              name: destination['name']?.toString() ?? '',
+              address: destination['address']?.toString() ?? '',
+              genre: destination['genre']?.toString() ?? '',
+              imageUrl: imageUrl,
+              durationSec: durationSec?.round(), // 所要時間(秒)
+              distanceMeter: distanceM?.round(), // 距離(m)
+              rating: rating?.toDouble(), // 評価(例: 4.2)
+              destination: destination, // ルート確認画面へ引き継ぐ用の元データ
+            ),
+      ),
+    );
   }
 
   Widget _buildCard(
@@ -537,251 +532,151 @@ class _DestinationCard extends StatelessWidget {
     String durationText,
     String calorieText,
   ) {
-    final String name = destination['name']?.toString() ?? '名称不明';
+    final String name =
+        destination['name']?.toString() ?? '名称不明';
 
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFFC9C4D5).withValues(alpha: 0.35),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2E0094).withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1EBFF),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: const Color(0xFFC9C4D5).withValues(alpha: 0.35),
-              ),
-            ),
-            child: _buildThumbnail(),
-          ),
-
-          const SizedBox(width: 14),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontFamily: 'HankenGrotesk',
-                    fontFamilyFallback: ['NotoSansJP'],
-                    fontWeight: FontWeight.w700,
-                    fontSize: 17,
-                    color: Color(0xFF19005C),
-                    height: 1.25,
-                  ),
+    return TapScale(
+      onTap: () => _openDetail(context),
+      child: AppCard(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        borderRadius: 20,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: AppColors.accentBg,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppColors.border.withValues(alpha: 0.35),
                 ),
+              ),
+              child: _buildThumbnail(),
+            ),
 
-                const SizedBox(height: 10),
+            const SizedBox(width: 14),
 
-                Row(
-                  children: [
-                    Flexible(
-                      child: Container(
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'HankenGrotesk',
+                      fontFamilyFallback: ['NotoSansJP'],
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  Row(
+                    children: [
+                      Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
+                          horizontal: 8,
+                          vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF1EBFF),
-                          borderRadius: BorderRadius.circular(9999),
-                          border: Border.all(
-                            color: const Color(
-                              0xFF19005C,
-                            ).withValues(alpha: 0.15),
-                          ),
+                          color: AppColors.accentBg,
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(
                               Icons.directions_bike_rounded,
-                              size: 15,
-                              color: Color(0xFF19005C),
+                              size: 14,
+                              color: AppColors.primary,
                             ),
-
-                            const SizedBox(width: 5),
-
-                            Flexible(
-                              child: Text(
-                                durationText,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontFamily: 'JetBrainsMono',
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 11,
-                                  color: Color(0xFF19005C),
-                                ),
+                            const SizedBox(width: 4),
+                            Text(
+                              durationText,
+                              style: const TextStyle(
+                                fontFamily: 'JetBrainsMono',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 11,
+                                color: AppColors.primary,
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ),
-
-                    const SizedBox(width: 8),
-
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          _openDetail(context);
-                        },
-                        borderRadius: BorderRadius.circular(9999),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 6,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '詳細を見る',
-                                style: TextStyle(
-                                  fontFamily: 'HankenGrotesk',
-                                  fontFamilyFallback: ['NotoSansJP'],
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12,
-                                  color: Color(0xFF19005C),
-                                ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE86A33).withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.local_fire_department_rounded,
+                              size: 14,
+                              color: Color(0xFFE86A33),
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              calorieText,
+                              style: const TextStyle(
+                                fontFamily: 'JetBrainsMono',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 11,
+                                color: Color(0xFFE86A33),
                               ),
-
-                              SizedBox(width: 2),
-
-                              Icon(
-                                Icons.arrow_forward_ios_rounded,
-                                size: 12,
-                                color: Color(0xFF19005C),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
 
-                const SizedBox(height: 8),
+                  const SizedBox(height: 6),
 
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.local_fire_department_rounded,
-                      size: 16,
-                      color: Color(0xFFE86A33),
-                    ),
-
-                    const SizedBox(width: 5),
-
-                    const Text(
-                      '推定消費',
-                      style: TextStyle(
-                        fontFamily: 'HankenGrotesk',
-                        fontFamilyFallback: ['NotoSansJP'],
-                        fontWeight: FontWeight.w500,
-                        fontSize: 11,
-                        color: Color(0xFF484553),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      GestureDetector(
+                        onTap: () => _openDetail(context),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '詳細を見る',
+                              style: TextStyle(
+                                fontFamily: 'HankenGrotesk',
+                                fontFamilyFallback: ['NotoSansJP'],
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            SizedBox(width: 2),
+                            Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 11,
+                              color: AppColors.primary,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-
-                    const SizedBox(width: 6),
-
-                    Text(
-                      calorieText,
-                      style: const TextStyle(
-                        fontFamily: 'JetBrainsMono',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                        color: Color(0xFFE86A33),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyDestinationView extends StatelessWidget {
-  const _EmptyDestinationView();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: const Color(0xFFC9C4D5).withValues(alpha: 0.35),
-          ),
-        ),
-        child: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.location_off_rounded,
-              size: 42,
-              color: Color(0xFF19005C),
-            ),
-
-            SizedBox(height: 16),
-
-            Text(
-              '目的地が見つかりませんでした',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'HankenGrotesk',
-                fontFamilyFallback: ['NotoSansJP'],
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                color: Color(0xFF19005C),
-              ),
-            ),
-
-            SizedBox(height: 8),
-
-            Text(
-              '時間やジャンルを変更して、もう一度お試しください。',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontFamilyFallback: ['NotoSansJP'],
-                fontWeight: FontWeight.w400,
-                fontSize: 13,
-                color: Color(0xFF484553),
-                height: 1.5,
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
@@ -791,83 +686,113 @@ class _EmptyDestinationView extends StatelessWidget {
   }
 }
 
-class _ActionButton extends StatelessWidget {
-  final String text;
-  final IconData icon;
-  final bool isPrimary;
-  final bool isLoading;
-  final VoidCallback onPressed;
+// 検索中は結果エリアに骨組みカード(スケルトン)を点滅表示し、
+// 単なるスピナーよりも読み込み中の体感速度を向上させる
+class _SearchingIndicator extends StatefulWidget {
+  const _SearchingIndicator();
 
-  const _ActionButton({
-    required this.text,
-    required this.icon,
-    required this.isPrimary,
-    this.isLoading = false,
-    required this.onPressed,
-  });
+  @override
+  State<_SearchingIndicator> createState() => _SearchingIndicatorState();
+}
+
+class _SearchingIndicatorState extends State<_SearchingIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1000),
+  )..repeat(reverse: true);
+
+  late final Animation<double> _opacity = Tween<double>(
+    begin: 0.3,
+    end: 0.8,
+  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = isPrimary ? const Color(0xFF19005C) : Colors.white;
-
-    final foregroundColor = isPrimary ? Colors.white : const Color(0xFF19005C);
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: isLoading ? null : onPressed,
-        borderRadius: BorderRadius.circular(9999),
-        child: Container(
-          height: 52,
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.circular(9999),
-            border: Border.all(color: const Color(0xFF19005C), width: 1.5),
-            boxShadow:
-                isPrimary
-                    ? [
-                      BoxShadow(
-                        color: const Color(0xFF19005C).withValues(alpha: 0.18),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ]
-                    : null,
+    return AnimatedBuilder(
+      animation: _opacity,
+      builder: (context, child) {
+        return Opacity(
+          opacity: _opacity.value,
+          child: ListView.builder(
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.only(
+              top: 4,
+              bottom: AppBottomNavigation.barHeightFor(context) + 76,
+            ),
+            itemCount: 6,
+            itemBuilder: (context, index) => const _DestinationCardSkeleton(),
           ),
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 180),
-            child: Row(
-              key: ValueKey(isLoading),
-              mainAxisAlignment: MainAxisAlignment.center,
+        );
+      },
+    );
+  }
+}
+
+class _DestinationCardSkeleton extends StatelessWidget {
+  const _DestinationCardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: AppColors.border.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.lg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (isLoading)
-                  SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: foregroundColor,
-                    ),
-                  )
-                else
-                  Icon(icon, size: 18, color: foregroundColor),
-
-                const SizedBox(width: 7),
-
-                Text(
-                  text,
-                  style: TextStyle(
-                    fontFamily: 'HankenGrotesk',
-                    fontFamilyFallback: const ['NotoSansJP'],
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                    color: foregroundColor,
+                Container(
+                  width: 140,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: AppColors.border.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  width: 80,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: AppColors.border.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: 170,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: AppColors.border.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }

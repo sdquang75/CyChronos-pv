@@ -1,30 +1,43 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../core/network/place_photo.dart';
-import '../../core/widgets/app_screen_frame.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/app_bottom_navigation.dart';
+import '../../core/widgets/app_button.dart';
+import '../../core/widgets/app_toast.dart';
+import '../../core/widgets/app_top_bar.dart';
 import '../auth/domain/auth_state.dart';
 import '../auth/presentation/providers/auth_provider.dart';
+import '../history/presentation/providers/history_provider.dart';
 import '../home/data/location_service.dart';
 import 'data/navigation_announcer.dart';
+import 'data/route_preload_service.dart';
 import 'data/route_repository.dart';
-import 'data/trip_logger.dart';
 import 'domain/navigation_engine.dart';
+import 'presentation/providers/navigation_state_provider.dart';
+import '../settings/data/settings_service.dart';
+import 'trip_summary_screen.dart';
 
+/// ルート確認画面が今どの段階にあるか。
+/// 往復(round_trip)モードでは outboundPreview → outboundNavigating →
+/// staying → returnPreview → returnNavigating と進む。
+/// 片道(one_way)モードでは outboundPreview / outboundNavigating しか使わない
 enum _RouteStage {
   outboundPreview,
   outboundNavigating,
   staying,
   returnPreview,
   returnNavigating,
-  completed,
 }
 
 /// ルート確認・案内画面(Googleマップ風)。
@@ -35,10 +48,11 @@ class RouteConfirmScreen extends ConsumerStatefulWidget {
   destination; // 詳細画面から渡される目的地1件分(/api/suggest のplaces 1要素)
   final LocationService? locationService; // テスト用に差し替え可(省略時は本物)
   final RouteRepository? repository; // テスト用に差し替え可(省略時は本物)
-  final TripLogger? tripLogger; // テスト用に差し替え可(省略時は本物)
   final NavigationAnnouncer? announcer; // テスト時は端末TTSを呼ばない偽物へ差し替える
   final bool useMapTiles; // テスト時はfalse(Google Maps SDKが動かないため簡易描画に切り替える)
   final bool keepScreenAwake; // テスト時はfalseにしてプラットフォーム通信を避ける
+  final CyclingRoute? initialRoute; // 事前読み込み済みルート(DetilScreenから引き継ぎ)
+  final Future<CyclingRoute>? preloadedRouteFuture; // 事前読み込み中Future(DetilScreenから引き継ぎ)
 
   const RouteConfirmScreen({
     super.key,
@@ -47,8 +61,9 @@ class RouteConfirmScreen extends ConsumerStatefulWidget {
     this.repository,
     this.announcer,
     this.useMapTiles = true,
-    this.tripLogger,
     this.keepScreenAwake = true,
+    this.initialRoute,
+    this.preloadedRouteFuture,
   });
 
   @override
@@ -56,11 +71,25 @@ class RouteConfirmScreen extends ConsumerStatefulWidget {
 }
 
 class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
+  // ルートのbbox(南西・北東の対角線)がこれより小さいときは、
+  // 出発地と目的地がほぼ同じ地点とみなしてbboxフィットをやめる
+  // (例: 復路の起点が出発地点にほぼ重なる場合。実機ならまず起きないが、
+  // GPSを動かせないエミュレータでは毎回起きるので、その時にGoogleMapsが
+  // 最大ズームまで寄ってしまうのを防ぐ)
+  static const double _minBoundsSpanMeters = 150;
+  // 直前にbboxフィットした実績が無いときのズームの初期値
+  static const double _fallbackZoom = 15;
+  static const _arrivalRadiusM = 60.0;
+  static const _offRouteRadiusM = 70.0;
+  static const _rerouteCooldown = Duration(seconds: 60);
+  static const _routeReuseWindow = Duration(minutes: 5);
+  static const _gpsLogMinDistanceM = 20.0;
+  static const _gpsLogMinInterval = Duration(seconds: 15);
+
   late final LocationService _locationService =
       widget.locationService ?? LocationService();
   late final RouteRepository _repository =
       widget.repository ?? RouteRepository();
-  late final TripLogger _tripLogger = widget.tripLogger ?? TripLogger();
   late final NavigationAnnouncer _announcer =
       widget.announcer ?? DeviceNavigationAnnouncer();
 
@@ -70,10 +99,15 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   bool _busy = false; // 開始/終了APIの二度押し防止
   int? _tripId; // 記録中トリップのID(null = 記録なし)
   _RouteStage _stage = _RouteStage.outboundPreview;
-  double? _originLat;
+  double? _originLat; // 往路開始時点の現在地(復路のルート取得先に使う)
   double? _originLng;
-  StreamSubscription<Position>? _positionSubscription;
-  Timer? _stayTimer;
+  double? _lastZoom; // 直前にbboxフィットして実際に落ち着いたズーム値
+  DateTime? _navigationStartedAt; // 案内開始した実時刻(完了画面の経過時間に使う)
+  double? _outboundDistanceM; // 往路の距離(案内開始時点の推定値を確定させて保持)
+  double? _outboundDurationSec;
+  StreamSubscription<Position>? _positionSubscription; // 走行中位置更新用
+  Timer? _stayTimer; // 滞在時間経過後に自動で復路を用意するタイマー
+  Timer? _cameraFollowTimer; // 案内開始時のパディング反映後に下部1/3へ追従させるタイマー
   GoogleMapController? _mapController;
   NavigationEngine? _navigationEngine;
   NavigationSnapshot? _navigationSnapshot;
@@ -82,9 +116,6 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   bool _voiceEnabled = true;
   bool _rerouting = false;
   bool _arrivalHandling = false;
-  bool _completedOnReturn = false;
-  bool _allowPop = false;
-  bool _exitDialogVisible = false;
   int _offRouteSamples = 0;
   int _arrivalSamples = 0;
   int? _guidanceStepIndex;
@@ -94,11 +125,10 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   DateTime? _routeFetchedAt;
   double? _routeFromLat;
   double? _routeFromLng;
-
-  static const _arrivalRadiusM = 60.0;
-  static const _offRouteRadiusM = 70.0;
-  static const _rerouteCooldown = Duration(seconds: 60);
-  static const _routeReuseWindow = Duration(minutes: 5);
+  Position? _lastLoggedPosition;
+  DateTime? _lastLoggedAt;
+  bool _userPanned = false;
+  double _currentBearing = 0.0;
 
   // ---- destination(Map)から表示用の値を取り出すヘルパーたち ----
 
@@ -115,20 +145,16 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   int get _plannedStayMinutes =>
       (widget.destination['plannedStayMinutes'] as num?)?.round() ?? 0;
 
+  // 「案内開始」の下部バー・上部チップ・ステータスバー用スクリムを消して
+  // 全画面にすべき状態かどうか(往路・復路どちらの案内中でもtrue)
   bool get _isNavigating =>
       _stage == _RouteStage.outboundNavigating ||
       _stage == _RouteStage.returnNavigating;
 
-  bool get _shouldGuardBack =>
-      _busy ||
-      _tripId != null ||
-      _isNavigating ||
-      _stage == _RouteStage.staying;
-
+  // 今表示しているのが「出発地点に戻る」復路のルートかどうか
   bool get _isReturnRoute =>
       _stage == _RouteStage.returnPreview ||
-      _stage == _RouteStage.returnNavigating ||
-      (_stage == _RouteStage.completed && _completedOnReturn);
+      _stage == _RouteStage.returnNavigating;
 
   double? get _targetLat => _isReturnRoute ? _originLat : _destLat;
 
@@ -143,7 +169,8 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     return steps[index];
   }
 
-  // 実ルートが取れなかったときは、候補一覧時点の概算値(Matrix API)で代用する
+  // 実ルートが取れなかったときは、候補一覧時点の概算値(Matrix API)で代用する。
+  // 復路表示中は destination に付いている概算の復路値にフォールバックする
   double? get _displayDistanceM =>
       (_isNavigating ? _navigationSnapshot?.remainingDistanceM : null) ??
       _route?.distanceM ??
@@ -161,19 +188,52 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   @override
   void initState() {
     super.initState();
-    _loadRoute();
+    // 1. すでに事前読み込み済みのルートがあれば0msで即時適用
+    if (widget.initialRoute != null) {
+      _route = widget.initialRoute;
+      _loading = false;
+      if (_route!.points.isNotEmpty) {
+        _originLng ??= _route!.points.first[0];
+        _originLat ??= _route!.points.first[1];
+        _routeFromLat = _originLat;
+        _routeFromLng = _originLng;
+        _routeFetchedAt = DateTime.now();
+      }
+    } else {
+      _loadRoute();
+    }
+  }
+
+  @override
+  void deactivate() {
+    ref.read(isTripNavigatingProvider.notifier).state = false;
+    super.deactivate();
   }
 
   @override
   void dispose() {
-    // 案内中に画面ごと破棄された場合の後始末(位置情報の購読を残さない)
-    _tripLogger.dispose();
     _positionSubscription?.cancel();
     _stayTimer?.cancel();
-    _mapController?.dispose();
+    _cameraFollowTimer?.cancel();
     unawaited(_announcer.stop());
-    if (widget.keepScreenAwake) unawaited(WakelockPlus.disable());
+    unawaited(_disableWakeLock('screen dispose'));
     super.dispose();
+  }
+
+  void _syncNavigatingState() {
+    final active = _stage == _RouteStage.outboundNavigating ||
+        _stage == _RouteStage.staying ||
+        _stage == _RouteStage.returnNavigating;
+    ref.read(isTripNavigatingProvider.notifier).state = active;
+  }
+
+  Future<void> _disableWakeLock(String reason) async {
+    if (!widget.keepScreenAwake) return;
+    try {
+      await WakelockPlus.disable();
+    } catch (e) {
+      debugPrint('wakelock disable failed ($reason): $e');
+    }
   }
 
   /// 現在地を取得して、バックの /api/maps/route で実際の走行ルートを取りに行く
@@ -190,10 +250,54 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
       return;
     }
 
+    // 2. 事前読み込み中のFutureがあればそれを最優先で待つ(通信の二重発火を防止)
+    if (widget.preloadedRouteFuture != null) {
+      try {
+        final route = await widget.preloadedRouteFuture!;
+        if (!mounted) return;
+        setState(() {
+          _route = route;
+          if (route.points.isNotEmpty) {
+            _originLng ??= route.points.first[0];
+            _originLat ??= route.points.first[1];
+            _routeFromLat = _originLat;
+            _routeFromLng = _originLng;
+          }
+          _routeFetchedAt = DateTime.now();
+          _loading = false;
+        });
+        return;
+      } catch (_) {
+        // 事前読み込みが失敗した場合は通常の取得へフォールバック
+      }
+    }
+
     try {
-      final position = await _locationService.getCurrentPosition();
-      _originLat = position.latitude;
-      _originLng = position.longitude;
+      // 3. 高速位置情報(直近キャッシュまたはOSのlastKnown)を取得
+      final position = await _locationService.getFastPosition();
+      _originLat ??= position.latitude;
+      _originLng ??= position.longitude;
+
+      // 4. RoutePreloadServiceのキャッシュに既存のルートがあるか確認
+      final cachedFuture = RoutePreloadService.getCachedRouteFuture(
+        fromLat: position.latitude,
+        fromLng: position.longitude,
+        toLat: toLat,
+        toLng: toLng,
+      );
+      if (cachedFuture != null) {
+        final route = await cachedFuture;
+        if (!mounted) return;
+        setState(() {
+          _route = route;
+          _routeFromLat = position.latitude;
+          _routeFromLng = position.longitude;
+          _routeFetchedAt = DateTime.now();
+          _loading = false;
+        });
+        return;
+      }
+
       final route = await _repository.fetchCyclingRoute(
         fromLat: position.latitude,
         fromLng: position.longitude,
@@ -219,188 +323,6 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     }
   }
 
-  /// 案内開始: 下のバーを消して全画面の案内モードへ。
-  /// ログイン済みならトリップ開始も記録する(訪問済み除外が効くようになる)
-  Future<void> _startNavigation() async {
-    if (_busy) return; // 二度押しガード
-
-    if (_stage == _RouteStage.returnPreview) {
-      await _startReturnNavigation();
-      return;
-    }
-
-    setState(() => _busy = true);
-
-    // プレビューを開いてから移動している可能性があるため、案内開始地点を取り直す。
-    Position? navigationStartPosition;
-    try {
-      final position = await _locationService.getCurrentPosition();
-      navigationStartPosition = position;
-      final toLat = _destLat;
-      final toLng = _destLng;
-      if (toLat == null || toLng == null) {
-        throw StateError('目的地の座標がありません');
-      }
-      final route =
-          _canReuseRouteFrom(position)
-              ? _route!
-              : await _repository.fetchCyclingRoute(
-                fromLat: position.latitude,
-                fromLng: position.longitude,
-                toLat: toLat,
-                toLng: toLng,
-              );
-      if (!mounted) return;
-      _originLat = position.latitude;
-      _originLng = position.longitude;
-      _currentPosition = position;
-      _route = route;
-      if (!_canReuseRouteFrom(position)) {
-        _routeFromLat = position.latitude;
-        _routeFromLng = position.longitude;
-        _routeFetchedAt = DateTime.now();
-      }
-      _navigationEngine = NavigationEngine(route);
-      _errorMessage = null;
-    } catch (error) {
-      debugPrint('route refresh on navigation start error: $error');
-      // 経路の再取得だけ失敗しても、往復の帰着地点には実際に案内を始めた地点を使う。
-      final position = navigationStartPosition;
-      if (position != null) {
-        _originLat = position.latitude;
-        _originLng = position.longitude;
-        _currentPosition = position;
-      }
-      if (_route == null || _originLat == null || _originLng == null) {
-        if (!mounted) return;
-        setState(() {
-          _busy = false;
-          _errorMessage = '案内開始地点からのルートを取得できませんでした。通信と位置情報を確認してください。';
-        });
-        return;
-      }
-      // 直前のプレビュー経路は残っているので、通信の一時失敗時だけそれを利用する。
-      _navigationEngine = NavigationEngine(_route!);
-      _navigationStatusMessage = '開始地点の再計算に失敗したため、表示中のルートで案内します。';
-    }
-
-    // ログイン済みユーザーの user_id を取る(取れなければ記録なしで案内だけする)
-    final authState = ref.read(authProvider);
-    final userId =
-        authState is AuthAuthenticated ? authState.user.userId : null;
-
-    try {
-      if (userId != null) {
-        final tripId = await _repository.startTrip(
-          userId: userId,
-          placeId: widget.destination['id']?.toString(),
-          destinationName: _name,
-        );
-        _tripId = tripId;
-        // 走行中の座標を記録し始める(終了時にサーバーが距離・平均速度を集計する)
-        _tripLogger.start(tripId);
-        _showMessage('案内を開始しました。行ってらっしゃい!');
-      } else {
-        _showMessage('ログイン情報が取得できないため、走行記録なしで案内します');
-      }
-    } catch (error) {
-      // 記録に失敗しても案内自体は始める(記録はおまけ、案内が主目的)
-      debugPrint('trip start error: $error');
-      _showMessage('走行記録の開始に失敗しました(記録なしで案内します)');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-          _stage = _RouteStage.outboundNavigating;
-        });
-        await _activateNavigation();
-      }
-    }
-  }
-
-  Future<void> _startReturnNavigation() async {
-    final originLat = _originLat;
-    final originLng = _originLng;
-    if (originLat == null || originLng == null) {
-      _showMessage('出発地点を確認できないため、帰りの案内を開始できません。');
-      return;
-    }
-
-    setState(() => _busy = true);
-    try {
-      final position = await _locationService.getCurrentPosition();
-      final reusedRoute = _canReuseRouteFrom(position);
-      final route =
-          reusedRoute
-              ? _route!
-              : await _repository.fetchCyclingRoute(
-                fromLat: position.latitude,
-                fromLng: position.longitude,
-                toLat: originLat,
-                toLng: originLng,
-              );
-      if (!mounted) return;
-      setState(() {
-        _route = route;
-        if (!reusedRoute) {
-          _routeFromLat = position.latitude;
-          _routeFromLng = position.longitude;
-          _routeFetchedAt = DateTime.now();
-        }
-        _currentPosition = position;
-        _navigationEngine = NavigationEngine(route);
-        _stage = _RouteStage.returnNavigating;
-        _busy = false;
-        _errorMessage = null;
-      });
-      await _activateNavigation();
-    } catch (error) {
-      debugPrint('return route refresh error: $error');
-      if (!mounted) return;
-      if (_route != null) {
-        setState(() {
-          _navigationEngine = NavigationEngine(_route!);
-          _stage = _RouteStage.returnNavigating;
-          _busy = false;
-          _navigationStatusMessage = '現在地からの再計算に失敗したため、表示中の復路で案内します。';
-        });
-        await _activateNavigation();
-      } else {
-        setState(() {
-          _busy = false;
-          _errorMessage = '帰りのルートを取得できませんでした。通信と位置情報を確認してください。';
-        });
-      }
-    }
-  }
-
-  Future<void> _activateNavigation() async {
-    _offRouteSamples = 0;
-    _arrivalSamples = 0;
-    _arrivalHandling = false;
-    _rerouting = false;
-    _guidanceStepIndex = null;
-    _announcedPrepare = false;
-    _announcedNow = false;
-
-    if (widget.keepScreenAwake) {
-      try {
-        await WakelockPlus.enable();
-      } catch (error) {
-        debugPrint('wakelock enable error: $error');
-        if (mounted) {
-          setState(() => _navigationStatusMessage = '画面の自動消灯を無効にできませんでした。');
-        }
-      }
-    }
-    _startPositionMonitoring();
-    await _speak(
-      _isReturnRoute
-          ? '帰りの案内を開始します。安全を確認して出発してください。'
-          : '案内を開始します。安全を確認して出発してください。',
-    );
-  }
-
   bool _canReuseRouteFrom(Position position) {
     final routeFromLat = _routeFromLat;
     final routeFromLng = _routeFromLng;
@@ -421,22 +343,209 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         50;
   }
 
+  /// 案内開始: 下のバーを消して全画面の案内モードへ即時突入(0ms Latency)。
+  /// ログイン済みならトリップ開始も非同期で記録する(訪問済み除外が効くようになる)
+  Future<void> _startNavigation() async {
+    if (_busy) return; // 二度押しガード
+
+    // 復路プレビュー中の「案内開始」は新しいトリップを作らず、そのまま案内モードに入るだけ
+    if (_stage == _RouteStage.returnPreview) {
+      await _startReturnNavigation();
+      return;
+    }
+
+    HapticFeedback.mediumImpact();
+
+    // 0ms Optimistic UI: すでにプレビューで取得済みのルートを用いて
+    // GPS衛星捕捉や通信を待たずに即座に案内モードへ突入する(ラグを完全解消)
+    if (_route != null) {
+      _navigationEngine = NavigationEngine(_route!);
+      setState(() {
+        _stage = _RouteStage.outboundNavigating;
+        _navigationStartedAt ??= DateTime.now();
+        _outboundDistanceM ??= _displayDistanceM;
+        _outboundDurationSec ??= _displayDurationSec;
+        _errorMessage = null;
+      });
+      _syncNavigatingState();
+      unawaited(_activateNavigation());
+    }
+
+    setState(() => _busy = true);
+
+    try {
+      // プレビュー表示後の微小移動を高速位置情報(RAM/OSキャッシュ, 0〜50ms)で反映
+      Position? position;
+      try {
+        position = await _locationService.getFastPosition();
+      } catch (_) {
+        position = _currentPosition;
+      }
+
+      if (position != null) {
+        _originLat = position.latitude;
+        _originLng = position.longitude;
+        _currentPosition = position;
+
+        // すでにルートが無い、または大幅に離れた場合のみ再取得
+        if (_route == null || !_canReuseRouteFrom(position)) {
+          final toLat = _destLat;
+          final toLng = _destLng;
+          if (toLat != null && toLng != null) {
+            final newRoute = await _repository.fetchCyclingRoute(
+              fromLat: position.latitude,
+              fromLng: position.longitude,
+              toLat: toLat,
+              toLng: toLng,
+            );
+            if (mounted) {
+              _route = newRoute;
+              _routeFromLat = position.latitude;
+              _routeFromLng = position.longitude;
+              _routeFetchedAt = DateTime.now();
+              _navigationEngine = NavigationEngine(newRoute);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      debugPrint('route check on navigation start error: $error');
+    }
+
+    // ログイン済みユーザーの user_id を取る(取れなければ記録なしで案内だけする)
+    final authState = ref.read(authProvider);
+    final userId =
+        authState is AuthAuthenticated ? authState.user.userId : null;
+
+    try {
+      if (userId != null) {
+        final tripId = await _repository.startTrip(
+          userId: userId,
+          placeId: widget.destination['id']?.toString(),
+          destinationName: _name,
+        );
+        _tripId = tripId;
+      } else {
+        _showMessage('ログイン情報が取得できないため、走行記録なしで案内します');
+      }
+    } catch (error) {
+      // 記録に失敗しても案内自体は継続(案内が主目的)
+      debugPrint('trip start error: $error');
+      _showMessage('走行記録の開始に失敗しました(記録なしで案内します)');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _stage = _RouteStage.outboundNavigating;
+        });
+        _syncNavigatingState();
+        if (_positionSubscription == null) {
+          await _activateNavigation();
+        } else {
+          final pos = _currentPosition;
+          if (pos != null && !_userPanned) {
+            _followCurrentPosition(pos);
+          }
+        }
+      }
+    }
+  }
+
+  Future<void> _startReturnNavigation() async {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _stage = _RouteStage.returnNavigating;
+    });
+    _syncNavigatingState();
+    await _activateNavigation();
+  }
+
+  Future<void> _activateNavigation() async {
+    final route = _route;
+    if (route != null && route.points.length >= 2) {
+      _navigationEngine = NavigationEngine(route);
+      // まだ走行開始していない時は、ルートの最初の直線の向きを初期カメラ角度とする
+      final initialBearing = Geolocator.bearingBetween(
+        route.points[0][1],
+        route.points[0][0],
+        route.points[1][1],
+        route.points[1][0],
+      );
+      if (initialBearing.isFinite) {
+        _currentBearing = (initialBearing + 360) % 360;
+      }
+    }
+    _guidanceStepIndex = null;
+    _announcedPrepare = false;
+    _announcedNow = false;
+    _offRouteSamples = 0;
+    _arrivalSamples = 0;
+    _navigationStatusMessage = null;
+    _userPanned = false;
+
+    // 「案内開始」を押した瞬間に即座にカメラを3D視点＆進行方向へ旋回させる(手動ボタン押し不要)
+    void follow() {
+      if (!mounted || !_isNavigating || _userPanned) return;
+      final pos = _currentPosition;
+      if (pos != null) {
+        _followCurrentPosition(pos);
+      } else if (_originLat != null && _originLng != null) {
+        final startPos = Position(
+          latitude: _originLat!,
+          longitude: _originLng!,
+          timestamp: DateTime.now(),
+          accuracy: 1,
+          altitude: 0,
+          altitudeAccuracy: 1,
+          heading: _currentBearing,
+          headingAccuracy: 1,
+          speed: 0,
+          speedAccuracy: 1,
+        );
+        _currentPosition = startPos;
+        _followCurrentPosition(startPos);
+      }
+    }
+
+    // 1. 初回フレームで即座に追従アニメーション開始(0msの即応性)
+    WidgetsBinding.instance.addPostFrameCallback((_) => follow());
+
+    // 2. 地図のPlatformViewパディング確定および下部UIのアニメーション(300ms)完了後に、
+    //    確実に自車位置が画面下部1/3の位置(Y ≈ 66.7%)に収まるよう再追従・補正
+    if (widget.useMapTiles) {
+      _cameraFollowTimer?.cancel();
+      _cameraFollowTimer = Timer(const Duration(milliseconds: 350), follow);
+    }
+
+    final keepAwake =
+        widget.keepScreenAwake && ref.read(settingsProvider).keepScreenAwake;
+    if (keepAwake) {
+      try {
+        await WakelockPlus.enable();
+      } catch (e) {
+        debugPrint('wakelock enable failed: $e');
+      }
+    }
+
+    _startPositionMonitoring();
+
+    final targetName = _isReturnRoute ? '出発地点' : _name;
+    unawaited(_speak('$targetNameへの案内を開始します。'));
+  }
+
   void _startPositionMonitoring() {
     _positionSubscription?.cancel();
     _positionSubscription = _locationService.getPositionStream().listen(
       _handlePosition,
       onError: (Object error) {
-        debugPrint('arrival monitoring error: $error');
-        if (!mounted || !_isNavigating) return;
-        setState(() {
-          _navigationStatusMessage = '現在地を更新できません。位置情報の設定を確認してください。';
-        });
+        debugPrint('navigation position error: $error');
       },
     );
   }
 
   void _handlePosition(Position position) {
-    if (!mounted || !_isNavigating || _arrivalHandling) return;
+    if (!mounted || !_isNavigating) return;
+    _currentPosition = position;
     final engine = _navigationEngine;
     if (engine == null) return;
 
@@ -444,219 +553,21 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
       latitude: position.latitude,
       longitude: position.longitude,
     );
-    setState(() {
-      _currentPosition = position;
-      _navigationSnapshot = snapshot;
-      final status = _navigationStatusMessage;
-      if (!_rerouting &&
-          (status?.startsWith('ルートを再検索') == true ||
-              status?.startsWith('現在地を更新') == true)) {
-        _navigationStatusMessage = null;
-      }
-    });
+
+    if (mounted) {
+      setState(() {
+        _navigationSnapshot = snapshot;
+      });
+    }
+
     _followCurrentPosition(position);
     _handleGuidance(snapshot);
     _checkArrival(position);
     _checkRouteDeviation(position, snapshot);
+    _logPositionIfNeeded(position);
   }
 
-  void _followCurrentPosition(Position position) {
-    final controller = _mapController;
-    if (controller == null || !widget.useMapTiles) return;
-    final bearing =
-        position.heading.isFinite && position.heading >= 0
-            ? position.heading
-            : 0.0;
-    unawaited(
-      controller.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: LatLng(position.latitude, position.longitude),
-            zoom: 17,
-            tilt: 45,
-            bearing: bearing,
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _handleGuidance(NavigationSnapshot snapshot) {
-    final index = snapshot.upcomingStepIndex;
-    final distance = snapshot.distanceToManeuverM;
-    if (index == null || distance == null) return;
-
-    if (_guidanceStepIndex != index) {
-      _guidanceStepIndex = index;
-      _announcedPrepare = false;
-      _announcedNow = false;
-    }
-    final instruction = _upcomingStep?.instruction;
-    if (instruction == null || instruction.isEmpty) return;
-
-    if (distance <= 70 && !_announcedNow) {
-      _announcedNow = true;
-      unawaited(_speak('まもなく、$instruction', urgent: true));
-    } else if (distance <= 300 && !_announcedPrepare) {
-      _announcedPrepare = true;
-      unawaited(_speak('${_spokenDistance(distance)}先、$instruction'));
-    }
-  }
-
-  void _checkArrival(Position position) {
-    final targetLat = _targetLat;
-    final targetLng = _targetLng;
-    if (targetLat == null || targetLng == null) return;
-    final distance = Geolocator.distanceBetween(
-      position.latitude,
-      position.longitude,
-      targetLat,
-      targetLng,
-    );
-    final accuracyAllowance = position.accuracy.clamp(0.0, 30.0);
-    final arrived = distance <= _arrivalRadiusM + accuracyAllowance;
-    _arrivalSamples = arrived ? _arrivalSamples + 1 : 0;
-    // 高精度GPSなら停止した瞬間の1回で到着させ、低精度時だけ連続確認する。
-    final requiredSamples = position.accuracy <= 20 ? 1 : 2;
-    if (_arrivalSamples < requiredSamples) return;
-
-    _arrivalHandling = true;
-    if (_stage == _RouteStage.outboundNavigating && _isRoundTrip) {
-      unawaited(_beginStay());
-    } else {
-      unawaited(_completeArrival());
-    }
-  }
-
-  void _checkRouteDeviation(Position position, NavigationSnapshot snapshot) {
-    if (_arrivalHandling || _rerouting) return;
-    if (position.accuracy > 50) {
-      _offRouteSamples = 0;
-      return;
-    }
-    final threshold = math.max(_offRouteRadiusM, position.accuracy * 2);
-    _offRouteSamples =
-        snapshot.offRouteDistanceM > threshold ? _offRouteSamples + 1 : 0;
-    if (_offRouteSamples < 3) return;
-
-    final lastReroute = _lastRerouteAt;
-    if (lastReroute != null &&
-        DateTime.now().difference(lastReroute) < _rerouteCooldown) {
-      return;
-    }
-    unawaited(_rerouteFrom(position));
-  }
-
-  Future<void> _rerouteFrom(Position position) async {
-    if (_rerouting || !_isNavigating) return;
-    final targetLat = _targetLat;
-    final targetLng = _targetLng;
-    if (targetLat == null || targetLng == null) return;
-
-    setState(() {
-      _rerouting = true;
-      _navigationStatusMessage = 'ルートを再検索しています…';
-    });
-    _lastRerouteAt = DateTime.now();
-    _offRouteSamples = 0;
-    await _speak('ルートを外れました。新しいルートを検索します。', urgent: true);
-
-    try {
-      final route = await _repository.fetchCyclingRoute(
-        fromLat: position.latitude,
-        fromLng: position.longitude,
-        toLat: targetLat,
-        toLng: targetLng,
-      );
-      final engine = NavigationEngine(route);
-      final snapshot = engine.update(
-        latitude: position.latitude,
-        longitude: position.longitude,
-      );
-      if (!mounted || !_isNavigating) return;
-      setState(() {
-        _route = route;
-        _routeFromLat = position.latitude;
-        _routeFromLng = position.longitude;
-        _routeFetchedAt = DateTime.now();
-        _navigationEngine = engine;
-        _navigationSnapshot = snapshot;
-        _rerouting = false;
-        _navigationStatusMessage = '新しいルートに更新しました。';
-        _guidanceStepIndex = null;
-        _announcedPrepare = false;
-        _announcedNow = false;
-      });
-      await _speak('新しいルートで案内を続けます。');
-    } catch (error) {
-      debugPrint('route recalculation error: $error');
-      if (!mounted) return;
-      setState(() {
-        _rerouting = false;
-        _navigationStatusMessage = 'ルートを再検索できませんでした。現在のルート表示を継続します。';
-      });
-    }
-  }
-
-  Future<void> _speak(String message, {bool urgent = false}) async {
-    try {
-      // 音声をミュートしていても、曲がり角と到着の振動通知は残す。
-      if (urgent) await _announcer.vibrate();
-      if (_voiceEnabled) await _announcer.speak(message);
-    } catch (error) {
-      debugPrint('navigation voice error: $error');
-      if (mounted && _isNavigating) {
-        setState(
-          () => _navigationStatusMessage = '音声案内を再生できません。画面の案内をご確認ください。',
-        );
-      }
-    }
-  }
-
-  Future<void> _completeArrival() async {
-    if (!mounted) return;
-    final completedOnReturn = _stage == _RouteStage.returnNavigating;
-    final stopPositionUpdates = _positionSubscription?.cancel();
-    _positionSubscription = null;
-    setState(() {
-      _completedOnReturn = completedOnReturn;
-      _stage = _RouteStage.completed;
-      _rerouting = false;
-      _offRouteSamples = 0;
-      _navigationStatusMessage = null;
-      _navigationSnapshot = NavigationSnapshot(
-        nearestSegmentIndex:
-            _navigationSnapshot?.nearestSegmentIndex ??
-            math.max(0, (_route?.points.length ?? 1) - 2),
-        offRouteDistanceM: 0,
-        remainingDistanceM: 0,
-        remainingDurationSec: 0,
-        upcomingStepIndex: _navigationSnapshot?.upcomingStepIndex,
-        distanceToManeuverM: 0,
-      );
-    });
-    // 到着表示と記録を音声・端末制御の完了待ちで遅らせない。
-    if (stopPositionUpdates != null) unawaited(stopPositionUpdates);
-    unawaited(_disableWakeLock('arrival'));
-    unawaited(
-      _speak(
-        completedOnReturn ? '出発地点に到着しました。お疲れさまでした。' : '目的地に到着しました。お疲れさまでした。',
-        urgent: true,
-      ),
-    );
-    await _finishTripRecord();
-  }
-
-  Future<void> _disableWakeLock(String reason) async {
-    if (!widget.keepScreenAwake) return;
-    try {
-      await WakelockPlus.disable();
-    } catch (error) {
-      debugPrint('wakelock disable ($reason) error: $error');
-    }
-  }
-
-  Future<void> _finishTripRecord() async {
+  void _logPositionIfNeeded(Position position) {
     final tripId = _tripId;
     if (tripId == null) return;
     final authState = ref.read(authProvider);
@@ -664,73 +575,323 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         authState is AuthAuthenticated ? authState.user.userId : null;
     if (userId == null) return;
 
-    try {
-      await _repository.endTrip(userId: userId, tripId: tripId);
-      _tripId = null;
-    } catch (error) {
-      debugPrint('trip auto finish error: $error');
-      if (mounted) {
-        setState(() => _navigationStatusMessage = '到着しましたが、走行記録の保存に失敗しました。');
-      }
+    final now = DateTime.now();
+    final lastPos = _lastLoggedPosition;
+    final lastTime = _lastLoggedAt;
+
+    final shouldLog = lastPos == null ||
+        lastTime == null ||
+        now.difference(lastTime) >= _gpsLogMinInterval ||
+        Geolocator.distanceBetween(
+              lastPos.latitude,
+              lastPos.longitude,
+              position.latitude,
+              position.longitude,
+            ) >=
+            _gpsLogMinDistanceM;
+
+    if (shouldLog) {
+      _lastLoggedPosition = position;
+      _lastLoggedAt = now;
+      unawaited(
+        _repository
+            .logLocation(
+              userId: userId,
+              tripId: tripId,
+              lat: position.latitude,
+              lng: position.longitude,
+            )
+            .catchError((e) {
+              debugPrint('logLocation error: $e');
+            }),
+      );
     }
   }
 
-  Future<void> _finishCompletedFlow() async {
-    if (_busy) return;
-    if (_tripId != null) {
-      setState(() => _busy = true);
-      await _finishTripRecord();
-      if (!mounted) return;
-      setState(() => _busy = false);
-      if (_tripId != null) {
-        _showMessage('走行記録を保存できませんでした。通信を確認してもう一度お試しください。');
-        return;
+  void _followCurrentPosition(Position position) {
+    final controller = _mapController;
+    if (controller == null || !widget.useMapTiles || _userPanned) return;
+
+    // 進行方向(heading)が有効な場合、角速度・速度ノイズをフィルタリングして向きを更新
+    // 速度が0.5m/s(約1.8km/h)以上出ているとき、または初回取得時に向きを反映(停止時のブレ防止)
+    if (position.heading.isFinite && position.heading >= 0) {
+      if (position.speed >= 0.5 || _currentBearing == 0.0) {
+        _currentBearing = position.heading;
       }
     }
-    if (mounted) context.go('/home');
+
+    unawaited(
+      controller.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: LatLng(position.latitude, position.longitude),
+            zoom: 17.5,
+            tilt: 45.0, // 3D鳥瞰視点
+            bearing: _currentBearing, // 進行方向が常に画面上部を向く
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 案内終了・キャンセル時にカメラを通常プレビュー(2D全体表示・北向き)へスムーズに戻す
+  Future<void> _resetCameraToOverview() async {
+    final controller = _mapController;
+    final route = _route;
+    if (controller == null ||
+        !widget.useMapTiles ||
+        route == null ||
+        route.points.isEmpty) {
+      return;
+    }
+
+    _currentBearing = 0.0;
+    _userPanned = false;
+    _cameraFollowTimer?.cancel();
+
+    // プレビュー時のパディング(top: 100, bottom: 260 + barHeight)の反映を少し待つ
+    await Future.delayed(const Duration(milliseconds: 150));
+    if (!mounted || _isNavigating) return;
+
+    final routePoints =
+        route.points.map((point) => LatLng(point[1], point[0])).toList();
+
+    var minLat = routePoints.first.latitude;
+    var maxLat = minLat;
+    var minLng = routePoints.first.longitude;
+    var maxLng = minLng;
+    for (final point in routePoints) {
+      if (point.latitude < minLat) minLat = point.latitude;
+      if (point.latitude > maxLat) maxLat = point.latitude;
+      if (point.longitude < minLng) minLng = point.longitude;
+      if (point.longitude > maxLng) maxLng = point.longitude;
+    }
+    final bounds = LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
+
+    final spanMeters = Geolocator.distanceBetween(
+      bounds.southwest.latitude,
+      bounds.southwest.longitude,
+      bounds.northeast.latitude,
+      bounds.northeast.longitude,
+    );
+
+    try {
+      if (spanMeters < _minBoundsSpanMeters) {
+        await controller.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: routePoints.first,
+              zoom: _lastZoom ?? _fallbackZoom,
+              tilt: 0.0,
+              bearing: 0.0,
+            ),
+          ),
+        );
+      } else {
+        await controller.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: LatLng(
+                (minLat + maxLat) / 2,
+                (minLng + maxLng) / 2,
+              ),
+              zoom: _lastZoom ?? 13.0,
+              tilt: 0.0,
+              bearing: 0.0,
+            ),
+          ),
+        );
+        if (!mounted || _isNavigating) return;
+        await controller.animateCamera(
+          CameraUpdate.newLatLngBounds(bounds, 48),
+        );
+      }
+    } catch (e) {
+      debugPrint('resetCameraToOverview error: $e');
+    }
+  }
+
+  void _handleGuidance(NavigationSnapshot snapshot) {
+    final stepIndex = snapshot.upcomingStepIndex;
+    final distance = snapshot.distanceToManeuverM;
+    final step = _upcomingStep;
+    if (stepIndex == null || distance == null || step == null) return;
+
+    if (_guidanceStepIndex != stepIndex) {
+      _guidanceStepIndex = stepIndex;
+      _announcedPrepare = false;
+      _announcedNow = false;
+    }
+
+    if (!_announcedPrepare && distance <= 300 && distance > 90) {
+      _announcedPrepare = true;
+      unawaited(_announcer.vibrate());
+      unawaited(_speak('${_spokenDistance(distance)}先、${step.instruction}'));
+    } else if (!_announcedNow && distance <= 50) {
+      _announcedNow = true;
+      unawaited(_announcer.vibrate());
+      unawaited(_speak('まもなく、${step.instruction}'));
+    }
   }
 
   String _spokenDistance(double meters) {
-    if (meters < 100) return '${(meters / 10).round() * 10}メートル';
-    if (meters < 1000) return '${(meters / 50).round() * 50}メートル';
-    return '${(meters / 1000).toStringAsFixed(1)}キロメートル';
+    if (meters < 1000) return 'およそ${(meters / 50).round() * 50}メートル';
+    final km = (meters / 1000).toStringAsFixed(1);
+    return 'およそ$kmキロ';
   }
 
+  void _checkArrival(Position position) {
+    if (_arrivalHandling) return;
+    final targetLat = _targetLat;
+    final targetLng = _targetLng;
+    if (targetLat == null || targetLng == null) return;
+
+    final distance = Geolocator.distanceBetween(
+      position.latitude,
+      position.longitude,
+      targetLat,
+      targetLng,
+    );
+
+    if (distance <= _arrivalRadiusM) {
+      _arrivalSamples += 1;
+      if (_arrivalSamples >= 2) {
+        _completeArrival();
+      }
+    } else {
+      _arrivalSamples = 0;
+    }
+  }
+
+  void _checkRouteDeviation(Position position, NavigationSnapshot snapshot) {
+    if (_rerouting || _arrivalHandling) return;
+    if (position.accuracy > 40) return;
+
+    if (snapshot.offRouteDistanceM > _offRouteRadiusM) {
+      _offRouteSamples += 1;
+      if (_offRouteSamples >= 3) {
+        final autoReroute = ref.read(settingsProvider).autoRerouteEnabled;
+        if (!autoReroute) {
+          _offRouteSamples = 0;
+          setState(() {
+            _navigationStatusMessage = 'ルートから外れました。';
+          });
+          return;
+        }
+
+        final now = DateTime.now();
+        final last = _lastRerouteAt;
+        if (last == null || now.difference(last) >= _rerouteCooldown) {
+          _lastRerouteAt = now;
+          _offRouteSamples = 0;
+          unawaited(_rerouteFrom(position));
+        }
+      }
+    } else {
+      _offRouteSamples = 0;
+    }
+  }
+
+  Future<void> _rerouteFrom(Position position) async {
+    final toLat = _targetLat;
+    final toLng = _targetLng;
+    if (toLat == null || toLng == null || _rerouting) return;
+
+    setState(() {
+      _rerouting = true;
+      _navigationStatusMessage = 'ルートを再検索中...';
+    });
+    unawaited(_speak('ルートから外れました。新しいルートを検索します。'));
+
+    try {
+      final route = await _repository.fetchCyclingRoute(
+        fromLat: position.latitude,
+        fromLng: position.longitude,
+        toLat: toLat,
+        toLng: toLng,
+      );
+      if (!mounted) return;
+      setState(() {
+        _route = route;
+        _navigationEngine = NavigationEngine(route);
+        _navigationSnapshot = _navigationEngine?.update(
+          latitude: position.latitude,
+          longitude: position.longitude,
+        );
+        _guidanceStepIndex = null;
+        _announcedPrepare = false;
+        _announcedNow = false;
+        _rerouting = false;
+        _navigationStatusMessage = '新しいルートに更新しました。';
+      });
+      unawaited(_speak('新しいルートに更新しました。'));
+    } catch (error) {
+      debugPrint('reroute error: $error');
+      if (!mounted) return;
+      setState(() {
+        _rerouting = false;
+        _navigationStatusMessage = '再検索に失敗しました。';
+      });
+    }
+  }
+
+  Future<void> _speak(String message, {bool urgent = false}) async {
+    final voiceSetting = ref.read(settingsProvider).voiceGuidanceEnabled;
+    if (!_voiceEnabled || !voiceSetting) return;
+    try {
+      await _announcer.speak(message, urgent: urgent);
+    } catch (e) {
+      debugPrint('speak error: $e');
+    }
+  }
+
+  Future<void> _completeArrival() async {
+    if (_arrivalHandling || !mounted) return;
+    setState(() {
+      _arrivalHandling = true;
+    });
+
+    if (_stage == _RouteStage.outboundNavigating && _isRoundTrip) {
+      unawaited(_speak('目的地に到着しました。滞在を開始します。'));
+      await _beginStay();
+      if (mounted) {
+        setState(() => _arrivalHandling = false);
+      }
+      return;
+    }
+
+    unawaited(_speak('目的地に到着しました。お疲れさまでした。'));
+    await _endNavigation(isAutoArrival: true);
+  }
+
+  /// 目的地に到着(または「到着・滞在を開始」を手動タップ)したときの処理。
+  /// 到着監視を止めて、滞在時間ぶんだけ待ってから復路のルートを用意する
   Future<void> _beginStay() async {
     if (!_isRoundTrip || _stage != _RouteStage.outboundNavigating) return;
     if (!mounted) return;
-    setState(() {
-      _stage = _RouteStage.staying;
-      _rerouting = false;
-      _navigationStatusMessage = null;
-    });
+    setState(() => _stage = _RouteStage.staying);
+    _syncNavigatingState();
 
     await _positionSubscription?.cancel();
     _positionSubscription = null;
     _stayTimer?.cancel();
-
-    if (widget.keepScreenAwake) {
-      try {
-        await WakelockPlus.disable();
-      } catch (error) {
-        debugPrint('wakelock disable on stay error: $error');
-      }
-    }
+    unawaited(_announcer.stop());
+    unawaited(_disableWakeLock('stay begin'));
 
     if (!mounted) return;
-    _showMessage('案内を一時停止しました。滞在を開始します。');
-    await _speak('目的地に到着しました。案内を一時停止します。', urgent: true);
 
     if (_plannedStayMinutes == 0) {
       await _prepareReturnRoute();
       return;
     }
-    _stayTimer = Timer(
-      Duration(minutes: _plannedStayMinutes),
-      _prepareReturnRoute,
-    );
+    _stayTimer = Timer(Duration(minutes: _plannedStayMinutes), _prepareReturnRoute);
   }
 
+  /// 滞在時間が終わった(または「今すぐ折り返す」を押した)ら、
+  /// 現在地から出発地点までの復路ルートを取得してプレビューに切り替える
   Future<void> _prepareReturnRoute() async {
     if (_busy || !mounted) return;
     final originLat = _originLat;
@@ -758,16 +919,11 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
       if (!mounted) return;
       setState(() {
         _route = route;
-        _routeFromLat = position.latitude;
-        _routeFromLng = position.longitude;
-        _routeFetchedAt = DateTime.now();
-        _navigationEngine = NavigationEngine(route);
-        _navigationSnapshot = null;
         _stage = _RouteStage.returnPreview;
         _loading = false;
         _busy = false;
       });
-      _showMessage('帰りのルートを表示しました。');
+      _syncNavigatingState();
     } catch (error) {
       debugPrint('return route load error: $error');
       if (!mounted) return;
@@ -780,11 +936,12 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
   }
 
   /// 案内終了: バーを戻す。トリップ記録中ならバックに終了も記録する
-  Future<bool> _endNavigation() async {
-    if (_busy) return false; // 二度押しガード
+  Future<void> _endNavigation({bool isAutoArrival = false}) async {
+    if (_busy) return; // 二度押しガード
+    HapticFeedback.mediumImpact();
     setState(() {
       _busy = true;
-      _arrivalHandling = true;
+      _userPanned = false;
     });
 
     final authState = ref.read(authProvider);
@@ -792,34 +949,47 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         authState is AuthAuthenticated ? authState.user.userId : null;
     final tripId = _tripId;
     final endedStage = _stage;
+    // 完了画面用に、復路まで進んでいた場合はその距離も確定させておく
+    // (_stageを戻す前に、_isReturnRouteが有効なうちに読んでおく必要がある)
+    final double? returnDistanceM =
+        _isReturnRoute ? _displayDistanceM : null;
     final stopPositionUpdates = _positionSubscription?.cancel();
     _positionSubscription = null;
     _stayTimer?.cancel();
-    var recordEnded = true;
+
+    final hasDistance = _outboundDistanceM != null || returnDistanceM != null;
+    final totalDistanceM = (_outboundDistanceM ?? 0) + (returnDistanceM ?? 0);
+    final startedAt = _navigationStartedAt;
+    final elapsed =
+        startedAt == null ? null : DateTime.now().difference(startedAt);
+    double? averageSpeedKmh;
+    if (hasDistance && elapsed != null && elapsed.inSeconds > 0) {
+      averageSpeedKmh = (totalDistanceM / 1000) / (elapsed.inSeconds / 3600);
+    }
 
     try {
-      // 残っている座標を送りきってから終了APIを呼ぶ。
-      // サーバーは終了時に location_log を集計するので、この順番でないと距離が欠ける
-      await _tripLogger.stop();
-
       if (tripId != null && userId != null) {
-        await _repository.endTrip(userId: userId, tripId: tripId);
+        await _repository.endTrip(
+          userId: userId,
+          tripId: tripId,
+          totalDistanceM: hasDistance ? totalDistanceM.round() : null,
+          durationSec: elapsed?.inSeconds,
+          averageSpeedKmh: averageSpeedKmh,
+        );
         _tripId = null;
-        _showMessage('お疲れさまでした!走行を記録しました');
-      } else if (tripId != null) {
-        recordEnded = false;
-        _showMessage('ログイン情報を確認できず、走行記録を終了できませんでした');
-      } else {
-        _showMessage('案内を終了しました');
+        // サーバー側に記録が確定したので、HISTORYタブを裏で最新化しておく
+        // (ローカルに書き足すのではなく、必ずGET /api/tripsを取り直す)
+        ref.read(historyProvider.notifier).loadTrips();
       }
     } catch (error) {
       debugPrint('trip end error: $error');
-      recordEnded = false;
-      _showMessage('走行記録の終了に失敗しました');
+      // 完了画面の達成感・余韻を損なわないよう、トースト通知は出さない
     } finally {
       if (stopPositionUpdates != null) unawaited(stopPositionUpdates);
       unawaited(_announcer.stop());
       unawaited(_disableWakeLock('navigation end'));
+      _lastLoggedPosition = null;
+      _lastLoggedAt = null;
       if (mounted) {
         setState(() {
           _busy = false;
@@ -828,81 +998,213 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
           _currentPosition = null;
           _navigationStatusMessage = null;
           _rerouting = false;
+          // 復路案内中に終了した場合は復路プレビューへ、それ以外は往路プレビューへ戻す
           _stage =
               endedStage == _RouteStage.returnNavigating
                   ? _RouteStage.returnPreview
                   : _RouteStage.outboundPreview;
         });
+        _syncNavigatingState();
+        unawaited(_resetCameraToOverview());
       }
     }
-    return recordEnded;
+
+    if (!mounted) return;
+
+    // 完了画面を開く前に、残っているトースト通知があれば即座に消去する
+    AppToast.clear();
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (_) => TripSummaryScreen(
+              destinationName: _name,
+              isRoundTrip: _isRoundTrip,
+              distanceM: hasDistance ? totalDistanceM : null,
+              duration: elapsed,
+              averageSpeedKmh: averageSpeedKmh,
+              isArrival: isAutoArrival,
+            ),
+      ),
+    );
   }
 
-  Future<void> _handleBackAttempt() async {
-    if (_allowPop || _exitDialogVisible) return;
-    if (_busy) {
-      _showMessage('処理中です。少し待ってからもう一度お試しください。');
+  /// 案内を中止する(走行記録を破棄し、履歴には残さない)
+  Future<void> _cancelNavigation() async {
+    if (_busy) return;
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _busy = true;
+      _userPanned = false;
+    });
+
+    final authState = ref.read(authProvider);
+    final userId =
+        authState is AuthAuthenticated ? authState.user.userId : null;
+    final tripId = _tripId;
+    final endedStage = _stage;
+
+    final stopPositionUpdates = _positionSubscription?.cancel();
+    _positionSubscription = null;
+    _stayTimer?.cancel();
+
+    try {
+      if (tripId != null && userId != null) {
+        await _repository.cancelTrip(
+          userId: userId,
+          tripId: tripId,
+        );
+        _tripId = null;
+      }
+    } catch (error) {
+      debugPrint('trip cancel error: $error');
+    } finally {
+      if (stopPositionUpdates != null) unawaited(stopPositionUpdates);
+      unawaited(_announcer.stop());
+      unawaited(_disableWakeLock('navigation cancel'));
+      _lastLoggedPosition = null;
+      _lastLoggedAt = null;
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _arrivalHandling = false;
+          _navigationSnapshot = null;
+          _currentPosition = null;
+          _navigationStatusMessage = null;
+          _rerouting = false;
+          // 復路案内中に終了した場合は復路プレビューへ、それ以外は往路プレビューへ戻す
+          _stage =
+              endedStage == _RouteStage.returnNavigating
+                  ? _RouteStage.returnPreview
+                  : _RouteStage.outboundPreview;
+        });
+        _syncNavigatingState();
+        unawaited(_resetCameraToOverview());
+      }
+    }
+
+    if (!mounted) return;
+    AppToast.clear();
+  }
+
+  /// 「案内を終了」がタップされた時の処理。
+  /// 直前のキャンセル(「遠すぎる」「押し間違い」等)なら即座に破棄し、
+  /// ある程度走行していた場合は保存するか破棄するかを確認する
+  Future<void> _onEndNavigationPressed() async {
+    if (_busy) return;
+    final startedAt = _navigationStartedAt;
+    final elapsed =
+        startedAt == null ? Duration.zero : DateTime.now().difference(startedAt);
+
+    // 開始から2分未満かつ座標ログが記録されていない場合は、
+    // 「開始直後に遠すぎると感じて中止した」または「誤タップ」と判断して即座に破棄する
+    final isQuickCancel = elapsed.inSeconds < 120 && _lastLoggedPosition == null;
+
+    if (isQuickCancel) {
+      await _cancelNavigation();
       return;
     }
 
-    _exitDialogVisible = true;
-    final shouldExit = await showDialog<bool>(
+    // すでにある程度走行していた場合は、シンプルなAppleスタイルの確認ダイアログ(2択)
+    final confirmed = await showDialog<bool>(
       context: context,
       builder:
-          (dialogContext) => AlertDialog(
-            title: const Text('案内を終了しますか？'),
-            content: const Text('前の画面に戻ると、案内と走行記録を終了します。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('キャンセル'),
+          (ctx) => AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            icon: Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
               ),
-              FilledButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFD93A2A),
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('終了して戻る'),
+              child: const Icon(
+                Icons.close_rounded,
+                size: 26,
+                color: AppColors.error,
+              ),
+            ),
+            title: const Text(
+              '案内を終了しますか？',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'HankenGrotesk',
+                fontFamilyFallback: ['NotoSansJP'],
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+              ),
+            ),
+            content: const Text(
+              '案内を終了します。走行記録は保存されません。\n（記録を保存する場合は「到着・完了」を押してください）',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.4,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            actions: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        '続ける',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.error,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        '終了する',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
     );
-    _exitDialogVisible = false;
-    if (!mounted || shouldExit != true) return;
 
-    final recordEnded = await _endNavigation();
-    if (!mounted) return;
-    if (!recordEnded) {
-      _showMessage('走行記録を終了できなかったため、画面を移動しませんでした。もう一度お試しください。');
-      return;
+    if (confirmed == true) {
+      await _cancelNavigation();
     }
-
-    setState(() => _allowPop = true);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final navigator = Navigator.of(context);
-      if (navigator.canPop()) {
-        navigator.pop();
-      } else {
-        context.go('/home');
-      }
-    });
   }
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: const Color(0xFF2A0088),
-        behavior: SnackBarBehavior.floating,
-        // 下部の「案内を終了」ボタンに被らないよう、少し上に出す
-        margin: const EdgeInsets.only(bottom: 90, left: 16, right: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
+    AppToast.show(context, message);
   }
 
   // ---- 表示用の文字列ヘルパー ----
@@ -924,172 +1226,6 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     return '約$hours時間$minutes分';
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final screen = AppScreenFrame(
-      child: Scaffold(
-        // 案内モード中はロゴバーも消して全画面にする
-        appBar:
-            _isNavigating
-                ? null
-                : AppBar(
-                  title: const Image(
-                    image: AssetImage('assets/logo_long.png'),
-                    height: 40,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-        body: Stack(
-          children: [
-            // マップ代わりのルート表示(常に全画面。バーはこの上に被さる)
-            Positioned.fill(child: _buildRoutePreview()),
-
-            // ルート取得に失敗したときだけ、概算値表示であることを上部に知らせる
-            if (_errorMessage != null && !_isNavigating)
-              Positioned(
-                top: 8,
-                left: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF3E0),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    _errorMessage!,
-                    style: const TextStyle(fontSize: 13, color: Colors.black87),
-                  ),
-                ),
-              ),
-
-            // 走行中は視線移動を減らすため、次の操作を大きく固定表示する。
-            if (_isNavigating)
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: _buildNavigationHeader(),
-              ),
-
-            if (_isNavigating && _navigationStatusMessage != null)
-              Positioned(
-                top: 154,
-                left: 12,
-                right: 12,
-                child: SafeArea(
-                  child: Material(
-                    color: _rerouting ? const Color(0xFFFFF3E0) : Colors.white,
-                    elevation: 3,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 9,
-                      ),
-                      child: Row(
-                        children: [
-                          if (_rerouting)
-                            const Padding(
-                              padding: EdgeInsets.only(right: 10),
-                              child: SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                            ),
-                          Expanded(
-                            child: Text(
-                              _navigationStatusMessage!,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-            // 下部: 通常時は情報バー、案内モード中は「案内を終了」ボタンだけ。
-            // AnimatedSwitcherで切り替え時にスッと入れ替わる
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                // 下からスライドしてくる切り替えアニメーション
-                transitionBuilder:
-                    (child, animation) => SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0, 1),
-                        end: Offset.zero,
-                      ).animate(animation),
-                      child: child,
-                    ),
-                child: _buildBottomPanel(),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-    return PopScope<Object?>(
-      canPop: _allowPop || !_shouldGuardBack,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) unawaited(_handleBackAttempt());
-      },
-      child: screen,
-    );
-  }
-
-  /// マップ領域の中身: 取得中→インジケーター / 成功→ルート形状 / 失敗→目的地の写真
-  Widget _buildRoutePreview() {
-    if (_loading) {
-      return Container(
-        color: const Color(0xFFF1EBFF),
-        child: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    final route = _route;
-    if (route != null && route.points.length >= 2) {
-      // 本物の地図(Google Maps)の上にルートを重ねる。
-      // テスト時は地図SDKが動かないので簡易描画(線だけ)に切り替える
-      if (widget.useMapTiles) {
-        return _buildMap(route);
-      }
-      return Container(
-        color: const Color(0xFFF8F9FE), // マップの下地の色
-        child: CustomPaint(
-          painter: _RoutePreviewPainter(points: route.points),
-          child: const SizedBox.expand(),
-        ),
-      );
-    }
-
-    // ルートが描けないときは目的地の写真(なければ仮画像)を出しておく
-    final photoUrl = placePhotoUrl(
-      widget.destination['photoReference']?.toString(),
-    );
-    if (photoUrl == null) {
-      return Image.asset('assets/testimage.png', fit: BoxFit.cover);
-    }
-    return Image.network(
-      photoUrl,
-      fit: BoxFit.cover,
-      errorBuilder:
-          (context, error, stackTrace) =>
-              Image.asset('assets/testimage.png', fit: BoxFit.cover),
-    );
-  }
-
   Widget _buildNavigationHeader() {
     final step = _upcomingStep;
     final instruction = step?.instruction ?? 'ルートに沿って進んでください';
@@ -1100,11 +1236,11 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     return SafeArea(
       bottom: false,
       child: Container(
-        margin: const EdgeInsets.all(12),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF09209C),
-          borderRadius: BorderRadius.circular(18),
+          color: AppColors.primary,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.22),
@@ -1116,13 +1252,13 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         child: Row(
           children: [
             Container(
-              width: 58,
-              height: 58,
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusInput),
               ),
-              child: Icon(_maneuverIcon(step), color: Colors.white, size: 38),
+              child: Icon(_maneuverIcon(step), color: Colors.white, size: 32),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1133,9 +1269,12 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                   Text(
                     distanceLabel,
                     style: const TextStyle(
-                      color: Color(0xFFDCE4FF),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                      fontFamily: 'HankenGrotesk',
+                      fontFamilyFallback: ['NotoSansJP'],
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -1144,19 +1283,21 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
+                      fontFamilyFallback: ['NotoSansJP'],
                       color: Colors.white,
-                      fontSize: 20,
-                      height: 1.15,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      height: 1.25,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
-                    '${_isRoundTrip ? (_isReturnRoute ? '復路 ・ ' : '往路 ・ ') : ''}${_distanceText()} ・ ${_durationText()}',
+                    _navigationStatusMessage ??
+                        '${_isRoundTrip ? (_isReturnRoute ? '復路 ・ ' : '往路 ・ ') : ''}${_distanceText()} ・ ${_durationText()}',
                     style: const TextStyle(
                       color: Color(0xFFDCE4FF),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -1204,6 +1345,208 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     return Icons.straight_rounded;
   }
 
+  @override
+  Widget build(BuildContext context) {
+    // AppScreenFrameはHomeScreen(IndexedStackシェル)側で一括して描画されるので、
+    // ここでは自分の中身だけを組み立てる。
+    // 案内中は誤操作(OSの戻るボタン等)で画面が閉じてしまう事故を防ぐ
+    return PopScope(
+      canPop: !_isNavigating,
+      child: Scaffold(
+        backgroundColor: AppColors.bgCool,
+      // ヘッダーはappBar(bodyの高さを変えてしまい、案内開始/終了のたびに
+      // マップの表示領域が伸縮してズレて見える原因になっていた)ではなく、
+      // マップの上に被さるオーバーレイとして出す。案内モード中はこれごと消して全画面にする
+      body: Stack(
+        children: [
+          // マップ代わりのルート表示(常に全画面・常に同じ大きさ。バーはこの上に被さる)
+          Positioned.fill(child: _buildRoutePreview()),
+
+          // 通常時だけ上に出るヘッダー(戻るボタン+タイトル)。
+          // マップに直に重ねると文字が読みにくいので、下部メニューバーと
+          // 同じすりガラス調の背景を敷いて視認性を確保する
+          if (!_isNavigating)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: AppTopBar.heightFor(context),
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: Container(
+                    color: AppColors.bgCool.withValues(alpha: 0.8),
+                    child: const AppTopBar(title: 'ルート確認'),
+                  ),
+                ),
+              ),
+            ),
+
+          // ルート取得に失敗したときだけ、概算値表示であることを上部に知らせる
+          if (_errorMessage != null && !_isNavigating)
+            Positioned(
+              top: AppTopBar.heightFor(context) + 8,
+              left: 8,
+              right: 8,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.warningBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _errorMessage!,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ),
+
+          // 案内モード中はヘッダーごと消えるが、ステータスバー(時刻・バッテリー等)の
+          // 裏がマップそのままだと見えにくいので、そこだけ通常時と同じすりガラスを敷いておく
+          if (_isNavigating)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: MediaQuery.of(context).padding.top,
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: Container(color: AppColors.bgCool.withValues(alpha: 0.8)),
+                ),
+              ),
+            ),
+
+          // 案内モード中の曲がり案内ヘッダー
+          if (_isNavigating)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: _buildNavigationHeader(),
+            ),
+
+          // マップを手動でスクロールしたときに現在地に戻すFAB
+          if (_isNavigating && _userPanned)
+            Positioned(
+              right: 16,
+              bottom: 100 + AppBottomNavigation.barHeightFor(context),
+              child: FloatingActionButton.small(
+                key: const ValueKey('recenter-button'),
+                backgroundColor: Colors.white,
+                foregroundColor: AppColors.primary,
+                elevation: 4,
+                tooltip: '現在地に合わせる',
+                onPressed: () {
+                  setState(() => _userPanned = false);
+                  final pos = _currentPosition;
+                  if (pos != null) {
+                    _followCurrentPosition(pos);
+                  }
+                },
+                child: const Icon(Icons.my_location_rounded, size: 22),
+              ),
+            ),
+
+          // 下部: 通常時は情報バー、案内モード中は「案内を終了」ボタンだけ。
+          // AnimatedSwitcherで切り替え時にスッと入れ替わる。
+          // この画面はHomeScreen側の画面下部メニューバー(常に最前面に被さる)の
+          // 上に重なって描画されるので、そのぶんだけ持ち上げてボタンが隠れないようにする
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: AppBottomNavigation.barHeightFor(context),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              // デフォルトのlayoutBuilderはAlignment.centerで重ねるため、
+              // 情報バー(高さ大)から案内終了ボタン(高さ小)に切り替わった瞬間に
+              // 縦方向の基準がずれて「ボタンが下にカクッと落ちる」ように見えていた。
+              // 常に下端基準で重ねるようにして、高さが違っても位置が揃うようにする
+              layoutBuilder:
+                  (currentChild, previousChildren) => Stack(
+                    alignment: Alignment.bottomCenter,
+                    children: [
+                      ...previousChildren,
+                      if (currentChild != null) currentChild,
+                    ],
+                  ),
+              // 下からスライドしてくる切り替えアニメーション
+              transitionBuilder:
+                  (child, animation) => SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 1),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+              child: _buildBottomPanel(),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+  /// 下部バーの中身を現在のステージに応じて切り替える
+  Widget _buildBottomPanel() {
+    switch (_stage) {
+      case _RouteStage.outboundNavigating:
+        return _isRoundTrip ? _buildOutboundNavigationButtons() : _buildEndButton();
+      case _RouteStage.returnNavigating:
+        return _buildEndButton();
+      case _RouteStage.staying:
+        return _buildStayPanel();
+      case _RouteStage.outboundPreview:
+      case _RouteStage.returnPreview:
+        return _buildInfoPanel();
+    }
+  }
+
+  /// マップ領域の中身: 取得中→インジケーター / 成功→ルート形状 / 失敗→目的地の写真
+  Widget _buildRoutePreview() {
+    if (_loading) {
+      return Container(
+        color: AppColors.accentBg,
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final route = _route;
+    if (route != null && route.points.length >= 2) {
+      // 本物の地図(Google Maps)の上にルートを重ねる。
+      // テスト時は地図SDKが動かないので簡易描画(線だけ)に切り替える
+      if (widget.useMapTiles) {
+        return _buildMap(route);
+      }
+      return Container(
+        color: AppColors.bgCool, // マップの下地の色
+        child: CustomPaint(
+          painter: _RoutePreviewPainter(points: route.points),
+          child: const SizedBox.expand(),
+        ),
+      );
+    }
+
+    // ルートが描けないときは目的地の写真(なければ仮画像)を出しておく
+    final photoUrl = placePhotoUrl(
+      widget.destination['photoReference']?.toString(),
+    );
+    if (photoUrl == null) {
+      return Image.asset('assets/testimage.png', fit: BoxFit.cover);
+    }
+    return Image.network(
+      photoUrl,
+      fit: BoxFit.cover,
+      errorBuilder:
+          (context, error, stackTrace) =>
+              Image.asset('assets/testimage.png', fit: BoxFit.cover),
+    );
+  }
+
   /// 本物の地図(Google Maps)にルートの線と出発・目的地のマーカーを重ねる
   Widget _buildMap(CyclingRoute route) {
     // ルートの [経度, 緯度] を地図SDKの LatLng(緯度, 経度) に変換(順番が逆なので注意)
@@ -1226,121 +1569,148 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
       northeast: LatLng(maxLat, maxLng),
     );
 
-    final travelledEnd = math.min(
-      routePoints.length,
-      (_navigationSnapshot?.nearestSegmentIndex ?? -2) + 2,
-    );
-    final travelledPoints =
-        travelledEnd >= 2
-            ? routePoints.take(travelledEnd).toList()
-            : const <LatLng>[];
-    final currentPosition = _currentPosition;
-    final currentMarkerPosition =
-        currentPosition != null
-            ? LatLng(currentPosition.latitude, currentPosition.longitude)
-            : _originLat != null && _originLng != null
-            ? LatLng(_originLat!, _originLng!)
-            : null;
+    final mapType = ref.watch(settingsProvider).googleMapType;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final navBottomPadding = AppBottomNavigation.barHeightFor(context) + 24;
+    // 画面下部1/3の位置(Y ≈ 66.7%)に自車位置を配置するためのパディング
+    // Center_Y = (top - bottom + H) / 2 = (2/3) * H  =>  top = bottom + (1/3) * H
+    final navTopPadding = navBottomPadding + (screenHeight * 0.34);
 
-    return GoogleMap(
-      initialCameraPosition: CameraPosition(
-        target: routePoints.first,
-        zoom: 13,
-      ),
-      // 下の情報バー・上のチップに隠れないよう、地図の見える中心を上下にずらす
-      padding: EdgeInsets.only(
-        top: _isNavigating ? 190 : 100,
-        bottom: _isNavigating ? 100 : 260,
-      ),
-      onMapCreated: (controller) async {
-        _mapController = controller;
-        // 地図のレイアウト確定前にbounds指定すると失敗することがあるので少し待つ
-        await Future.delayed(const Duration(milliseconds: 100));
-        // 待っている間に画面が閉じられていたら、破棄済みの地図を触らない
-        if (!mounted) return;
-        // ルート全体が画面に収まるようにカメラを合わせる
-        final current = _currentPosition;
-        if (_isNavigating && current != null) {
-          _followCurrentPosition(current);
-        } else {
-          await controller.moveCamera(CameraUpdate.newLatLngBounds(bounds, 48));
+    return Listener(
+      onPointerMove: (event) {
+        if (_isNavigating && !_userPanned && event.delta.distance > 1.5) {
+          setState(() => _userPanned = true);
         }
       },
-      // ルートの線
-      polylines: {
-        Polyline(
-          polylineId: const PolylineId('route'),
-          points: routePoints,
-          width: 5,
-          color: const Color(0xFF19005C),
+      child: GoogleMap(
+        mapType: mapType,
+        initialCameraPosition: CameraPosition(
+          target: routePoints.first,
+          zoom: 13,
         ),
-        if (travelledPoints.length >= 2)
+        // 下の情報バー・画面下部メニューバー・上のチップに隠れないよう、地図の見える中心を調整。
+        // 案内モード中は上部の曲がり案内と下部のApple Dockを考慮し、自車位置が画面下部1/3に収まるようパディング設定
+        padding: EdgeInsets.only(
+          top: _isNavigating ? navTopPadding : 100,
+          bottom: _isNavigating
+              ? navBottomPadding
+              : 260 + AppBottomNavigation.barHeightFor(context),
+        ),
+        onCameraMoveStarted: () {
+          // カメラ移動開始。
+          // _userPannedは画面上の指ドラッグを感知するListener(onPointerMove)のみで判定し、
+          // プログラムによるカメラアニメーションで自動追従が誤解除されるのを防ぐ
+        },
+        onMapCreated: (controller) async {
+          _mapController = controller;
+          // 地図のレイアウト確定前にbounds指定すると失敗することがあるので少し待つ
+          await Future.delayed(const Duration(milliseconds: 100));
+          // 待っている間に画面が閉じられていたら、破棄済みの地図を触らない
+          if (!mounted) return;
+
+          final current = _currentPosition;
+          if (_isNavigating && current != null) {
+            _followCurrentPosition(current);
+            return;
+          }
+
+          // bboxの対角線距離が極端に短い(出発地と目的地がほぼ同じ地点)ときは、
+          // newLatLngBoundsに任せると最大ズームまで寄ってしまうため、
+          // 直前にフィットしたズーム(無ければ既定値)でその場を映すだけにする
+          final spanMeters = Geolocator.distanceBetween(
+            bounds.southwest.latitude,
+            bounds.southwest.longitude,
+            bounds.northeast.latitude,
+            bounds.northeast.longitude,
+          );
+          if (spanMeters < _minBoundsSpanMeters) {
+            await controller.moveCamera(
+              CameraUpdate.newLatLngZoom(
+                routePoints.first,
+                _lastZoom ?? _fallbackZoom,
+              ),
+            );
+            return;
+          }
+
+          // ルート全体が画面に収まるようにカメラを合わせ、
+          // 実際に落ち着いたズームを次回(復路など)のフォールバック用に覚えておく
+          await controller.moveCamera(CameraUpdate.newLatLngBounds(bounds, 48));
+          if (!mounted) return;
+          _lastZoom = await controller.getZoomLevel();
+        },
+        // ルートの線
+        polylines: {
           Polyline(
-            polylineId: const PolylineId('travelled-route'),
-            points: travelledPoints,
+            polylineId: const PolylineId('route'),
+            points: routePoints,
             width: 5,
-            color: const Color(0xFF9AA0A6),
+            color: AppColors.primary,
           ),
-      },
-      // 現在地(青)と目的地(赤=デフォルト)のマーカー
-      markers: {
-        Marker(
-          markerId: const MarkerId('destination'),
-          position: routePoints.last,
-        ),
-        if (currentMarkerPosition != null)
-          Marker(
-            markerId: const MarkerId('current-position'),
-            position: currentMarkerPosition,
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueAzure,
+        },
+        // 出発地(青)と目的地(赤=デフォルト)のマーカー
+        // 案内中は自車マーカーと青丸が重ならないよう、出発地ピンを非表示にする
+        markers: {
+          if (!_isNavigating)
+            Marker(
+              markerId: const MarkerId('start'),
+              position: routePoints.first,
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueAzure,
+              ),
             ),
-            rotation: currentPosition?.heading ?? 0,
-            flat: currentPosition != null,
-            anchor:
-                currentPosition != null
-                    ? const Offset(0.5, 0.5)
-                    : const Offset(0.5, 1),
-            zIndexInt: 10,
+          Marker(
+            markerId: const MarkerId('destination'),
+            position: routePoints.last,
           ),
-      },
-      zoomControlsEnabled: false,
-      myLocationButtonEnabled: false,
-      mapToolbarEnabled: false,
-      compassEnabled: true,
+          if (_isNavigating && _currentPosition != null)
+            Marker(
+              markerId: const MarkerId('current-location'),
+              position: LatLng(
+                _currentPosition!.latitude,
+                _currentPosition!.longitude,
+              ),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueCyan,
+              ),
+              rotation: _currentBearing,
+              flat: true,
+              anchor: const Offset(0.5, 0.5),
+              zIndexInt: 10,
+            )
+          else if (_isNavigating && _originLat != null && _originLng != null)
+            Marker(
+              markerId: const MarkerId('current-location'),
+              position: LatLng(_originLat!, _originLng!),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueCyan,
+              ),
+              rotation: _currentBearing,
+              flat: true,
+              anchor: const Offset(0.5, 0.5),
+              zIndexInt: 10,
+            ),
+        },
+        zoomControlsEnabled: false,
+        myLocationButtonEnabled: false,
+        mapToolbarEnabled: false,
+        compassEnabled: true,
+      ),
     );
   }
 
-  /// 通常時の下部バー: 目的地情報+距離・時間+ボタン(Googleマップの検索結果バー風)
-  Widget _buildBottomPanel() {
-    switch (_stage) {
-      case _RouteStage.outboundNavigating:
-        return _isRoundTrip
-            ? _buildOutboundNavigationButtons()
-            : _buildEndButton();
-      case _RouteStage.returnNavigating:
-        return _buildEndButton();
-      case _RouteStage.staying:
-        return _buildStayPanel();
-      case _RouteStage.completed:
-        return _buildCompletedPanel();
-      case _RouteStage.outboundPreview:
-      case _RouteStage.returnPreview:
-        return _buildInfoPanel();
-    }
-  }
-
+  /// 通常時の下部バー: 目的地情報+距離・時間+ボタン(Apple Floating Summary Card)
   Widget _buildInfoPanel() {
     return Container(
       key: const ValueKey('info-panel'), // AnimatedSwitcherが切り替えを認識するための目印
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 26),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 16,
+            color: Colors.black.withValues(alpha: 0.14),
+            blurRadius: 20,
             offset: const Offset(0, -4),
           ),
         ],
@@ -1349,92 +1719,96 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 目的地の名前
+          // 目的地の名前(復路プレビュー中は「出発地点へ戻る」に差し替える)
           Text(
             _isReturnRoute ? '出発地点へ戻る' : _name,
             maxLines: 1, // 長い名前は1行に収めて…で省略する
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
+              fontFamily: 'HankenGrotesk',
+              fontFamilyFallback: ['NotoSansJP'],
               fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primary,
+              letterSpacing: -0.5,
             ),
           ),
-          // 住所(あるときだけ)
-          if (!_isReturnRoute && _address.isNotEmpty)
+          // 住所(あるときだけ。復路は出発地点なので住所表示はしない)
+          if (!_isReturnRoute && _address.isNotEmpty) ...[
+            const SizedBox(height: 2),
             Text(
               _address,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 14, color: Colors.black54),
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontFamilyFallback: ['NotoSansJP'],
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
             ),
-          const SizedBox(height: 10),
+          ],
+          const SizedBox(height: 12),
 
-          // 距離と所要時間を1行で
-          Row(
-            children: [
-              const Icon(
-                Icons.directions_bike,
-                size: 18,
-                color: Color(0xFF19005C),
+          // 距離と所要時間をApple Maps風のバッジに美しくまとめる
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.accentBg,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.12),
               ),
-              const SizedBox(width: 6),
-              Text(
-                '${_distanceText()} ・ ${_durationText()}',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF19005C),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.directions_bike_rounded,
+                  size: 18,
+                  color: AppColors.primary,
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                Text(
+                  '${_distanceText()} ・ ${_durationText()}',
+                  style: const TextStyle(
+                    fontFamily: 'JetBrainsMono',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
 
-          // ボタン: 左=ルートを変更(戻る) / 右=案内開始
+          // ボタン: 左=戻る / 右=案内開始
           Row(
             children: [
               Expanded(
-                child: OutlinedButton(
+                child: AppButton(
+                  label: '戻る',
+                  variant: AppButtonVariant.secondary,
+                  height: 52,
+                  borderRadius: 18,
                   onPressed: () {
-                    // 詳細画面に戻って選び直せるようにする
-                    if (context.canPop()) {
-                      context.pop();
-                    } else {
-                      context.go('/home'); // 直接開かれたときの保険
+                    final navigator = Navigator.of(context);
+                    if (navigator.canPop()) {
+                      navigator.pop();
                     }
                   },
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(0, 50),
-                    side: const BorderSide(
-                      color: Color.fromARGB(255, 3, 11, 59),
-                      width: 2,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'ルートを変更',
-                    style: TextStyle(fontSize: 16, color: Colors.black),
-                  ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: ElevatedButton(
+                flex: 2,
+                child: AppButton(
+                  label: _isReturnRoute ? '帰りの案内を開始' : '案内開始',
+                  icon: Icons.navigation_rounded,
+                  height: 52,
+                  borderRadius: 18,
                   onPressed: _busy ? null : _startNavigation,
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(0, 50),
-                    backgroundColor: const Color.fromARGB(255, 9, 31, 156),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    _isReturnRoute ? '帰りの案内を開始' : '案内開始',
-                    style: const TextStyle(fontSize: 16, color: Colors.white),
-                  ),
                 ),
               ),
             ],
@@ -1444,46 +1818,43 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     );
   }
 
+  /// 往路案内中(往復モードのみ)の下部: 案内を終了 / 到着・滞在を開始
   Widget _buildOutboundNavigationButtons() {
     return Container(
-      key: const ValueKey('outbound-buttons'),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      color: Colors.white,
+      key: const ValueKey('outbound-navigation-buttons'),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: AppColors.border.withValues(alpha: 0.5),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Row(
         children: [
           Expanded(
-            child: OutlinedButton(
-              onPressed: _busy ? null : _endNavigation,
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(0, 52),
-                side: const BorderSide(color: Color(0xFFD93A2A), width: 2),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text(
-                '案内を終了',
-                style: TextStyle(fontSize: 15, color: Color(0xFFD93A2A)),
-              ),
+            child: _buildDangerOutlineButton(
+              label: '案内を終了',
+              onPressed: _busy ? null : _onEndNavigationPressed,
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             flex: 2,
-            child: ElevatedButton.icon(
+            child: AppButton(
+              label: '到着・滞在を開始',
+              icon: Icons.flag_rounded,
+              height: 46,
+              borderRadius: 14,
               onPressed: _busy ? null : _beginStay,
-              icon: const Icon(Icons.flag_rounded, color: Colors.white),
-              label: const Text(
-                '到着・滞在を開始',
-                style: TextStyle(fontSize: 16, color: Colors.white),
-              ),
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(0, 52),
-                backgroundColor: const Color.fromARGB(255, 9, 31, 156),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
             ),
           ),
         ],
@@ -1491,72 +1862,96 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     );
   }
 
+  /// 滞在中(往復モードのみ)の下部: Appleスタイルの洗練された滞在状況 + 案内を終了 / 今すぐ折り返す
   Widget _buildStayPanel() {
     return Container(
       key: const ValueKey('stay-panel'),
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: AppColors.border.withValues(alpha: 0.5),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '滞在中',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF19005C),
-            ),
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF9500).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.coffee_rounded,
+                  color: Color(0xFFFF9500),
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                '滞在中',
+                style: TextStyle(
+                  fontFamily: 'HankenGrotesk',
+                  fontFamilyFallback: ['NotoSansJP'],
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.accentBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _plannedStayMinutes == 0
+                      ? '⏱️ まもなく折り返し'
+                      : '⏱️ $_plannedStayMinutes分',
+                  style: const TextStyle(
+                    fontFamily: 'JetBrainsMono',
+                    fontFamilyFallback: ['NotoSansJP'],
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            '案内を停止しています。$_plannedStayMinutes分後に帰りのルートを表示します。',
-            style: const TextStyle(fontSize: 14, color: Colors.black54),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
-                child: OutlinedButton(
-                  onPressed: _busy ? null : _endNavigation,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(0, 50),
-                    side: const BorderSide(color: Color(0xFFD93A2A), width: 2),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    '案内を終了',
-                    style: TextStyle(fontSize: 15, color: Color(0xFFD93A2A)),
-                  ),
+                child: _buildDangerOutlineButton(
+                  label: '案内を終了',
+                  onPressed: _busy ? null : _onEndNavigationPressed,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: ElevatedButton(
+                flex: 2,
+                child: AppButton(
+                  label: '今すぐ折り返す',
+                  icon: Icons.replay_rounded,
+                  height: 46,
+                  borderRadius: 14,
                   onPressed: _busy ? null : _prepareReturnRoute,
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(0, 50),
-                    backgroundColor: const Color.fromARGB(255, 9, 31, 156),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    '今すぐ折り返す',
-                    style: TextStyle(fontSize: 15, color: Colors.white),
-                  ),
                 ),
               ),
             ],
@@ -1566,90 +1961,89 @@ class _RouteConfirmScreenState extends ConsumerState<RouteConfirmScreen> {
     );
   }
 
-  Widget _buildCompletedPanel() {
-    return Container(
-      key: const ValueKey('completed-panel'),
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.check_circle_rounded,
-            color: Color(0xFF14883B),
-            size: 52,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _completedOnReturn ? '出発地点に到着しました' : '目的地に到着しました',
-            style: const TextStyle(
-              fontSize: 21,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF19005C),
+  /// 「案内を終了」用の赤い縁取りボタン (Appleスタイル・Material InkWell)
+  Widget _buildDangerOutlineButton({
+    required String label,
+    required VoidCallback? onPressed,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          height: 46,
+          decoration: BoxDecoration(
+            color: AppColors.danger.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: AppColors.danger.withValues(alpha: 0.3),
+              width: 1.2,
             ),
           ),
-          if (_navigationStatusMessage != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              _navigationStatusMessage!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: Color(0xFFD93A2A)),
-            ),
-          ],
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _busy ? null : _finishCompletedFlow,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(0, 50),
-                backgroundColor: const Color.fromARGB(255, 9, 31, 156),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.close_rounded, size: 16, color: AppColors.danger),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontFamily: 'HankenGrotesk',
+                  fontFamilyFallback: ['NotoSansJP'],
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.danger,
                 ),
               ),
-              child: Text(
-                _tripId != null ? '記録保存を再試行' : '完了',
-                style: const TextStyle(fontSize: 16, color: Colors.white),
-              ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  /// 案内モード中の下部: 「案内を終了」ボタンだけ(バーは消えて全画面)
+  /// 案内モード中の下部: 片道・復路案内の統一Apple Floating Dock (案内を終了 + 到着・完了)
   Widget _buildEndButton() {
-    return Padding(
-      key: const ValueKey('end-button'), // AnimatedSwitcherが切り替えを認識するための目印
-      padding: const EdgeInsets.only(bottom: 24),
-      child: Center(
-        child: ElevatedButton.icon(
-          onPressed: _busy ? null : _endNavigation,
-          icon: const Icon(Icons.close, color: Colors.white),
-          label: const Text(
-            '案内を終了',
-            style: TextStyle(fontSize: 16, color: Colors.white),
+    return Container(
+      key: const ValueKey('end-button'),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: AppColors.border.withValues(alpha: 0.5),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
           ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFD93A2A), // Googleマップの終了ボタンと同じ赤系
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(9999),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildDangerOutlineButton(
+              label: '案内を終了',
+              onPressed: _busy ? null : _onEndNavigationPressed,
             ),
           ),
-        ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 2,
+            child: AppButton(
+              label: '到着・完了',
+              icon: Icons.check_circle_outline_rounded,
+              height: 46,
+              borderRadius: 14,
+              onPressed: _busy ? null : () => _endNavigation(isAutoArrival: true),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1708,7 +2102,7 @@ class _RoutePreviewPainter extends CustomPainter {
     }
     final linePaint =
         Paint()
-          ..color = const Color(0xFF19005C)
+          ..color = AppColors.primary
           ..style = PaintingStyle.stroke
           ..strokeWidth = 5
           ..strokeCap = StrokeCap.round
@@ -1724,7 +2118,7 @@ class _RoutePreviewPainter extends CustomPainter {
 
     // 目的地(最後の点)は赤丸+白抜きでピンっぽく
     final goal = toOffset(points.last);
-    canvas.drawCircle(goal, 10, Paint()..color = const Color(0xFFD93A2A));
+    canvas.drawCircle(goal, 10, Paint()..color = AppColors.danger);
     canvas.drawCircle(goal, 4.5, Paint()..color = Colors.white);
   }
 

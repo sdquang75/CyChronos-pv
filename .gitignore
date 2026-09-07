@@ -17,3 +17,6 @@ back/HANDOFF.md
 # デプロイ手順書(ローカル管理。リポジトリには含めない)
 back/docs/DEPLOY.md
 output/pdf/Api定義書.pdf
+upload_apk.py
+__pycache__/
+*.pyc

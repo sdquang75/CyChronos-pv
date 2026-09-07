@@ -8,21 +8,26 @@ import 'package:cy/features/home/domain/recommendation_state.dart';
 import 'package:cy/features/home/presentation/providers/recommendation_provider.dart';
 
 class _FakeLocationService extends LocationService {
+  Position _pos() => Position(
+        longitude: 139.7673,
+        latitude: 35.6812,
+        timestamp: DateTime(2026, 9, 4),
+        accuracy: 1,
+        altitude: 0,
+        altitudeAccuracy: 1,
+        heading: 0,
+        headingAccuracy: 1,
+        speed: 0,
+        speedAccuracy: 1,
+      );
+
   @override
-  Future<Position> getCurrentPosition() async {
-    return Position(
-      longitude: 139.7673,
-      latitude: 35.6812,
-      timestamp: DateTime(2026, 9, 4),
-      accuracy: 1,
-      altitude: 0,
-      altitudeAccuracy: 1,
-      heading: 0,
-      headingAccuracy: 1,
-      speed: 0,
-      speedAccuracy: 1,
-    );
-  }
+  Future<Position> getFastPosition({
+    Duration maxAge = const Duration(minutes: 5),
+  }) async => _pos();
+
+  @override
+  Future<Position> getCurrentPosition() async => _pos();
 }
 
 // 指定した DioException を投げるリポジトリ
@@ -39,6 +44,7 @@ class _FailingRecommendationRepository extends RecommendationRepository {
     required int minutes,
     required String mode,
     required int stayMinutes,
+    bool? includeVisited,
   }) {
     throw error;
   }

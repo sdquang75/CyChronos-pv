@@ -6,7 +6,10 @@ import 'package:go_router/go_router.dart';
 import 'providers/auth_provider.dart';
 import '../domain/auth_state.dart';
 import 'widgets/social_login_button.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_aurora_background.dart';
 import '../../../core/widgets/app_screen_frame.dart';
+import '../../../core/widgets/app_toast.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -25,9 +28,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   double _mouseX = 0.0;
   double _mouseY = 0.0;
-
-  // ローディング中のスピナーを押されたボタンだけに出すための識別子
-  _AuthAction? _pendingAction;
 
   @override
   void initState() {
@@ -82,25 +82,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   @override
   Widget build(BuildContext context) {
     ref.listen<AuthState>(authProvider, (_, next) {
-      if (next is! AuthLoading) {
-        setState(() => _pendingAction = null);
-      }
       if (next is AuthAuthenticated) {
         context.go('/home');
       } else if (next is AuthError) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              next.message,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontFamilyFallback: ['NotoSansJP'],
-              ),
-            ),
-            backgroundColor: const Color(0xFF19005C),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        AppToast.show(context, next.message, isError: true);
       }
     });
 
@@ -117,61 +102,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             });
           },
           child: Container(
-            color: const Color(0xFFF8F9FE),
+            color: AppColors.bgCool,
             child: Stack(
               children: [
-                Positioned.fill(
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: RadialGradient(
-                        center: Alignment.topLeft,
-                        radius: 1.414,
-                        colors: [Color(0xFFE6DEFF), Color(0x00E6DEFF)],
-                        stops: [0.0, 0.5],
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned.fill(
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: RadialGradient(
-                        center: Alignment.topRight,
-                        radius: 1.414,
-                        colors: [Color(0xFFFCF6FF), Color(0x00FCF6FF)],
-                        stops: [0.0, 0.5],
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned.fill(
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: RadialGradient(
-                        center: Alignment.bottomRight,
-                        radius: 1.414,
-                        colors: [Color(0xFFE8DEFF), Color(0x00E8DEFF)],
-                        stops: [0.0, 0.5],
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned.fill(
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: RadialGradient(
-                        center: Alignment.bottomLeft,
-                        radius: 1.414,
-                        colors: [Color(0xFFF8F9FE), Color(0x00F8F9FE)],
-                        stops: [0.0, 0.5],
-                      ),
-                    ),
-                  ),
-                ),
+                const AppAuroraBackground(),
                 _GlowBlob(
                   top: -96,
                   left: -96,
-                  color: const Color(0xFFE6DEFF).withValues(alpha: 0.18),
+                  color: AppColors.gradientStart.withValues(alpha: 0.18),
                   width: 384,
                   height: 384,
                   blur: 100,
@@ -215,13 +153,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             ),
                           ),
                           const SizedBox(height: 32),
-                          const Text(
+                          Text(
                             '© 2026 CyChronos',
                             style: TextStyle(
                               fontFamily: 'JetBrainsMono',
-                              fontFamilyFallback: ['NotoSansJP'],
+                              fontFamilyFallback: const ['NotoSansJP'],
                               fontSize: 12,
-                              color: Color(0x99484553),
+                              color: AppColors.textSecondary.withValues(
+                                alpha: 0.6,
+                              ),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -250,7 +190,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             fontFamilyFallback: ['NotoSansJP'],
             fontSize: 48,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF19005C),
+            color: AppColors.primary,
             letterSpacing: -0.96,
             height: 56 / 48,
           ),
@@ -283,49 +223,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // サードパーティログインでログイン/新規登録を別ボタンに分けるのは不自然
+              // (Google自身が初回かどうかを知っている)なので、ボタンは1つだけ。
+              // バックエンド未登録なら自動でアカウントが作られる
               SocialLoginButton(
                 icon: SvgPicture.string(_kGoogleSvg),
                 label: 'Googleでログイン',
-                isLoading: isLoading && _pendingAction == _AuthAction.login,
+                isLoading: isLoading,
                 onPressed:
                     isLoading
                         ? null
                         : () {
-                          setState(() => _pendingAction = _AuthAction.login);
                           ref.read(authProvider.notifier).signInWithGoogle();
-                        },
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  const Expanded(child: Divider(color: Color(0x4DC9C4D5))),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      'はじめての方',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontFamilyFallback: ['NotoSansJP'],
-                        fontSize: 13,
-                        color: Color(0x99484553),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const Expanded(child: Divider(color: Color(0x4DC9C4D5))),
-                ],
-              ),
-              const SizedBox(height: 24),
-              SocialLoginButton(
-                icon: SvgPicture.string(_kGoogleSvg),
-                label: 'Googleでアカウント作成',
-                isLoading: isLoading && _pendingAction == _AuthAction.register,
-                onPressed:
-                    isLoading
-                        ? null
-                        : () {
-                          setState(() => _pendingAction = _AuthAction.register);
-                          ref.read(authProvider.notifier).registerWithGoogle();
                         },
               ),
             ],
@@ -335,8 +244,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 }
-
-enum _AuthAction { login, register }
 
 class _GlowBlob extends StatelessWidget {
   final double? top, left, bottom, right;

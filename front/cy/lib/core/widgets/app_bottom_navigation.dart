@@ -1,37 +1,52 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:go_router/go_router.dart';
 
-/// 画面下部メニューバーのタブ種別
-enum AppTab { home, history, settings }
+import '../theme/app_colors.dart';
 
 /// 全画面共通の画面下部メニューバー。
 /// おすすめスポット一覧画面の形式(左からHOME・HISTORY・SETTINGS)に統一する。
+///
+/// タブの切り替えはHomeScreen(IndexedStackシェル)のcurrentIndex/onTapで
+/// 制御する「dumbな」コンポーネント。go_routerへは依存しない
+/// (タブ切り替えはページ遷移ではなくIndexedStackのインデックス変更のため)
 class AppBottomNavigation extends StatelessWidget {
-  /// メニューバーの高さ。各画面で本文の下余白(Positionedのbottom等)に使う
-  static const double barHeight = 88.92;
+  /// アイコン+ラベル部分の高さ(下端の余白は含まない)
+  static const double _contentHeight = 68.92;
 
-  /// いま表示している画面のタブ(ハイライト表示用)。
-  /// おすすめ一覧や詳細のようにタブ本体ではない画面でもHOMEを渡してよい
-  /// (遷移するかどうかは実際のルートで判定する)
-  final AppTab current;
+  /// 端末に下部セーフエリアが無い機種向けの最低限の余白
+  /// (3ボタンナビ以前を想定した元々のデザイン値)
+  static const double _minBottomInset = 20;
+
+  /// メニューバーの実際の高さ。ジェスチャーナビゲーションバーやホームインジケーターの
+  /// 実測の余白(MediaQuery.padding.bottom)に応じて可変にし、被らないようにする。
+  /// 各画面で本文の下余白(Positionedのbottom等)にはこれを使う
+  static double barHeightFor(BuildContext context) {
+    final double bottomInset = MediaQuery.of(context).padding.bottom;
+    return _contentHeight +
+        (bottomInset > _minBottomInset ? bottomInset : _minBottomInset);
+  }
+
+  /// いま選択中のタブ(0: HOME, 1: HISTORY, 2: SETTINGS)
+  final int currentIndex;
+
+  /// タブがタップされたときに呼ばれる(既に選択中のタブを再タップした場合も含む。
+  /// 何もしないかどうかは呼び出し側で判断する)
+  final ValueChanged<int> onTap;
 
   const AppBottomNavigation({
     super.key,
-    required this.current,
+    required this.currentIndex,
+    required this.onTap,
   });
 
-  // すでに表示中のルートをもう一度タップしたときだけ遷移しない。
-  // ハイライト(current)とは別に実ルートで判定する
-  // (例: おすすめ一覧はHOMEをハイライトするが、ルートは/destinationなので
-  //  HOMEタップで/homeへ移動できる必要がある)
-  void _goTo(BuildContext context, String path) {
-    final String location =
-        GoRouterState.of(context).matchedLocation;
-    if (location == path) return;
-    context.go(path);
+  void _handleTap(int index) {
+    // 既に選択中のタブを再タップした場合も呼び出し側に通知する
+    // (例: HOMEタブ再タップで目的地一覧/詳細を閉じてトップまで戻す用)
+    HapticFeedback.selectionClick();
+    onTap(index);
   }
 
   @override
@@ -44,51 +59,46 @@ class AppBottomNavigation extends StatelessWidget {
         ),
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFFF8F9FE).withValues(
-              alpha: 0.8,
-            ),
+            color: AppColors.bgCool.withValues(alpha: 0.8),
             border: Border(
               top: BorderSide(
-                color: const Color(0xFFC9C4D5).withValues(
-                  alpha: 0.3,
-                ),
+                color: AppColors.border.withValues(alpha: 0.3),
                 width: 1,
               ),
             ),
           ),
-          padding: const EdgeInsets.only(
-            top: 12,
-            bottom: 20,
-          ),
-          child: Row(
-            mainAxisAlignment:
-                MainAxisAlignment.spaceAround,
-            children: [
-              _BottomNavItem(
-                label: 'HOME',
-                svgData: _kHomeTabSvg,
-                isSelected: current == AppTab.home,
-                onTap: () {
-                  _goTo(context, '/home');
-                },
-              ),
-              _BottomNavItem(
-                label: 'HISTORY',
-                svgData: _kHistoryTabSvg,
-                isSelected: current == AppTab.history,
-                onTap: () {
-                  _goTo(context, '/history');
-                },
-              ),
-              _BottomNavItem(
-                label: 'SETTINGS',
-                icon: Icons.settings_outlined,
-                isSelected: current == AppTab.settings,
-                onTap: () {
-                  _goTo(context, '/settings');
-                },
-              ),
-            ],
+          padding: const EdgeInsets.only(top: 12),
+          // 端末の実際の下部インセット(ジェスチャーナビゲーションバー/ホーム
+          // インジケーター)がminimumより大きい場合はそちらを優先して被りを防ぐ
+          child: SafeArea(
+            top: false,
+            left: false,
+            right: false,
+            minimum: const EdgeInsets.only(bottom: _minBottomInset),
+            child: Row(
+              mainAxisAlignment:
+                  MainAxisAlignment.spaceAround,
+              children: [
+                _BottomNavItem(
+                  label: 'ホーム',
+                  svgData: _kHomeTabSvg,
+                  isSelected: currentIndex == 0,
+                  onTap: () => _handleTap(0),
+                ),
+                _BottomNavItem(
+                  label: '履歴',
+                  svgData: _kHistoryTabSvg,
+                  isSelected: currentIndex == 1,
+                  onTap: () => _handleTap(1),
+                ),
+                _BottomNavItem(
+                  label: '設定',
+                  icon: Icons.settings_outlined,
+                  isSelected: currentIndex == 2,
+                  onTap: () => _handleTap(2),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -114,8 +124,8 @@ class _BottomNavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color color = isSelected
-        ? const Color(0xFF19005C)
-        : const Color(0xFF484553);
+        ? AppColors.primary
+        : AppColors.textSecondary;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -150,6 +160,7 @@ class _BottomNavItem extends StatelessWidget {
                 label,
                 style: TextStyle(
                   fontFamily: 'JetBrainsMono',
+                  fontFamilyFallback: const ['NotoSansJP'],
                   fontWeight: isSelected
                       ? FontWeight.w700
                       : FontWeight.w500,

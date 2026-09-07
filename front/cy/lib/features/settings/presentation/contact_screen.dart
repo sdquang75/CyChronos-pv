@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_screen_frame.dart';
+import '../../../core/widgets/app_top_bar.dart';
 
 class ContactScreen extends StatefulWidget {
   const ContactScreen({super.key});
-
-  static const Color backgroundColor = Color(0xFFF8F9FE);
-  static const Color primaryColor = Color(0xFF19005C);
-  static const Color secondaryColor = Color(0xFF484553);
-  static const Color borderColor = Color(0xFFC9C4D5);
-  static const Color accentBackgroundColor = Color(0xFFF1EBFF);
-  static const Color errorColor = Color(0xFFBA1A1A);
 
   @override
   State<ContactScreen> createState() => _ContactScreenState();
@@ -70,6 +69,8 @@ class _ContactScreenState extends State<ContactScreen> {
       return;
     }
 
+    HapticFeedback.mediumImpact();
+
     setState(() {
       _isSending = true;
     });
@@ -114,13 +115,13 @@ class _ContactScreenState extends State<ContactScreen> {
             width: 64,
             height: 64,
             decoration: const BoxDecoration(
-              color: ContactScreen.accentBackgroundColor,
+              color: AppColors.accentBg,
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.check_rounded,
               size: 34,
-              color: ContactScreen.primaryColor,
+              color: AppColors.primary,
             ),
           ),
           title: const Text(
@@ -131,7 +132,7 @@ class _ContactScreenState extends State<ContactScreen> {
               fontFamilyFallback: ['NotoSansJP'],
               fontSize: 21,
               fontWeight: FontWeight.w700,
-              color: ContactScreen.primaryColor,
+              color: AppColors.primary,
             ),
           ),
           content: const Text(
@@ -142,7 +143,7 @@ class _ContactScreenState extends State<ContactScreen> {
               fontFamily: 'Inter',
               fontFamilyFallback: ['NotoSansJP'],
               fontSize: 14,
-              color: ContactScreen.secondaryColor,
+              color: AppColors.textSecondary,
               height: 1.6,
             ),
           ),
@@ -157,7 +158,7 @@ class _ContactScreenState extends State<ContactScreen> {
                   Navigator.of(dialogContext).pop();
                 },
                 style: FilledButton.styleFrom(
-                  backgroundColor: ContactScreen.primaryColor,
+                  backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -191,161 +192,99 @@ class _ContactScreenState extends State<ContactScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ContactScreenはHomeScreenのIndexedStackの中ではなく、go_routerの
+    // トップレベルルートとして/homeの上に直接pushされる(RideFlow経由では
+    // ない)ので、他のpush画面と違ってAppScreenFrameを自分で持つ必要がある
     return AppScreenFrame(
       child: Scaffold(
-        backgroundColor: ContactScreen.backgroundColor,
+        backgroundColor: AppColors.bgCool,
         body: SafeArea(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildTopBar(),
-
-                  const SizedBox(height: 28),
-
-                  const Text(
-                    'お問い合わせ',
-                    style: TextStyle(
-                      fontFamily: 'HankenGrotesk',
-                      fontFamilyFallback: ['NotoSansJP'],
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      color: ContactScreen.primaryColor,
-                      height: 1.25,
-                    ),
+          bottom: false,
+          child: Column(
+            children: [
+              AppTopBar(title: 'お問い合わせ', onBack: _goBack),
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xxl,
+                    AppSpacing.xl,
+                    AppSpacing.xxl,
+                    40,
                   ),
-
-                  const SizedBox(height: 8),
-
-                  const Text(
-                    'ご意見や不具合について、以下のフォームからお問い合わせください。',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontFamilyFallback: ['NotoSansJP'],
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                      color: ContactScreen.secondaryColor,
-                      height: 1.6,
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  _buildFormCard(),
-
-                  const SizedBox(height: 16),
-
-                  _buildNoticeCard(),
-
-                  const SizedBox(height: 24),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton.icon(
-                      onPressed: _isSending ? null : _submitContact,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: ContactScreen.primaryColor,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: ContactScreen.primaryColor
-                            .withValues(alpha: 0.55),
-                        disabledForegroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'ご意見や不具合について、以下のフォームからお問い合わせください。',
+                          style: AppTypography.pageSubtitle,
                         ),
-                      ),
-                      icon:
-                          _isSending
-                              ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: Colors.white,
-                                ),
-                              )
-                              : const Icon(Icons.send_rounded, size: 21),
-                      label: Text(
-                        _isSending ? '送信しています' : '送信する',
-                        style: const TextStyle(
-                          fontFamily: 'HankenGrotesk',
-                          fontFamilyFallback: ['NotoSansJP'],
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildTopBar() {
-    return SizedBox(
-      height: 52,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: _goBack,
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: ContactScreen.borderColor.withValues(alpha: 0.35),
+                        const SizedBox(height: AppSpacing.xxl),
+
+                        _buildFormCard(),
+
+                        const SizedBox(height: AppSpacing.lg),
+
+                        _buildNoticeCard(),
+
+                        const SizedBox(height: AppSpacing.xxl),
+
+                        SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: ElevatedButton.icon(
+                            onPressed: _isSending ? null : _submitContact,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: AppColors.primary
+                                  .withValues(alpha: 0.55),
+                              disabledForegroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            icon:
+                                _isSending
+                                    ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                    : const Icon(Icons.send_rounded, size: 21),
+                            label: Text(
+                              _isSending ? '送信しています' : '送信する',
+                              style: const TextStyle(
+                                fontFamily: 'HankenGrotesk',
+                                fontFamilyFallback: ['NotoSansJP'],
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  child: const Icon(
-                    Icons.arrow_back_rounded,
-                    size: 23,
-                    color: ContactScreen.primaryColor,
                   ),
                 ),
               ),
-            ),
+            ],
           ),
-          Image.asset('assets/logo_long.png', width: 190, fit: BoxFit.contain),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildFormCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: ContactScreen.borderColor.withValues(alpha: 0.35),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2E0094).withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+    return AppCard(
+      borderRadius: 24,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -424,10 +363,10 @@ class _ContactScreenState extends State<ContactScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: ContactScreen.accentBackgroundColor,
+        color: AppColors.accentBg,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: ContactScreen.primaryColor.withValues(alpha: 0.12),
+          color: AppColors.primary.withValues(alpha: 0.12),
         ),
       ),
       child: const Row(
@@ -436,7 +375,7 @@ class _ContactScreenState extends State<ContactScreen> {
           Icon(
             Icons.info_outline_rounded,
             size: 20,
-            color: ContactScreen.primaryColor,
+            color: AppColors.primary,
           ),
           SizedBox(width: 10),
           Expanded(
@@ -447,7 +386,7 @@ class _ContactScreenState extends State<ContactScreen> {
                 fontFamily: 'Inter',
                 fontFamilyFallback: ['NotoSansJP'],
                 fontSize: 13,
-                color: ContactScreen.secondaryColor,
+                color: AppColors.textSecondary,
                 height: 1.6,
               ),
             ),
@@ -468,7 +407,7 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 19, color: ContactScreen.primaryColor),
+        Icon(icon, size: 19, color: AppColors.primary),
         const SizedBox(width: 8),
         Text(
           text,
@@ -477,7 +416,7 @@ class _FieldLabel extends StatelessWidget {
             fontFamilyFallback: ['NotoSansJP'],
             fontSize: 15,
             fontWeight: FontWeight.w700,
-            color: ContactScreen.primaryColor,
+            color: AppColors.primary,
           ),
         ),
       ],
@@ -518,7 +457,7 @@ class _ContactTextField extends StatelessWidget {
         fontFamily: 'Inter',
         fontFamilyFallback: ['NotoSansJP'],
         fontSize: 15,
-        color: ContactScreen.primaryColor,
+        color: AppColors.primary,
         height: 1.5,
       ),
       decoration: InputDecoration(
@@ -527,10 +466,10 @@ class _ContactTextField extends StatelessWidget {
           fontFamily: 'Inter',
           fontFamilyFallback: const ['NotoSansJP'],
           fontSize: 14,
-          color: ContactScreen.secondaryColor.withValues(alpha: 0.55),
+          color: AppColors.textSecondary.withValues(alpha: 0.55),
         ),
         filled: true,
-        fillColor: ContactScreen.backgroundColor,
+        fillColor: AppColors.bgCool,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 15,
@@ -538,24 +477,24 @@ class _ContactTextField extends StatelessWidget {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(
-            color: ContactScreen.borderColor.withValues(alpha: 0.45),
+            color: AppColors.border.withValues(alpha: 0.45),
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(
-            color: ContactScreen.primaryColor,
+            color: AppColors.primary,
             width: 1.5,
           ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: ContactScreen.errorColor),
+          borderSide: const BorderSide(color: AppColors.error),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(
-            color: ContactScreen.errorColor,
+            color: AppColors.error,
             width: 1.5,
           ),
         ),

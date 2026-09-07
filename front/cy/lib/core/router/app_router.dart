@@ -6,21 +6,41 @@ import '../../features/auth/domain/auth_state.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/splash_screen.dart';
-import '../../features/destination/presentation/destination_list_screen.dart';
-import '../../features/detil/detil.dart';
-import '../../features/history/presentation/history_detail_screen.dart';
-import '../../features/history/presentation/history_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
-import '../../features/route_confirm/route_confirm.dart';
 import '../../features/settings/presentation/contact_screen.dart';
-import '../../features/settings/presentation/settings_screen.dart';
-import '../network/place_photo.dart';
 
 // Bridges Riverpod state changes → GoRouter refresh
 class _AuthListenable extends ChangeNotifier {
   _AuthListenable(Ref ref) {
     ref.listen<AuthState>(authProvider, (_, __) => notifyListeners());
   }
+}
+
+// 下部タブ(HOME/HISTORY/SETTINGS)はHomeScreen内のIndexedStackに畳み込まれた
+// ので、もうgo_routerのトップレベルルートではない。目的地一覧・詳細・
+// ルート確認もRideFlowの入れ子Navigatorに畳み込まれたので同様に無くなった。
+// go_routerのトップレベルルートに残るのは「認証で出し分けられる画面」
+// (splash/login/home)と「/homeの上に被さる独立した画面」(contact)だけ
+
+// 下部タブ(HOME/HISTORY/SETTINGS)はgo()で「置き換え」遷移するため、
+// 前後関係のないスライドではなく短いフェードで切り替える
+Page<void> _fadeTabPage(GoRouterState state, Widget child) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 180),
+    reverseTransitionDuration: const Duration(milliseconds: 180),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(opacity: animation, child: child);
+    },
+  );
+}
+
+// push()で積む詳細系の画面はMaterialPageの標準遷移に任せる。
+// テーマ側でpageTransitionsThemeを上書きしていないため、iOS/macOSでは
+// 自動的にCupertino風のスライド遷移+エッジスワイプで戻る操作が有効になる
+Page<void> _pushPage(GoRouterState state, Widget child) {
+  return MaterialPage<void>(key: state.pageKey, child: child);
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -47,161 +67,25 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/',
         pageBuilder:
-            (context, state) => NoTransitionPage(
-              key: state.pageKey,
-              child: const SplashScreen(),
-            ),
+            (context, state) => _fadeTabPage(state, const SplashScreen()),
       ),
       GoRoute(
         path: '/login',
         pageBuilder:
-            (context, state) => NoTransitionPage(
-              key: state.pageKey,
-              child: const LoginScreen(),
-            ),
+            (context, state) => _fadeTabPage(state, const LoginScreen()),
       ),
       GoRoute(
         path: '/home',
         pageBuilder:
-            (context, state) =>
-                NoTransitionPage(key: state.pageKey, child: const HomeScreen()),
+            (context, state) => _fadeTabPage(state, const HomeScreen()),
       ),
 
-      // 走行履歴画面
-      GoRoute(
-        path: '/history',
-        pageBuilder:
-            (context, state) => NoTransitionPage(
-              key: state.pageKey,
-              child: const HistoryScreen(),
-            ),
-      ),
-
-      // 走行履歴の詳細画面(走行軌跡を地図に描く)
-      GoRoute(
-        path: '/history/:tripId',
-        pageBuilder: (context, state) {
-          final tripId = int.tryParse(state.pathParameters['tripId'] ?? '');
-
-          // 不正なIDで直接開かれたときは一覧を出しておく
-          if (tripId == null) {
-            return NoTransitionPage(
-              key: state.pageKey,
-              child: const HistoryScreen(),
-            );
-          }
-
-          return NoTransitionPage(
-            key: state.pageKey,
-            child: HistoryDetailScreen(tripId: tripId),
-          );
-        },
-      ),
-
-      // 設定画面
-      GoRoute(
-        path: '/settings',
-        pageBuilder:
-            (context, state) => NoTransitionPage(
-              key: state.pageKey,
-              child: const SettingsScreen(),
-            ),
-      ),
-
-      // お問い合わせ画面
+      // お問い合わせ画面(SettingsタブからNavigatorではなくgo_routerでpush。
+      // HomeScreenの/homeページはそのまま裏に残るので、閉じればタブの状態も保たれる)
       GoRoute(
         path: '/contact',
         pageBuilder:
-            (context, state) => NoTransitionPage(
-              key: state.pageKey,
-              child: const ContactScreen(),
-            ),
-      ),
-
-      GoRoute(
-        path: '/detil',
-        pageBuilder: (context, state) {
-          // 一覧画面から渡された目的地1件分
-          // (/api/suggest の places の1要素)を受け取る
-          final destination =
-              state.extra is Map
-                  ? Map<String, dynamic>.from(state.extra as Map)
-                  : <String, dynamic>{};
-
-          // 数値はAPIの都合で int でも double でも来るので
-          // num で受けてから変換する
-          final durationSec = destination['durationSec'] as num?;
-          final distanceM = destination['distanceM'] as num?;
-          final rating = destination['rating'] as num?;
-
-          // 写真は photoReference をバックの写真プロキシのURLに変換して渡す。
-          // 写真なしのスポットは null になり、
-          // 詳細画面側で仮画像が表示される
-          final imageUrl = placePhotoUrl(
-            destination['photoReference']?.toString(),
-          );
-
-          return NoTransitionPage(
-            key: state.pageKey,
-            // 受け取ったデータを詳細画面へ渡す
-            // 欠けている項目は詳細画面側で「--」等を表示
-            child: DetilScreen(
-              name: destination['name']?.toString() ?? '',
-              address: destination['address']?.toString() ?? '',
-              genre: destination['genre']?.toString() ?? '',
-              imageUrl: imageUrl,
-              durationSec: durationSec?.round(), // 所要時間(秒)
-              distanceMeter: distanceM?.round(), // 距離(m)
-              rating: rating?.toDouble(), // 評価(例: 4.2)
-              destination: destination, // ルート確認画面へ引き継ぐ用の元データ
-            ),
-          );
-        },
-      ),
-      GoRoute(
-        path: '/destination',
-        pageBuilder: (context, state) {
-          // ホーム画面から候補一覧と
-          // 検索に使った空き時間(分)を受け取る
-          final extraMap =
-              state.extra is Map
-                  ? Map<String, dynamic>.from(state.extra as Map)
-                  : <String, dynamic>{};
-
-          final places = extraMap['places'] as List<dynamic>? ?? [];
-
-          final minutes = extraMap['minutes'] as int?;
-          final type = extraMap['type']?.toString() ?? 'cafe';
-          final tripMode = extraMap['tripMode']?.toString() ?? 'one_way';
-          final stayMinutes = (extraMap['stayMinutes'] as num?)?.round() ?? 0;
-
-          return NoTransitionPage(
-            key: state.pageKey,
-            child: DestinationListScreen(
-              places: places,
-              minutes: minutes,
-              type: type,
-              tripMode: tripMode,
-              stayMinutes: stayMinutes,
-            ),
-          );
-        },
-      ),
-      GoRoute(
-        path: '/route_confirm',
-        pageBuilder: (context, state) {
-          // 詳細画面から渡された目的地1件分のデータを受け取る
-          final destination =
-              state.extra is Map
-                  ? Map<String, dynamic>.from(state.extra as Map)
-                  : <String, dynamic>{};
-
-          return NoTransitionPage(
-            key: state.pageKey,
-            // ルート確認画面に目的地データを渡す(現在地とルートは画面側でAPIから取得する)
-            child: RouteConfirmScreen(destination: destination),
-          );
-        },
+            (context, state) => _pushPage(state, const ContactScreen()),
       ),
     ],
   );

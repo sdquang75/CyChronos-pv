@@ -25,16 +25,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         : const AuthUnauthenticated();
   }
 
-  /// ログイン: Googleサインイン → バックエンドの /api/auth/login
+  /// Googleサインイン → バックエンドと連携(未登録なら自動でアカウント作成)
   Future<void> signInWithGoogle() => _authenticate(
         _repo.signInWithGoogle,
         failureMessage: 'ログインに失敗しました。もう一度お試しください。',
-      );
-
-  /// アカウント作成: Googleサインイン → バックエンドの /api/auth/register
-  Future<void> registerWithGoogle() => _authenticate(
-        _repo.registerWithGoogle,
-        failureMessage: 'アカウント作成に失敗しました。もう一度お試しください。',
       );
 
   Future<void> _authenticate(
@@ -45,8 +39,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final user = await action();
       state = AuthAuthenticated(user: user);
-    } on AccountNotRegisteredException {
-      state = const AuthError('アカウントが未登録です。先にアカウント作成を行ってください。');
     } on DioException catch (e) {
       // バックエンドAPIの失敗: サーバーが返した error 文言があれば表示する
       debugPrint('auth api error: $e');

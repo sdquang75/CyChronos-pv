@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../domain/weather_condition.dart';
 import '../../domain/weather_state.dart';
 import '../providers/weather_provider.dart';
@@ -36,7 +37,7 @@ class WeatherHeaderCard extends ConsumerWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(
-          color: const Color(0xFFC9C4D5).withValues(alpha: 0.5),
+          color: AppColors.border.withValues(alpha: 0.5),
         ),
         borderRadius: BorderRadius.circular(18),
       ),
@@ -50,7 +51,7 @@ class WeatherHeaderCard extends ConsumerWidget {
                 height: 56,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1EBFF),
+                  color: AppColors.accentBg,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child:
@@ -60,12 +61,12 @@ class WeatherHeaderCard extends ConsumerWidget {
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Color(0xFF19005C),
+                            color: AppColors.primary,
                           ),
                         )
                         : Icon(
                           condition.icon,
-                          color: const Color(0xFF19005C),
+                          color: AppColors.primary,
                           size: 28,
                         ),
               ),
@@ -85,7 +86,7 @@ class WeatherHeaderCard extends ConsumerWidget {
                           fontWeight: FontWeight.w600,
                           fontSize: 28,
                           letterSpacing: -0.56,
-                          color: Color(0xFF19005C),
+                          color: AppColors.primary,
                         ),
                       ),
                     ),
@@ -97,7 +98,7 @@ class WeatherHeaderCard extends ConsumerWidget {
                         fontFamilyFallback: ['NotoSansJP'],
                         fontWeight: FontWeight.w500,
                         fontSize: 14,
-                        color: Color(0xFF484553),
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -111,7 +112,7 @@ class WeatherHeaderCard extends ConsumerWidget {
             decoration: BoxDecoration(
               border: Border(
                 top: BorderSide(
-                  color: const Color(0xFFC9C4D5).withValues(alpha: 0.5),
+                  color: AppColors.border.withValues(alpha: 0.5),
                 ),
               ),
             ),
@@ -170,7 +171,7 @@ class _WeatherStat extends StatelessWidget {
             fontWeight: FontWeight.w500,
             fontSize: 10,
             letterSpacing: 1,
-            color: Color(0xFF484553),
+            color: AppColors.textSecondary,
           ),
         ),
         const SizedBox(height: 2),
@@ -181,7 +182,7 @@ class _WeatherStat extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 12, color: const Color(0xFF19005C)),
+              Icon(icon, size: 12, color: AppColors.primary),
               const SizedBox(width: 3),
               Text.rich(
                 TextSpan(
@@ -192,7 +193,7 @@ class _WeatherStat extends StatelessWidget {
                         fontFamily: 'HankenGrotesk',
                         fontWeight: FontWeight.w500,
                         fontSize: 15,
-                        color: Color(0xFF191C1F),
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     TextSpan(
@@ -201,7 +202,7 @@ class _WeatherStat extends StatelessWidget {
                         fontFamily: 'HankenGrotesk',
                         fontWeight: FontWeight.w400,
                         fontSize: 11,
-                        color: Color(0xFF191C1F),
+                        color: AppColors.textPrimary,
                       ),
                     ),
                   ],

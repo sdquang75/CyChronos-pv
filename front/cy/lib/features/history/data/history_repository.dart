@@ -11,7 +11,9 @@ class HistoryRepository {
   /// ログ全件取得(GET /api/trips?user_id={user_id})。
   /// back/docs/API.md「2. ログ全件取得」の形式で、
   /// start_time の降順のトリップ一覧が返る(該当なしは空配列)。
-  Future<List<Map<String, dynamic>>> fetchTrips({required int userId}) async {
+  Future<List<Map<String, dynamic>>> fetchTrips({
+    required int userId,
+  }) async {
     final response = await _dio.get(
       '/api/trips',
       queryParameters: {'user_id': userId},
@@ -27,10 +29,9 @@ class HistoryRepository {
         .toList();
   }
 
-  /// ログ単体取得(GET /api/trips/{trip_id})。
-  /// back/docs/API.md「3. ログ単体取得」の形式で、トリップ詳細に
-  /// そのトリップの座標ログ(locations、log_num昇順)が付いて返る。
-  Future<Map<String, dynamic>> fetchTripDetail({
+  /// ログ単体取得(GET /api/trips/{trip_id}?user_id={user_id})。
+  /// トリップ情報に加えて locations (走行座標ログの配列)を含むMapを返す。
+  Future<Map<String, dynamic>?> fetchTripDetail({
     required int userId,
     required int tripId,
   }) async {
@@ -40,9 +41,19 @@ class HistoryRepository {
     );
 
     final data = response.data;
-    if (data is! Map) {
-      throw Exception('トリップ詳細の形式が不正です');
-    }
+    if (data is! Map) return null;
     return Map<String, dynamic>.from(data);
+  }
+
+  /// ログ削除(DELETE /api/trips/{trip_id}?user_id={user_id})。
+  /// トリップを論理削除する(成功時は204 No Content)。
+  Future<void> deleteTrip({
+    required int userId,
+    required int tripId,
+  }) async {
+    await _dio.delete(
+      '/api/trips/$tripId',
+      queryParameters: {'user_id': userId},
+    );
   }
 }
