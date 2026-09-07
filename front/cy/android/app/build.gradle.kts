@@ -59,8 +59,8 @@ android {
     }
 
     defaultConfig {
-        // Preview build application ID for side-by-side installation
-        applicationId = "com.cychronos.cy.preview"
+        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        applicationId = "com.cychronos.cy"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

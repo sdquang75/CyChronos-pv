@@ -5,7 +5,7 @@
     <!-- usesCleartextTraffic: Android 9以降は https以外の通信が標準でブロックされる。
          開発中のバックエンド(http://PCのIP:3000)に繋ぐため許可する。本番でhttps化したら外すこと -->
     <application
-        android:label="CyChronos (Preview)"
+        android:label="cy"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
